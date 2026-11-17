@@ -47,3 +47,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - sap-mock tests ignore Starlette's warning that asks TestClient users to switch to
   `httpx2`. The stack keeps `httpx`.
+- Phase 5: the React UI. Form (department, number, revision, name, designer, folder
+  preview) with the assistant's suggestions highlighted until you edit them; assistant
+  panel with SSE streaming, SAP cards and confirmation cards (confirm, cancel, expired,
+  rule errors under the field); preview of the title block (SVG, PDF link); recent
+  designs; agent-steps drawer; ES/EN. Backend: `/api/departments`, `/api/designs`,
+  `/api/designs/.../preview.{pdf,svg}`, `POST /api/actions` (decision 0010).
+  Playwright e2e in `e2e/` on a scripted model and a stub `kicad-cli`; new CI job.
