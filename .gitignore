@@ -1,0 +1,41 @@
+# Persistent data: generated designs, SQLite files, traces (never commit)
+data/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Python
+**/.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.md
+htmlcov/
+*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# KiCad backups and lock files
+*-backups/
+*.lck
+fp-info-cache
+
+# Claude Code: project settings are committed, local state is not
+.claude/*
+!.claude/settings.json
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
