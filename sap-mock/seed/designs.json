@@ -1,0 +1,774 @@
+{
+  "designs": [
+    {
+      "design_number": "HL-HW-23-0004",
+      "department": "HW",
+      "name": "Bead Drill Controller",
+      "status": "OBSOLETE",
+      "material": "000000000040001004",
+      "wbs": "P-23-0031",
+      "created_on": "2023-02-14",
+      "created_by": "E. Marín",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2023-02-14",
+          "created_by": "E. Marín"
+        },
+        {
+          "rev": "B",
+          "created_on": "2023-04-18",
+          "created_by": "E. Marín"
+        },
+        {
+          "rev": "C",
+          "created_on": "2023-07-03",
+          "created_by": "E. Marín"
+        }
+      ],
+      "block_reason": null,
+      "successor": "HL-HW-25-0019"
+    },
+    {
+      "design_number": "HL-HW-23-0011",
+      "department": "HW",
+      "name": "LED Inspection Station",
+      "status": "RELEASED",
+      "material": "000000000040001042",
+      "wbs": "P-23-0031",
+      "created_on": "2023-06-05",
+      "created_by": "M. Ortega",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2023-06-05",
+          "created_by": "M. Ortega"
+        },
+        {
+          "rev": "B",
+          "created_on": "2023-08-08",
+          "created_by": "M. Ortega"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-HW-24-0007",
+      "department": "HW",
+      "name": "Kiln Thermocouple Interface",
+      "status": "IN_WORK",
+      "material": "000000000040001071",
+      "wbs": "P-24-0052",
+      "created_on": "2024-03-11",
+      "created_by": "C. Velazquez",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2024-03-11",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "B",
+          "created_on": "2024-05-19",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "C",
+          "created_on": "2024-08-09",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "D",
+          "created_on": "2024-09-30",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "E",
+          "created_on": "2024-12-04",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "F",
+          "created_on": "2025-02-20",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "G",
+          "created_on": "2025-04-09",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "H",
+          "created_on": "2025-06-09",
+          "created_by": "C. Velazquez"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-HW-24-0015",
+      "department": "HW",
+      "name": "Tumbler Motor Board",
+      "status": "BLOCKED",
+      "material": "000000000040001102",
+      "wbs": "P-24-0052",
+      "created_on": "2024-09-23",
+      "created_by": "M. Ortega",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2024-09-23",
+          "created_by": "M. Ortega"
+        },
+        {
+          "rev": "B",
+          "created_on": "2024-11-23",
+          "created_by": "M. Ortega"
+        }
+      ],
+      "block_reason": "Quality hold: relay K2 overheats in field units (QN-24-0311)",
+      "successor": null
+    },
+    {
+      "design_number": "HL-HW-25-0019",
+      "department": "HW",
+      "name": "Bead Drill Controller II",
+      "status": "RELEASED",
+      "material": "000000000040001130",
+      "wbs": "P-25-0077",
+      "created_on": "2025-04-07",
+      "created_by": "C. Velazquez",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2025-04-07",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "B",
+          "created_on": "2025-06-12",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "C",
+          "created_on": "2025-08-30",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "D",
+          "created_on": "2025-10-18",
+          "created_by": "C. Velazquez"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-HW-25-0027",
+      "department": "HW",
+      "name": "Glass Rod Feeder Control",
+      "status": "IN_WORK",
+      "material": "000000000040001159",
+      "wbs": "P-25-0077",
+      "created_on": "2025-10-20",
+      "created_by": "E. Marín",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2025-10-20",
+          "created_by": "E. Marín"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-HW-26-0003",
+      "department": "HW",
+      "name": "Bead Sorter Vision Board",
+      "status": "IN_WORK",
+      "material": "000000000040001177",
+      "wbs": "P-26-0097",
+      "created_on": "2026-01-19",
+      "created_by": "C. Velazquez",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-01-19",
+          "created_by": "C. Velazquez"
+        },
+        {
+          "rev": "B",
+          "created_on": "2026-03-26",
+          "created_by": "C. Velazquez"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-HW-26-0018",
+      "department": "HW",
+      "name": "Workshop Air Quality Monitor",
+      "status": "IN_WORK",
+      "material": "000000000040001209",
+      "wbs": "P-26-0108",
+      "created_on": "2026-05-04",
+      "created_by": "M. Ortega",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-05-04",
+          "created_by": "M. Ortega"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-HW-26-0041",
+      "department": "HW",
+      "name": "Annealing Oven Display",
+      "status": "IN_WORK",
+      "material": "000000000040001235",
+      "wbs": "P-26-0108",
+      "created_on": "2026-10-26",
+      "created_by": "E. Marín",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-10-26",
+          "created_by": "E. Marín"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-PWR-23-0002",
+      "department": "PWR",
+      "name": "24V Workshop Power Supply",
+      "status": "OBSOLETE",
+      "material": "000000000040001001",
+      "wbs": "P-23-0034",
+      "created_on": "2023-01-23",
+      "created_by": "L. Brandt",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2023-01-23",
+          "created_by": "L. Brandt"
+        },
+        {
+          "rev": "B",
+          "created_on": "2023-03-31",
+          "created_by": "L. Brandt"
+        }
+      ],
+      "block_reason": null,
+      "successor": "HL-PWR-25-0006"
+    },
+    {
+      "design_number": "HL-PWR-23-0008",
+      "department": "PWR",
+      "name": "48V Stepper Driver",
+      "status": "RELEASED",
+      "material": "000000000040001033",
+      "wbs": "P-23-0034",
+      "created_on": "2023-04-17",
+      "created_by": "J. Ferreira",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2023-04-17",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "B",
+          "created_on": "2023-06-16",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "C",
+          "created_on": "2023-08-28",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "D",
+          "created_on": "2023-10-10",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "E",
+          "created_on": "2023-12-05",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "F",
+          "created_on": "2024-02-12",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "G",
+          "created_on": "2024-05-04",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "H",
+          "created_on": "2024-06-25",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "J",
+          "created_on": "2024-08-29",
+          "created_by": "J. Ferreira"
+        },
+        {
+          "rev": "K",
+          "created_on": "2024-11-15",
+          "created_by": "J. Ferreira"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-PWR-24-0005",
+      "department": "PWR",
+      "name": "Kiln Heater SSR Driver",
+      "status": "RELEASED",
+      "material": "000000000040001067",
+      "wbs": "P-24-0049",
+      "created_on": "2024-02-26",
+      "created_by": "L. Brandt",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2024-02-26",
+          "created_by": "L. Brandt"
+        },
+        {
+          "rev": "B",
+          "created_on": "2024-04-30",
+          "created_by": "L. Brandt"
+        },
+        {
+          "rev": "C",
+          "created_on": "2024-07-16",
+          "created_by": "L. Brandt"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-PWR-24-0009",
+      "department": "PWR",
+      "name": "Torch Igniter HV Module",
+      "status": "BLOCKED",
+      "material": "000000000040001089",
+      "wbs": "P-24-0055",
+      "created_on": "2024-06-10",
+      "created_by": "J. Ferreira",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2024-06-10",
+          "created_by": "J. Ferreira"
+        }
+      ],
+      "block_reason": "Safety review pending after a failed insulation test (QN-25-0042)",
+      "successor": null
+    },
+    {
+      "design_number": "HL-PWR-25-0006",
+      "department": "PWR",
+      "name": "24V Workshop Power Supply II",
+      "status": "RELEASED",
+      "material": "000000000040001121",
+      "wbs": "P-25-0081",
+      "created_on": "2025-02-03",
+      "created_by": "L. Brandt",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2025-02-03",
+          "created_by": "L. Brandt"
+        },
+        {
+          "rev": "B",
+          "created_on": "2025-04-14",
+          "created_by": "L. Brandt"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-PWR-26-0004",
+      "department": "PWR",
+      "name": "Kiln Controller Battery Backup",
+      "status": "IN_WORK",
+      "material": "000000000040001180",
+      "wbs": "P-26-0112",
+      "created_on": "2026-02-09",
+      "created_by": "J. Ferreira",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-02-09",
+          "created_by": "J. Ferreira"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-PWR-26-0011",
+      "department": "PWR",
+      "name": "Polisher Motor Inverter",
+      "status": "IN_WORK",
+      "material": "000000000040001218",
+      "wbs": "P-26-0112",
+      "created_on": "2026-06-15",
+      "created_by": "L. Brandt",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-06-15",
+          "created_by": "L. Brandt"
+        },
+        {
+          "rev": "B",
+          "created_on": "2026-08-19",
+          "created_by": "L. Brandt"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-EMB-23-0006",
+      "department": "EMB",
+      "name": "Kiln Controller CPU Board",
+      "status": "OBSOLETE",
+      "material": "000000000040001020",
+      "wbs": "P-23-0036",
+      "created_on": "2023-03-20",
+      "created_by": "A. Kowalski",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2023-03-20",
+          "created_by": "A. Kowalski"
+        },
+        {
+          "rev": "B",
+          "created_on": "2023-05-26",
+          "created_by": "A. Kowalski"
+        },
+        {
+          "rev": "C",
+          "created_on": "2023-08-14",
+          "created_by": "A. Kowalski"
+        }
+      ],
+      "block_reason": null,
+      "successor": "HL-EMB-25-0003"
+    },
+    {
+      "design_number": "HL-EMB-24-0002",
+      "department": "EMB",
+      "name": "Workshop Sensor Node",
+      "status": "RELEASED",
+      "material": "000000000040001047",
+      "wbs": "P-24-0057",
+      "created_on": "2024-01-15",
+      "created_by": "S. Ibarra",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2024-01-15",
+          "created_by": "S. Ibarra"
+        },
+        {
+          "rev": "B",
+          "created_on": "2024-03-17",
+          "created_by": "S. Ibarra"
+        },
+        {
+          "rev": "C",
+          "created_on": "2024-05-31",
+          "created_by": "S. Ibarra"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-EMB-24-0012",
+      "department": "EMB",
+      "name": "Bead Counter Display",
+      "status": "IN_WORK",
+      "material": "000000000040001092",
+      "wbs": "P-24-0057",
+      "created_on": "2024-07-29",
+      "created_by": "S. Ibarra",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2024-07-29",
+          "created_by": "S. Ibarra"
+        },
+        {
+          "rev": "B",
+          "created_on": "2024-09-29",
+          "created_by": "S. Ibarra"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-EMB-25-0003",
+      "department": "EMB",
+      "name": "Kiln Controller CPU Board II",
+      "status": "RELEASED",
+      "material": "000000000040001108",
+      "wbs": "P-25-0064",
+      "created_on": "2025-01-27",
+      "created_by": "A. Kowalski",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2025-01-27",
+          "created_by": "A. Kowalski"
+        },
+        {
+          "rev": "B",
+          "created_on": "2025-04-07",
+          "created_by": "A. Kowalski"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-EMB-25-0010",
+      "department": "EMB",
+      "name": "Wireless Scale Interface",
+      "status": "BLOCKED",
+      "material": "000000000040001135",
+      "wbs": "P-25-0083",
+      "created_on": "2025-05-12",
+      "created_by": "S. Ibarra",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2025-05-12",
+          "created_by": "S. Ibarra"
+        }
+      ],
+      "block_reason": "Radio module discontinued by the supplier; redesign needed (PCN-25-117)",
+      "successor": null
+    },
+    {
+      "design_number": "HL-EMB-26-0007",
+      "department": "EMB",
+      "name": "Drill Spindle Encoder Board",
+      "status": "IN_WORK",
+      "material": "000000000040001190",
+      "wbs": "P-26-0115",
+      "created_on": "2026-03-16",
+      "created_by": "A. Kowalski",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-03-16",
+          "created_by": "A. Kowalski"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-EMB-26-0014",
+      "department": "EMB",
+      "name": "Label Printer Gateway",
+      "status": "IN_WORK",
+      "material": "000000000040001223",
+      "wbs": "P-26-0115",
+      "created_on": "2026-08-31",
+      "created_by": "S. Ibarra",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-08-31",
+          "created_by": "S. Ibarra"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-TFX-23-0001",
+      "department": "TFX",
+      "name": "Drill Controller Test Jig",
+      "status": "OBSOLETE",
+      "material": "000000000040001014",
+      "wbs": "P-23-0040",
+      "created_on": "2023-03-06",
+      "created_by": "R. Navarro",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2023-03-06",
+          "created_by": "R. Navarro"
+        },
+        {
+          "rev": "B",
+          "created_on": "2023-05-12",
+          "created_by": "R. Navarro"
+        }
+      ],
+      "block_reason": null,
+      "successor": "HL-TFX-25-0004"
+    },
+    {
+      "design_number": "HL-TFX-24-0003",
+      "department": "TFX",
+      "name": "Power Supply Burn-in Rack",
+      "status": "RELEASED",
+      "material": "000000000040001059",
+      "wbs": "P-24-0060",
+      "created_on": "2024-02-05",
+      "created_by": "P. Lindqvist",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2024-02-05",
+          "created_by": "P. Lindqvist"
+        },
+        {
+          "rev": "B",
+          "created_on": "2024-04-12",
+          "created_by": "P. Lindqvist"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-TFX-24-0008",
+      "department": "TFX",
+      "name": "Thermocouple Calibration Fixture",
+      "status": "IN_WORK",
+      "material": "000000000040001082",
+      "wbs": "P-24-0060",
+      "created_on": "2024-05-20",
+      "created_by": "R. Navarro",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2024-05-20",
+          "created_by": "R. Navarro"
+        },
+        {
+          "rev": "B",
+          "created_on": "2024-08-02",
+          "created_by": "R. Navarro"
+        },
+        {
+          "rev": "C",
+          "created_on": "2024-09-15",
+          "created_by": "R. Navarro"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-TFX-25-0004",
+      "department": "TFX",
+      "name": "Drill Controller Test Jig II",
+      "status": "RELEASED",
+      "material": "000000000040001147",
+      "wbs": "P-25-0086",
+      "created_on": "2025-05-26",
+      "created_by": "P. Lindqvist",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2025-05-26",
+          "created_by": "P. Lindqvist"
+        },
+        {
+          "rev": "B",
+          "created_on": "2025-08-04",
+          "created_by": "P. Lindqvist"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-TFX-25-0009",
+      "department": "TFX",
+      "name": "Sensor Node Pogo Fixture",
+      "status": "BLOCKED",
+      "material": "000000000040001155",
+      "wbs": "P-25-0086",
+      "created_on": "2025-08-18",
+      "created_by": "R. Navarro",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2025-08-18",
+          "created_by": "R. Navarro"
+        }
+      ],
+      "block_reason": "Fixture supplier under quality audit (SA-25-019)",
+      "successor": null
+    },
+    {
+      "design_number": "HL-TFX-26-0002",
+      "department": "TFX",
+      "name": "LED Station Final Tester",
+      "status": "IN_WORK",
+      "material": "000000000040001170",
+      "wbs": "P-26-0097",
+      "created_on": "2026-01-12",
+      "created_by": "P. Lindqvist",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-01-12",
+          "created_by": "P. Lindqvist"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    },
+    {
+      "design_number": "HL-TFX-26-0006",
+      "department": "TFX",
+      "name": "Kiln Controller Functional Tester",
+      "status": "IN_WORK",
+      "material": "000000000040001196",
+      "wbs": "P-26-0121",
+      "created_on": "2026-04-13",
+      "created_by": "R. Navarro",
+      "revisions": [
+        {
+          "rev": "A",
+          "created_on": "2026-04-13",
+          "created_by": "R. Navarro"
+        }
+      ],
+      "block_reason": null,
+      "successor": null
+    }
+  ]
+}

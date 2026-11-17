@@ -1,0 +1,52 @@
+{
+  "departments": [
+    {
+      "code": "HW",
+      "name_en": "Hardware Design",
+      "name_es": "Diseño de Hardware",
+      "lead": "E. Marín",
+      "default_wbs": {
+        "2023": "P-23-0031",
+        "2024": "P-24-0052",
+        "2025": "P-25-0077",
+        "2026": "P-26-0108"
+      }
+    },
+    {
+      "code": "PWR",
+      "name_en": "Power Electronics",
+      "name_es": "Electrónica de Potencia",
+      "lead": "L. Brandt",
+      "default_wbs": {
+        "2023": "P-23-0034",
+        "2024": "P-24-0055",
+        "2025": "P-25-0081",
+        "2026": "P-26-0112"
+      }
+    },
+    {
+      "code": "EMB",
+      "name_en": "Embedded Boards",
+      "name_es": "Placas Embebidas",
+      "lead": "A. Kowalski",
+      "default_wbs": {
+        "2023": "P-23-0036",
+        "2024": "P-24-0057",
+        "2025": "P-25-0083",
+        "2026": "P-26-0115"
+      }
+    },
+    {
+      "code": "TFX",
+      "name_en": "Test Fixtures",
+      "name_es": "Utillajes de Prueba",
+      "lead": "R. Navarro",
+      "default_wbs": {
+        "2023": "P-23-0040",
+        "2024": "P-24-0060",
+        "2025": "P-25-0086",
+        "2026": "P-26-0121"
+      }
+    }
+  ]
+}
