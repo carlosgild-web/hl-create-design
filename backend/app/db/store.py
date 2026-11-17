@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session
 
-from app.db.models import AgentRun, Conversation, PendingAction, utcnow
+from app.db.models import AgentRun, Conversation, PendingAction, TokenUsage, utcnow
 
 ACTION_TTL = timedelta(minutes=30)
 
@@ -73,6 +73,29 @@ def finish_run(
         run.model_calls = model_calls
         run.trace = trace
         run.finished_at = utcnow()
+
+
+def _today() -> str:
+    return utcnow().date().isoformat()
+
+
+def add_tokens(engine: Engine, tokens: int, *, day: str | None = None) -> None:
+    """Count tokens against today's cap."""
+    if tokens <= 0:
+        return
+    day = day or _today()
+    with Session(engine) as session, session.begin():
+        row = session.get(TokenUsage, day)
+        if row is None:
+            session.add(TokenUsage(day=day, tokens=tokens))
+        else:
+            row.tokens += tokens
+
+
+def tokens_today(engine: Engine, *, day: str | None = None) -> int:
+    with Session(engine) as session:
+        row = session.get(TokenUsage, day or _today())
+        return row.tokens if row else 0
 
 
 def get_run(engine: Engine, run_id: int) -> dict[str, Any] | None:

@@ -31,6 +31,15 @@ class AuditLog(Base):
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
 
+class TokenUsage(Base):
+    """Model tokens spent per UTC day (the demo's daily cap, `DAILY_TOKEN_CAP`)."""
+
+    __tablename__ = "token_usage"
+
+    day: Mapped[str] = mapped_column(String(10), primary_key=True)  # YYYY-MM-DD
+    tokens: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Conversation(Base):
     """One chat with the assistant. `messages` is the history in the neutral shape of
     `app.llm.base.Message` (as dicts), plus `event` messages for confirmed actions."""

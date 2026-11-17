@@ -71,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
     cancel = commands.add_parser("cancel", help="Cancel a pending action")
     cancel.add_argument("action_id")
 
+    clean = commands.add_parser("cleanup", help="Delete generated designs older than N hours")
+    clean.add_argument(
+        "--older-than", type=float, default=None, metavar="HOURS", help="default: DESIGNS_TTL_HOURS"
+    )
+
     ev = commands.add_parser("agent-eval", help="Run the agent scenario suite (PLAN Phase 6)")
     which = ev.add_mutually_exclusive_group(required=True)
     which.add_argument("--fake", action="store_true", help="Scripted model (CI, no LLM needed)")
@@ -145,6 +150,8 @@ def main(argv: Sequence[str] | None = None, settings: Settings | None = None) ->
         return run_confirm(args, settings)
     if args.command == "cancel":
         return run_cancel(args, settings)
+    if args.command == "cleanup":
+        return run_cleanup(args, settings)
     if args.command == "agent-eval":
         return run_agent_eval(args, settings)
     return 2  # pragma: no cover - argparse rejects unknown commands
@@ -249,6 +256,22 @@ def run_cancel(args: argparse.Namespace, settings: Settings) -> int:
         print(f"error {exc}", file=sys.stderr)
         return 1
     print(f"{action.kind}: {action.status}")
+    return 0
+
+
+def run_cleanup(args: argparse.Namespace, settings: Settings) -> int:
+    from app.cleanup import cleanup_designs
+
+    hours = args.older_than if args.older_than is not None else settings.designs_ttl_hours
+    if hours <= 0:
+        print("error give --older-than HOURS or set DESIGNS_TTL_HOURS", file=sys.stderr)
+        return 2
+    removed = cleanup_designs(
+        settings.designs_root, get_engine(settings.data_dir), older_than_hours=hours
+    )
+    for item in removed:
+        print(f"removed {item.department}/{item.design_number}/{item.revision}")
+    print(f"{len(removed)} revision folder(s) removed")
     return 0
 
 

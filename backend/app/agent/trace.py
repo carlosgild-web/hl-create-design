@@ -24,6 +24,15 @@ class AgentTrace:
         return sum(1 for s in self.steps if s["type"] == "model_call")
 
     @property
+    def tokens(self) -> int:
+        """Prompt and completion tokens of all model calls (0 for providers that don't say)."""
+        return sum(
+            s.get("prompt_tokens", 0) + s.get("completion_tokens", 0)
+            for s in self.steps
+            if s["type"] == "model_call"
+        )
+
+    @property
     def tool_calls(self) -> list[dict[str, Any]]:
         return [s for s in self.steps if s["type"] == "tool_call"]
 

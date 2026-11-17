@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.actions import ActionNotFound, ActionNotPending, cancel_action, confirm_action
-from app.api.deps import EngineDep, RunnerDep, SapFactoryDep, SettingsDep
+from app.api.deps import EngineDep, RateLimited, RunnerDep, SapFactoryDep, SettingsDep
 from app.db import store
 
 router = APIRouter(prefix="/api/actions", tags=["actions"])
@@ -40,7 +40,7 @@ def get_action(action_id: str, engine: EngineDep) -> dict:
     return action.to_dict()
 
 
-@router.post("/{action_id}/confirm")
+@router.post("/{action_id}/confirm", dependencies=[RateLimited])
 def confirm(
     action_id: str,
     settings: SettingsDep,
@@ -61,7 +61,7 @@ def confirm(
     return JSONResponse(outcome.action.to_dict(), status_code=status)
 
 
-@router.post("/{action_id}/cancel")
+@router.post("/{action_id}/cancel", dependencies=[RateLimited])
 def cancel(action_id: str, engine: EngineDep) -> JSONResponse:
     try:
         action = cancel_action(action_id, engine=engine)
