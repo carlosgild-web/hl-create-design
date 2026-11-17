@@ -12,6 +12,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> repo root is three levels above `app/`.
 REPO_ROOT = Path(__file__).resolve().parents[3]
+# The Design Manual (ES and EN) that the assistant searches and cites.
+MANUAL_DIR = REPO_ROOT / "docs" / "manual"
 
 
 class Settings(BaseSettings):
@@ -24,7 +26,7 @@ class Settings(BaseSettings):
     # LLM
     llm_provider: Literal["fake", "ollama", "anthropic"] = "fake"
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "qwen3:4b-instruct-2507"
+    ollama_model: str = "qwen3:4b-instruct-2507-q4_K_M"
     anthropic_api_key: SecretStr | None = None
     anthropic_model: str = "claude-sonnet-5-5"
 

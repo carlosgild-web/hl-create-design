@@ -1,0 +1,159 @@
+"""The confirmation gate: confirm once, expiry, cancel, re-validation, audit."""
+
+from datetime import timedelta
+
+import pytest
+
+from app.actions import ActionNotFound, ActionNotPending, cancel_action, confirm_action
+from app.db import store
+from app.db.models import utcnow
+from app.db.session import audit_rows
+from tests.test_exporter import FakeKicadCli
+
+
+@pytest.fixture
+def conversation(engine):
+    return store.create_conversation(engine)
+
+
+def open_action(engine, conversation, kind, **payload):
+    return store.create_action(
+        engine, conversation_id=conversation, run_id=None, kind=kind, payload=payload
+    )
+
+
+def confirm(action_id, settings, engine, sap, **kw):
+    return confirm_action(
+        action_id, settings=settings, engine=engine, sap=sap, runner=FakeKicadCli(), **kw
+    )
+
+
+CREATE = {
+    "department": "HW",
+    "design_number": "HL-HW-26-0042",
+    "revision": "C",
+    "name": "Bead Drill Controller",
+    "designer": "C. Velazquez",
+}
+
+
+def test_reserve_runs_once_and_is_audited(settings, engine, sap, fake_sap, conversation):
+    action = open_action(
+        engine,
+        conversation,
+        "reserve_number",
+        department="HW",
+        name="Bead Counter",
+        designer="C. Velazquez",
+    )
+
+    outcome = confirm(action.id, settings, engine, sap)
+
+    assert outcome.ok
+    assert outcome.action.status == "confirmed"
+    assert outcome.action.result["design_number"] == "HL-HW-26-0050"
+    [row] = audit_rows(engine)
+    assert (row.action, row.design_number, row.revision) == (
+        "number_reserved",
+        "HL-HW-26-0050",
+        "A",
+    )
+    with pytest.raises(ActionNotPending) as again:
+        confirm(action.id, settings, engine, sap)
+    assert again.value.reason == "already_confirmed"
+    assert len(fake_sap.reservations) == 1
+
+
+def test_create_uses_sap_values_and_writes_the_files(settings, engine, sap, conversation):
+    action = open_action(engine, conversation, "create_design", **CREATE)
+
+    outcome = confirm(action.id, settings, engine, sap)
+
+    assert outcome.ok, outcome.action.result
+    result = outcome.action.result
+    assert result["folder"] == "HW/HL-HW-26-0042/C"
+    assert result["sap_material"] == "000000000040001234"
+    folder = settings.designs_root / "HW" / "HL-HW-26-0042" / "C"
+    assert (folder / "HL-HW-26-0042_C.kicad_pro").exists()
+    [row] = audit_rows(engine)
+    assert row.details["action_id"] == action.id
+    assert row.details["sap_status"] == "IN_WORK"
+
+
+def test_confirm_validates_again(settings, engine, sap, conversation, fake_sap):
+    # The card said C, but meanwhile revision C was created in SAP.
+    action = open_action(engine, conversation, "create_design", **CREATE)
+    fake_sap.designs["HL-HW-26-0042"]["_revs"].append("C")
+
+    outcome = confirm(action.id, settings, engine, sap)
+
+    assert not outcome.ok
+    assert outcome.error_kind == "validation"
+    assert outcome.action.result["errors"][0]["code"] == "rev_reused"
+    assert not settings.designs_root.exists()
+    assert audit_rows(engine) == []
+
+
+def test_tampered_payload_cant_escape_the_designs_root(settings, engine, sap, conversation):
+    payload = CREATE | {"department": "..", "design_number": "../../etc"}
+    action = open_action(engine, conversation, "create_design", **payload)
+
+    outcome = confirm(action.id, settings, engine, sap)
+
+    assert outcome.error_kind == "validation"
+    assert not settings.designs_root.exists()
+
+
+def test_blocked_design_cant_be_created(settings, engine, sap, conversation):
+    payload = CREATE | {"design_number": "HL-HW-24-0003"}
+    outcome = confirm(
+        open_action(engine, conversation, "create_design", **payload).id, settings, engine, sap
+    )
+    assert [e["code"] for e in outcome.action.result["errors"]] == ["status_blocked"]
+
+
+def test_sap_down_does_nothing(settings, engine, sap, fake_sap, conversation):
+    fake_sap.maintenance = True
+    action = open_action(engine, conversation, "create_design", **CREATE)
+
+    outcome = confirm(action.id, settings, engine, sap)
+
+    assert outcome.error_kind == "sap_unavailable"
+    assert outcome.action.status == "failed"
+    assert not settings.designs_root.exists()
+
+
+def test_expired_action_cant_be_confirmed(settings, engine, sap, conversation):
+    action = store.create_action(
+        engine,
+        conversation_id=conversation,
+        run_id=None,
+        kind="reserve_number",
+        payload={"department": "HW", "name": "Bead Counter", "designer": "C. Velazquez"},
+        now=utcnow() - store.ACTION_TTL - timedelta(seconds=1),
+    )
+    with pytest.raises(ActionNotPending) as raised:
+        confirm(action.id, settings, engine, sap)
+    assert raised.value.reason == "expired"
+
+
+def test_cancelled_action_cant_be_confirmed(settings, engine, sap, conversation):
+    action = open_action(engine, conversation, "create_design", **CREATE)
+    assert cancel_action(action.id, engine=engine).status == "cancelled"
+    with pytest.raises(ActionNotPending):
+        confirm(action.id, settings, engine, sap)
+
+
+def test_unknown_action(settings, engine, sap):
+    with pytest.raises(ActionNotFound):
+        confirm("nope", settings, engine, sap)
+
+
+def test_outcome_is_added_to_the_conversation(settings, engine, sap, conversation):
+    action = open_action(engine, conversation, "create_design", **CREATE)
+    confirm(action.id, settings, engine, sap)
+
+    [event] = store.get_messages(engine, conversation)
+    assert event["role"] == "event"
+    assert event["event"]["outcome"] == "done"
+    assert event["event"]["folder"] == "HW/HL-HW-26-0042/C"

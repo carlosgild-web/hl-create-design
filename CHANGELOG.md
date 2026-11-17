@@ -33,6 +33,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   is all or nothing and writes `audit_log` (SQLAlchemy, `DATA_DIR/app.db`). New CLI:
   `python -m app.cli create-design`. `docs/showcase/before.pdf` and `after.pdf`.
   Decision 0008.
+- Phase 4: the assistant, local-first. `llm/` has `LLMClient`, `OllamaClient` (native tools,
+  recovers tool calls written as text) and the scripted `FakeClient`; `sap/client.py` is
+  `SapClient` (CSRF + session cookie, retries); `standards/manual_search.py` is FTS5 search
+  over the manual. `agent/` has the 8 tools, the bounded loop, traces and the prompt that
+  treats free text as data. `POST /api/chat` streams SSE; `POST /api/actions/{id}/confirm`
+  is the only side-effect path (confirm once, expiry, re-validation, audit).
+  CLI: `chat`, `confirm`, `cancel`. Decision 0009: the Anthropic client waits for Phase 7.
 
 ### Changed
 

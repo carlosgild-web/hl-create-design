@@ -1,19 +1,33 @@
-"""Command line: `python -m app.cli create-design --dept HW --number HL-HW-26-0042 ...`.
+"""Command line: `python -m app.cli create-design|chat|confirm|cancel ...`.
 
-Exit codes: 0 created, 1 refused by a rule or by the file system, 2 bad arguments,
-3 kicad-cli failed (nothing was kept).
+- `create-design`: the generator without the assistant (developer tool, offline).
+- `chat "message"`: one turn with the assistant on LLM_PROVIDER; prints the tool calls
+  and the confirmation cards it opens.
+- `confirm <action_id>`: the user's click on a card (the same code as
+  `POST /api/actions/{id}/confirm`); `cancel <action_id>` dismisses it.
+
+Exit codes: 0 done, 1 refused by a rule, SAP, the file system or the model,
+2 bad arguments, 3 kicad-cli failed (nothing was kept).
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 
-from app.core.config import Settings, get_settings
+from app.actions import ActionNotFound, ActionNotPending, cancel_action, confirm_action
+from app.agent.service import AgentDeps, chat_turn
+from app.core.config import MANUAL_DIR, Settings, get_settings
+from app.db.session import get_engine
 from app.designs import DesignValidationError, create_design
 from app.kicad.exporter import ExportError
 from app.kicad.renderer import DesignFolderExistsError
+from app.llm.base import LLMClient, LLMError
+from app.llm.factory import make_client
+from app.sap.client import SapClient
+from app.standards.manual_search import ManualIndex
 from app.standards.validators import DesignRequest, Issue, UnsafePathError
 
 
@@ -31,12 +45,30 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument(
         "--designer", required=True, help="Initial and surname, e.g. 'C. Velazquez'"
     )
-    create.add_argument("--material", default="", help="SAP material number (until Phase 4)")
-    create.add_argument("--project", default="", help="WBS element, e.g. P-26-0108 (until Phase 4)")
+    create.add_argument("--material", default="", help="SAP material number (offline use)")
+    create.add_argument("--project", default="", help="WBS element, e.g. P-26-0108 (offline use)")
     create.add_argument("--date", default="", help="Issue date YYYY-MM-DD (default: today)")
     create.add_argument(
         "--no-export", action="store_true", help="Skip the kicad-cli PDF/SVG export"
     )
+
+    chat = commands.add_parser("chat", help="Send one message to the assistant (LLM_PROVIDER)")
+    chat.add_argument("message", help="What you would type in the chat")
+    chat.add_argument("--conversation", default=None, help="Continue this conversation id")
+    chat.add_argument("--lang", choices=("en", "es"), default="en", help="Answer language")
+    chat.add_argument(
+        "--form", action="append", default=[], metavar="FIELD=VALUE", help="Current form value"
+    )
+    chat.add_argument("--trace", action="store_true", help="Print tool results too")
+
+    confirm = commands.add_parser(
+        "confirm", help="Confirm a pending action, like clicking Confirm on its card"
+    )
+    confirm.add_argument("action_id")
+    confirm.add_argument("--no-export", action="store_true", help="Skip the PDF/SVG export")
+
+    cancel = commands.add_parser("cancel", help="Cancel a pending action")
+    cancel.add_argument("action_id")
     return parser
 
 
@@ -95,7 +127,115 @@ def main(argv: Sequence[str] | None = None, settings: Settings | None = None) ->
     settings = settings or get_settings()
     if args.command == "create-design":
         return run_create_design(args, settings)
+    if args.command == "chat":
+        return run_chat(args, settings)
+    if args.command == "confirm":
+        return run_confirm(args, settings)
+    if args.command == "cancel":
+        return run_cancel(args, settings)
     return 2  # pragma: no cover - argparse rejects unknown commands
+
+
+# --- assistant -----------------------------------------------------------------------
+
+
+def _sap(settings: Settings) -> SapClient:
+    return SapClient(
+        settings.sap_base_url, settings.sap_user, settings.sap_password.get_secret_value()
+    )
+
+
+def _short(data: object, limit: int = 300) -> str:
+    text = json.dumps(data, ensure_ascii=False)
+    return text if len(text) <= limit else text[:limit] + "…"
+
+
+def run_chat(
+    args: argparse.Namespace,
+    settings: Settings,
+    client: LLMClient | None = None,
+    sap: SapClient | None = None,
+) -> int:
+    form = dict(item.split("=", 1) for item in args.form if "=" in item)
+    try:
+        client = client or make_client(settings)
+    except LLMError as exc:
+        print(f"error {exc}", file=sys.stderr)
+        return 1
+    sap = sap or _sap(settings)
+    deps = AgentDeps(
+        settings=settings,
+        engine=get_engine(settings.data_dir),
+        client=client,
+        sap=sap,
+        manual=ManualIndex(MANUAL_DIR),
+    )
+    status = "error"
+    with sap:
+        for event in chat_turn(
+            deps,
+            text=args.message,
+            conversation_id=args.conversation,
+            form=form,
+            language=args.lang,
+        ):
+            d = event.data
+            if event.type == "conversation":
+                print(f"conversation {d['id']}  ({client.provider}: {client.model})")
+            elif event.type == "tool_call":
+                print(f"  → {d['name']} {_short(d['arguments'], 200)}")
+            elif event.type == "tool_result" and args.trace:
+                print(f"    ← {_short(d['result'])}")
+            elif event.type == "form_proposal":
+                print(f"  [form] {_short(d['fields'])}")
+            elif event.type == "pending_action":
+                action = d["action"]
+                print(f"  [card] {action['kind']} {_short(action['payload'])}")
+                print(f"         confirm: python -m app.cli confirm {action['id']}")
+            elif event.type == "message":
+                print(f"\n{d['content']}\n")
+            elif event.type == "error":
+                print(f"error {d['message']}", file=sys.stderr)
+            elif event.type == "done":
+                status = d["status"]
+                print(
+                    f"run {d['run_id']} {status}; "
+                    f"continue with --conversation {d['conversation_id']}"
+                )
+    return 0 if status in ("answered", "limit") else 1
+
+
+def run_confirm(args: argparse.Namespace, settings: Settings, sap: SapClient | None = None) -> int:
+    engine = get_engine(settings.data_dir)
+    try:
+        with sap or _sap(settings) as client:
+            outcome = confirm_action(
+                args.action_id,
+                settings=settings,
+                engine=engine,
+                sap=client,
+                export=not args.no_export,
+            )
+    except ActionNotFound:
+        print(f"error no action {args.action_id}", file=sys.stderr)
+        return 1
+    except ActionNotPending as exc:
+        print(f"error action {args.action_id} is {exc.reason}", file=sys.stderr)
+        return 1
+    result = outcome.action.result
+    print(f"{outcome.action.kind}: {outcome.action.status}")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0 if outcome.ok else 1
+
+
+def run_cancel(args: argparse.Namespace, settings: Settings) -> int:
+    try:
+        action = cancel_action(args.action_id, engine=get_engine(settings.data_dir))
+    except (ActionNotFound, ActionNotPending) as exc:
+        print(f"error {exc}", file=sys.stderr)
+        return 1
+    print(f"{action.kind}: {action.status}")
+    return 0
 
 
 if __name__ == "__main__":

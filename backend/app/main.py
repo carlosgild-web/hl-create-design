@@ -3,9 +3,12 @@
 from fastapi import FastAPI
 
 from app import __version__
+from app.api import actions, chat
 from app.core.config import get_settings
 
 app = FastAPI(title="Create Design", version=__version__)
+app.include_router(chat.router)
+app.include_router(actions.router)
 
 
 @app.get("/api/health")
