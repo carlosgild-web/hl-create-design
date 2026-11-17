@@ -14,7 +14,7 @@ from app.agent import tools as agent_tools
 from app.evals import harness, report
 from app.evals.harness import Expect, Scenario, Turn
 from app.evals.scenarios import SCENARIOS, check, request_create
-from app.llm.fake import call, say
+from app.llm.fake import FakeClient, call, say
 
 
 def run(scenario: Scenario):
@@ -162,3 +162,15 @@ def test_report_lists_failures():
     sc = Scenario("t", "t", (Turn("x", [say("hi")]),), Expect(cards=("create_design",)))
     text = report.to_markdown([run(sc)])
     assert "## Failures" in text and "**cards**" in text
+
+
+def test_cli_agent_eval_stops_when_the_model_is_unreachable(settings, monkeypatch, capsys):
+    from app.llm.base import LLMError
+
+    class Down(FakeClient):
+        def chat(self, messages, tools):
+            raise LLMError("Ollama has no model 'x'")
+
+    monkeypatch.setattr(cli, "make_client", lambda s: Down())
+    assert cli.main(["agent-eval", "--provider", "ollama"], settings) == 1
+    assert "not reachable" in capsys.readouterr().err

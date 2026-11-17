@@ -233,6 +233,10 @@ validators fully unit tested (including path traversal like `..\..\Windows`); go
 
 **Done when:** suite passes 100% on Fake; results for both real providers published, including failures.
 
+**Status:** done for Fake (30/30, CI) and Ollama (11/27, `docs/eval/`); decision 0011. Open: Anthropic run
+after `AnthropicClient` (Phase 7); optional loosening of three over-strict tool expectations;
+the small model's "validates but never opens the card" failure (prompt tuning candidate).
+
 ### Phase 7 — Packaging and online demo
 - `Dockerfile` based on the official KiCad image (it has `kicad-cli`) + Python + the built frontend.
 - `compose.yaml`: app + sap-mock (+ optional ollama). `start.cmd` / `start.sh` like luna.

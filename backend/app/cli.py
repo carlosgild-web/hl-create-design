@@ -25,7 +25,7 @@ from app.db.session import get_engine
 from app.designs import DesignValidationError, create_design
 from app.kicad.exporter import ExportError
 from app.kicad.renderer import DesignFolderExistsError
-from app.llm.base import LLMClient, LLMError
+from app.llm.base import LLMClient, LLMError, Message
 from app.llm.factory import make_client
 from app.sap.client import SapClient
 from app.standards.manual_search import ManualIndex
@@ -292,6 +292,11 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
             client = make_client(settings.model_copy(update={"llm_provider": args.provider}))
         except LLMError as exc:
             print(f"error {exc}", file=sys.stderr)
+            return 1
+        try:  # fail fast on a wrong model name or a stopped server, not 27 times
+            client.chat([Message("user", "Reply with the word ok.")], [])
+        except LLMError as exc:
+            print(f"error the model is not reachable: {exc}", file=sys.stderr)
             return 1
         client_for, provider, model = harness.real(client), client.provider, client.model
         print(f"{provider}: {model}; {len(scenarios)} scenarios (fake-only ones skipped)")
