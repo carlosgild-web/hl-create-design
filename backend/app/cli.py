@@ -16,6 +16,7 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 from app.actions import ActionNotFound, ActionNotPending, cancel_action, confirm_action
 from app.agent.service import AgentDeps, chat_turn
@@ -69,6 +70,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     cancel = commands.add_parser("cancel", help="Cancel a pending action")
     cancel.add_argument("action_id")
+
+    ev = commands.add_parser("agent-eval", help="Run the agent scenario suite (PLAN Phase 6)")
+    which = ev.add_mutually_exclusive_group(required=True)
+    which.add_argument("--fake", action="store_true", help="Scripted model (CI, no LLM needed)")
+    which.add_argument("--provider", choices=("ollama", "anthropic"), help="Real provider")
+    ev.add_argument("--only", action="append", default=[], metavar="ID", help="Run these scenarios")
+    ev.add_argument("--json", type=Path, metavar="FILE", help="Write the results as JSON")
+    ev.add_argument("--markdown", type=Path, metavar="FILE", help="Write a Markdown report")
+    ev.add_argument(
+        "--allow-failures", action="store_true", help="Exit 0 even if scenarios fail (real runs)"
+    )
     return parser
 
 
@@ -133,6 +145,8 @@ def main(argv: Sequence[str] | None = None, settings: Settings | None = None) ->
         return run_confirm(args, settings)
     if args.command == "cancel":
         return run_cancel(args, settings)
+    if args.command == "agent-eval":
+        return run_agent_eval(args, settings)
     return 2  # pragma: no cover - argparse rejects unknown commands
 
 
@@ -236,6 +250,38 @@ def run_cancel(args: argparse.Namespace, settings: Settings) -> int:
         return 1
     print(f"{action.kind}: {action.status}")
     return 0
+
+
+def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
+    from app.evals import harness, report
+    from app.evals.scenarios import SCENARIOS
+
+    scenarios = [s for s in SCENARIOS if not args.only or s.id in args.only]
+    unknown = set(args.only) - {s.id for s in SCENARIOS}
+    if unknown:
+        print(f"error unknown scenario(s): {', '.join(sorted(unknown))}", file=sys.stderr)
+        return 2
+    if args.fake:
+        client_for, provider, model = harness.scripted(), "fake", "scripted"
+    else:
+        scenarios = [s for s in scenarios if "fake-only" not in s.tags]
+        try:
+            client = make_client(settings.model_copy(update={"llm_provider": args.provider}))
+        except LLMError as exc:
+            print(f"error {exc}", file=sys.stderr)
+            return 1
+        client_for, provider, model = harness.real(client), client.provider, client.model
+        print(f"{provider}: {model}; {len(scenarios)} scenarios (fake-only ones skipped)")
+    results = harness.run_all(scenarios, client_for, provider=provider, model=model)
+    print(report.console(results))
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(report.to_json(results), encoding="utf-8")
+    if args.markdown:
+        args.markdown.parent.mkdir(parents=True, exist_ok=True)
+        args.markdown.write_text(report.to_markdown(results), encoding="utf-8")
+    passed, total = report.score(results)
+    return 0 if passed == total or args.allow_failures else 1
 
 
 if __name__ == "__main__":

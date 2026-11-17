@@ -7,28 +7,8 @@ from pathlib import Path
 import pytest
 
 from app.core.config import get_settings
+from app.evals.fake_kicad import FakeKicadCli  # noqa: F401 (other tests import it from here)
 from app.kicad.exporter import ExportError, export_schematic
-
-
-class FakeKicadCli:
-    """Stands in for `subprocess.run`: records commands and writes the files kicad-cli would."""
-
-    def __init__(self, returncode=0, write_files=True, raises=None):
-        self.returncode, self.write_files, self.raises = returncode, write_files, raises
-        self.commands: list[list[str]] = []
-
-    def __call__(self, command, **kwargs):
-        self.commands.append(command)
-        assert kwargs["timeout"] > 0 and kwargs["capture_output"] and not kwargs["check"]
-        if self.raises:
-            raise self.raises
-        output, schematic = Path(command[command.index("--output") + 1]), Path(command[-1])
-        if self.write_files and self.returncode == 0:
-            if command[3] == "pdf":
-                output.write_bytes(b"%PDF-1.5 fake")
-            else:
-                (output / f"{schematic.stem}.svg").write_text("<svg/>", encoding="utf-8")
-        return subprocess.CompletedProcess(command, self.returncode, "Plotted.", "")
 
 
 def test_exports_pdf_and_svg(tmp_path):
