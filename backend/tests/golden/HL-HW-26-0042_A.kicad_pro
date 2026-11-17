@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "filename": "HL-HW-26-0042_A.kicad_pro",
+    "version": 3
+  },
+  "schematic": {
+    "legacy_lib_dir": "",
+    "legacy_lib_list": [],
+    "page_layout_descr_file": "hl_title_block.kicad_wks"
+  },
+  "sheets": [
+    [
+      "dcaad544-e6e0-5219-8930-40a719e90bf1",
+      "Root"
+    ]
+  ],
+  "text_variables": {
+    "HL_DESIGN_NUMBER": "HL-HW-26-0042",
+    "HL_SAP_MATERIAL": "40001234",
+    "HL_PROJECT": "P-26-0108",
+    "HL_DEPARTMENT": "HW – Hardware Design",
+    "HL_DESIGNER": "C. Velazquez"
+  }
+}

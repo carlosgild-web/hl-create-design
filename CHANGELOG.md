@@ -24,8 +24,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Gateway CSRF handshake, SAP-style errors, and chaos switches (`SAP_LATENCY_MS`,
   `SAP_FAIL_RATE`, `SAP_MAINTENANCE`). `SAP_TODAY` pins the mock's date (decision 0007).
   `sap-mock/README.md` has curl examples.
+- Phase 3: the KiCad template and generator. `kicad/template/` has the H&L drawing sheet
+  (`hl_title_block.kicad_wks`: logo, design number, SAP material, project, department,
+  designer, revision, date) and a 24 V to 5 V buck-stage schematic that passes ERC.
+  `standards/validators.py` checks every rule of the Design Manual and cites its section.
+  `kicad/renderer.py` copies the template into `<DEPT>/<Number>/<Rev>/` and fills the
+  title block; `kicad/exporter.py` runs `kicad-cli` for PDF and SVG. `create_design()`
+  is all or nothing and writes `audit_log` (SQLAlchemy, `DATA_DIR/app.db`). New CLI:
+  `python -m app.cli create-design`. `docs/showcase/before.pdf` and `after.pdf`.
+  Decision 0008.
 
 ### Changed
+
+- Relative `DESIGNS_ROOT` and `DATA_DIR` are resolved against the repo root.
 
 - sap-mock tests ignore Starlette's warning that asks TestClient users to switch to
   `httpx2`. The stack keeps `httpx`.
