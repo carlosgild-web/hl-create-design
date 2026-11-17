@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> repo root is three levels above `app/`.
@@ -42,6 +42,12 @@ class Settings(BaseSettings):
 
     # Agent
     agent_max_iterations: int = Field(default=6, ge=1, le=20)
+
+    @field_validator("designs_root", "data_dir")
+    @classmethod
+    def _relative_to_repo(cls, path: Path) -> Path:
+        """`./data` means the repo's data folder, whatever the working directory is."""
+        return path if path.is_absolute() else REPO_ROOT / path
 
 
 @lru_cache

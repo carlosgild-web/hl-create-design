@@ -34,3 +34,15 @@ def test_settings_read_environment(monkeypatch):
 
     assert settings.llm_provider == "ollama"
     assert settings.agent_max_iterations == 3
+
+
+def test_relative_storage_paths_resolve_against_the_repo(monkeypatch, tmp_path):
+    from app.core.config import REPO_ROOT
+
+    monkeypatch.setenv("DESIGNS_ROOT", "./data/designs")
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+
+    settings = Settings(_env_file=None)
+
+    assert settings.designs_root == REPO_ROOT / "data" / "designs"
+    assert settings.data_dir == tmp_path
