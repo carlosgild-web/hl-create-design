@@ -18,3 +18,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ids for citations), SAP seed data in `sap-mock/seed` (4 departments, 30 designs, all
   statuses) with a test of every manual rule, and the H&L logo for the title block
   (decision 0006: reused from luna-hybrid-agent).
+- Phase 2: the mock SAP service `ZHL_PLM_DESIGN_SRV` in `sap-mock/`: OData v2 reads
+  (`DesignSet` with `$filter`/`$top`/`$skip`/`$expand`, `RevisionSet`, `DepartmentSet`,
+  `$metadata`), number reservation that is atomic in SQLite, Basic auth with the SAP
+  Gateway CSRF handshake, SAP-style errors, and chaos switches (`SAP_LATENCY_MS`,
+  `SAP_FAIL_RATE`, `SAP_MAINTENANCE`). `SAP_TODAY` pins the mock's date (decision 0007).
+  `sap-mock/README.md` has curl examples.
+
+### Changed
+
+- sap-mock tests ignore Starlette's warning that asks TestClient users to switch to
+  `httpx2`. The stack keeps `httpx`.

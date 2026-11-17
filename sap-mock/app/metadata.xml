@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- H&L mock SAP: hand-written $metadata for ZHL_PLM_DESIGN_SRV. Demo only, not a real SAP. -->
+<edmx:Edmx Version="1.0"
+    xmlns:edmx="http://schemas.microsoft.com/ado/2007/06/edmx"
+    xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata"
+    xmlns:sap="http://www.sap.com/Protocols/SAPData">
+  <edmx:DataServices m:DataServiceVersion="2.0">
+    <Schema Namespace="ZHL_PLM_DESIGN_SRV" xml:lang="en" sap:schema-version="1"
+        xmlns="http://schemas.microsoft.com/ado/2008/09/edm">
+
+      <EntityType Name="Design" sap:content-version="1">
+        <Key>
+          <PropertyRef Name="DesignNumber"/>
+        </Key>
+        <Property Name="DesignNumber" Type="Edm.String" Nullable="false" MaxLength="14" sap:label="Design Number" sap:creatable="false" sap:updatable="false"/>
+        <Property Name="Department" Type="Edm.String" Nullable="false" MaxLength="4" sap:label="Department" sap:updatable="false"/>
+        <Property Name="Name" Type="Edm.String" Nullable="false" MaxLength="40" sap:label="Design Name"/>
+        <Property Name="Status" Type="Edm.String" Nullable="false" MaxLength="10" sap:label="Status" sap:creatable="false"/>
+        <Property Name="Material" Type="Edm.String" Nullable="false" MaxLength="18" sap:label="Material" sap:creatable="false" sap:updatable="false"/>
+        <Property Name="Wbs" Type="Edm.String" Nullable="false" MaxLength="9" sap:label="WBS Element" sap:creatable="false"/>
+        <Property Name="CurrentRevision" Type="Edm.String" Nullable="false" MaxLength="1" sap:label="Current Revision" sap:creatable="false" sap:updatable="false"/>
+        <Property Name="CreatedOn" Type="Edm.DateTime" Nullable="false" Precision="0" sap:display-format="Date" sap:label="Created On" sap:creatable="false" sap:updatable="false"/>
+        <Property Name="CreatedBy" Type="Edm.String" Nullable="false" MaxLength="40" sap:label="Created By" sap:updatable="false"/>
+        <Property Name="BlockReason" Type="Edm.String" Nullable="false" MaxLength="120" sap:label="Block Reason" sap:creatable="false"/>
+        <Property Name="Successor" Type="Edm.String" Nullable="false" MaxLength="14" sap:label="Successor Design" sap:creatable="false"/>
+        <NavigationProperty Name="Revisions" Relationship="ZHL_PLM_DESIGN_SRV.DesignRevisions" FromRole="FromRole_DesignRevisions" ToRole="ToRole_DesignRevisions"/>
+      </EntityType>
+
+      <EntityType Name="Revision" sap:content-version="1">
+        <Key>
+          <PropertyRef Name="DesignNumber"/>
+          <PropertyRef Name="Revision"/>
+        </Key>
+        <Property Name="DesignNumber" Type="Edm.String" Nullable="false" MaxLength="14" sap:label="Design Number"/>
+        <Property Name="Revision" Type="Edm.String" Nullable="false" MaxLength="1" sap:label="Revision"/>
+        <Property Name="CreatedOn" Type="Edm.DateTime" Nullable="false" Precision="0" sap:display-format="Date" sap:label="Created On"/>
+        <Property Name="CreatedBy" Type="Edm.String" Nullable="false" MaxLength="40" sap:label="Created By"/>
+      </EntityType>
+
+      <EntityType Name="Department" sap:content-version="1">
+        <Key>
+          <PropertyRef Name="Code"/>
+        </Key>
+        <Property Name="Code" Type="Edm.String" Nullable="false" MaxLength="4" sap:label="Department"/>
+        <Property Name="NameEn" Type="Edm.String" Nullable="false" MaxLength="40" sap:label="Name (EN)"/>
+        <Property Name="NameEs" Type="Edm.String" Nullable="false" MaxLength="40" sap:label="Name (ES)"/>
+        <Property Name="Lead" Type="Edm.String" Nullable="false" MaxLength="40" sap:label="Department Lead"/>
+        <Property Name="DefaultWbs" Type="Edm.String" Nullable="false" MaxLength="9" sap:label="Default WBS (current year)"/>
+      </EntityType>
+
+      <Association Name="DesignRevisions" sap:content-version="1">
+        <End Type="ZHL_PLM_DESIGN_SRV.Design" Multiplicity="1" Role="FromRole_DesignRevisions"/>
+        <End Type="ZHL_PLM_DESIGN_SRV.Revision" Multiplicity="*" Role="ToRole_DesignRevisions"/>
+        <ReferentialConstraint>
+          <Principal Role="FromRole_DesignRevisions">
+            <PropertyRef Name="DesignNumber"/>
+          </Principal>
+          <Dependent Role="ToRole_DesignRevisions">
+            <PropertyRef Name="DesignNumber"/>
+          </Dependent>
+        </ReferentialConstraint>
+      </Association>
+
+      <EntityContainer Name="ZHL_PLM_DESIGN_SRV_Entities" m:IsDefaultEntityContainer="true" sap:supported-formats="json">
+        <EntitySet Name="DesignSet" EntityType="ZHL_PLM_DESIGN_SRV.Design" sap:creatable="true" sap:updatable="false" sap:deletable="false" sap:pageable="true" sap:content-version="1"/>
+        <EntitySet Name="RevisionSet" EntityType="ZHL_PLM_DESIGN_SRV.Revision" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:addressable="true" sap:content-version="1"/>
+        <EntitySet Name="DepartmentSet" EntityType="ZHL_PLM_DESIGN_SRV.Department" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:content-version="1"/>
+        <AssociationSet Name="DesignRevisionsSet" Association="ZHL_PLM_DESIGN_SRV.DesignRevisions" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:content-version="1">
+          <End EntitySet="DesignSet" Role="FromRole_DesignRevisions"/>
+          <End EntitySet="RevisionSet" Role="ToRole_DesignRevisions"/>
+        </AssociationSet>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>
