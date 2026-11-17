@@ -14,6 +14,11 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+filterwarnings = [
+    # Starlette 1.10 asks TestClient users to move to httpx2. The stack keeps httpx
+    # (CLAUDE.md) until the backend's SapClient decides otherwise.
+    "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
 
 [tool.coverage.run]
 source = ["app"]
