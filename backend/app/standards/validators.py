@@ -168,6 +168,21 @@ def next_revision(existing: Iterable[str]) -> str:
     return revision_at(max(indexes) + 1) if indexes else FIRST_REVISION
 
 
+def revisions_in_use(sap_revisions: Iterable[str], on_disk: Iterable[str]) -> list[str]:
+    """The revisions that count as created (02-revisions#never-reuse), from SAP and disk.
+
+    Reserving a number records revision A in SAP before its folder exists
+    (02-revisions#first-revision). So while SAP has only revision A and no revision
+    folder exists yet, A is still free for its first folder. Every other revision that
+    SAP knows stays used, even without a folder: it may have been abandoned.
+    """
+    sap = {r.strip().upper() for r in sap_revisions}
+    disk = {r.strip().upper() for r in on_disk}
+    if sap == {FIRST_REVISION} and not disk:
+        sap = set()
+    return sorted(sap | disk, key=lambda r: revision_index(r) or 0)
+
+
 def validate_revision(rev: str, existing: Iterable[str] = ()) -> FieldCheck:
     """Check a requested revision against the sequence and the revisions that exist.
 
@@ -291,6 +306,22 @@ def check_status_allows_revision(
             "status_unknown",
             f"Unknown SAP status '{status}'.",
             "06-sap-statuses#overview",
+        ),
+    )
+
+
+def check_known_in_sap(design_number: str, found: bool) -> FieldCheck:
+    """01-design-numbering#issued-by-sap: only numbers that SAP issued can be used."""
+    if found:
+        return _check(design_number)
+    return _check(
+        design_number,
+        Issue(
+            "design_number",
+            "number_not_in_sap",
+            f"{design_number} doesn't exist in SAP. Only SAP issues design numbers: reserve a "
+            "new number, or check that you typed an existing one correctly.",
+            "01-design-numbering#issued-by-sap",
         ),
     )
 
