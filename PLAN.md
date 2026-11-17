@@ -219,6 +219,11 @@ validators fully unit tested (including path traversal like `..\..\Windows`); go
 
 **Done when:** a full flow (chat → filled form → SAP lookup → confirm → PDF preview) works in the browser; vitest + one Playwright e2e on the Fake provider.
 
+**Status:** done (decision 0010). Carried over, still open:
+- Visual polish pass with real screenshots of the layout (Phase 8 showcase).
+- "How this demo works" guide with the `portfolio-demo-guide` skill (only the banner exists; Phase 8).
+- Brand palette from luna-hybrid-agent (the UI still uses the default shadcn neutral theme).
+
 ### Phase 6 — Evaluation and hardening
 - Scenario suite (~25): valid create, wrong format, reused rev, skipped letter `I`, blocked/obsolete
   material, SAP down (503) and slow, folder already exists, path traversal, prompt injection,
