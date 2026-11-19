@@ -233,18 +233,11 @@ validators fully unit tested (including path traversal like `..\..\Windows`); go
 
 **Done when:** suite passes 100% on Fake; results for both real providers published, including failures.
 
-**Status:** done for Fake (30/30, CI) and Ollama (11/27, `docs/eval/`); decision 0011. Open: Groq run
-(`GroqClient` exists, decision 0012; waits for the daily quota); the three over-strict tool expectations are loosened (`any_tools`);
-the small model's "validates but never opens the card" failure.
-
-**Next session: prompt tuning (Ollama).** Goal: raise 11/27 without touching the validators or the gate.
-Start with `app/agent/prompts.py`. Failing scenarios to re-run with `--only` (batches of 5, free RAM first):
-`create-valid`, `create-not-confirmed`, `create-cancelled`, `sap-slow-recovers`, `reserve-confirm-sap-down`
-(validates, then stops without `request_create_design`/`request_reserve_number`); `manual-question`,
-`injection-in-name` (skips the tool); `revision-skipped-letter` (invented citation); `unknown-number`,
-`sap-timeout` (no citation). Ideas: tell it to open the card in the same turn once validation is ok; always
-cite the `ref` of an error; answer manual questions only after `search_design_manual`. Also loosen the three
-status scenarios to accept `sap_get_design` or `validate_design_request`. Publish a new run next to the old one.
+**Status:** done. Fake 30/30 (CI). Ollama (qwen3 4B, CPU) went from 11/27 to **21/27** after prompt tuning,
+no regressions, invariants held (`docs/eval/`). Open: Groq run (`GroqClient` exists, decision 0012; waits for the
+daily quota). Known small-model gaps, kept visible on purpose: `manual-question` (the model writes the tool call
+as text, `search_design_manual{...}`), `one-sentence-fill` and `wizard-reserve-then-create` (ask for a missing
+field instead of calling the tool), `path-traversal`, and missing citations in `unknown-number` / `sap-timeout`.
 
 ### Phase 7 — Packaging
 - `Dockerfile` based on the official KiCad image (it has `kicad-cli`) + Python + the built frontend.
