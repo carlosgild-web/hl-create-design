@@ -1,0 +1,52 @@
+# docker compose up --build            -> app (UI + API) on http://localhost:8000, mock SAP
+# docker compose --profile ollama up   -> also a local Ollama (then LLM_PROVIDER=ollama)
+# Settings come from the shell or a .env next to this file (LLM_PROVIDER, GROQ_API_KEY, ...).
+# Without them the assistant runs in scripted demo mode (LLM_PROVIDER=fake).
+services:
+  app:
+    build: .
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      SAP_BASE_URL: http://sap-mock:8100
+      SAP_USER: ${SAP_USER:-demo}
+      SAP_PASSWORD: ${SAP_PASSWORD:-demo}
+      AGENT_MAX_ITERATIONS: ${AGENT_MAX_ITERATIONS:-6}
+      # Public-demo safety (0 = off); see decision 0011.
+      RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-0}
+      DAILY_TOKEN_CAP: ${DAILY_TOKEN_CAP:-0}
+      DESIGNS_TTL_HOURS: ${DESIGNS_TTL_HOURS:-0}
+    volumes:
+      - app-data:/data
+    depends_on:
+      sap-mock:
+        condition: service_healthy
+
+  sap-mock:
+    build:
+      context: .
+      dockerfile: sap-mock/Dockerfile
+    environment:
+      SAP_USER: ${SAP_USER:-demo}
+      SAP_PASSWORD: ${SAP_PASSWORD:-demo}
+      # Pins SAP's date so the demo numbers (issued in 2026) don't drift (decision 0007).
+      SAP_TODAY: ${SAP_TODAY:-2026-11-17}
+    volumes:
+      - sap-data:/data
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [ollama]
+    volumes:
+      - ollama-models:/root/.ollama
+    # Pull the model once: docker compose exec ollama ollama pull qwen3:4b-instruct-2507-q4_K_M
+
+volumes:
+  app-data:
+  sap-data:
+  ollama-models:

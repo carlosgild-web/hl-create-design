@@ -372,7 +372,12 @@ SCENARIOS: tuple[Scenario, ...] = (
                 ],
             ),
         ),
-        Expect(tools=("sap_get_design",), codes=("status_blocked",), cards=(), cite=True),
+        Expect(
+            any_tools=("sap_get_design", "validate_design_request"),
+            codes=("status_blocked",),
+            cards=(),
+            cite=True,
+        ),
         tags=("rules", "sap"),
     ),
     Scenario(
@@ -387,7 +392,12 @@ SCENARIOS: tuple[Scenario, ...] = (
                 ],
             ),
         ),
-        Expect(tools=("sap_get_design",), codes=("status_obsolete",), cards=(), cite=True),
+        Expect(
+            any_tools=("sap_get_design", "validate_design_request"),
+            codes=("status_obsolete",),
+            cards=(),
+            cite=True,
+        ),
         tags=("rules", "sap"),
     ),
     Scenario(
@@ -402,7 +412,11 @@ SCENARIOS: tuple[Scenario, ...] = (
                 ],
             ),
         ),
-        Expect(tools=("sap_get_design",), codes=("status_released_needs_eco",), cite=True),
+        Expect(
+            any_tools=("sap_get_design", "validate_design_request"),
+            codes=("status_released_needs_eco",),
+            cite=True,
+        ),
         tags=("rules", "sap"),
     ),
     Scenario(

@@ -79,7 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     ev = commands.add_parser("agent-eval", help="Run the agent scenario suite (PLAN Phase 6)")
     which = ev.add_mutually_exclusive_group(required=True)
     which.add_argument("--fake", action="store_true", help="Scripted model (CI, no LLM needed)")
-    which.add_argument("--provider", choices=("ollama", "anthropic"), help="Real provider")
+    which.add_argument("--provider", choices=("ollama", "groq"), help="Real provider")
     ev.add_argument("--only", action="append", default=[], metavar="ID", help="Run these scenarios")
     ev.add_argument("--json", type=Path, metavar="FILE", help="Write the results as JSON")
     ev.add_argument("--markdown", type=Path, metavar="FILE", help="Write a Markdown report")

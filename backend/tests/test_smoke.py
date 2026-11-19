@@ -22,7 +22,7 @@ def test_settings_defaults_need_no_external_service(monkeypatch):
     settings = Settings(_env_file=None)
 
     assert settings.llm_provider == "fake"
-    assert settings.anthropic_api_key is None
+    assert settings.groq_api_key is None
     assert settings.agent_max_iterations == 6
 
 

@@ -5,8 +5,10 @@ import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
 from app import __version__
 from app.api import actions, chat, designs
@@ -52,6 +54,26 @@ app.include_router(actions.router)
 app.include_router(designs.router)
 
 
+def mount_frontend(application: FastAPI, directory: Path) -> bool:
+    """Serve the built React app at `/` (one container serves UI and API). Unknown paths
+    return `index.html` so client-side routes work; `/api/*` is never shadowed."""
+    index = directory / "index.html"
+    if not index.is_file():
+        return False
+    root = directory.resolve()
+
+    @application.get("/{path:path}", include_in_schema=False)
+    def frontend(path: str) -> FileResponse:
+        if path.startswith("api/") or path == "api":
+            raise HTTPException(status_code=404)
+        candidate = (root / path).resolve()
+        if candidate.is_file() and candidate.is_relative_to(root):
+            return FileResponse(candidate)
+        return FileResponse(index)
+
+    return True
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     """Liveness probe. Reports the version and which LLM provider is configured."""
@@ -60,3 +82,7 @@ def health() -> dict[str, str]:
         "version": __version__,
         "llm_provider": get_settings().llm_provider,
     }
+
+
+# Registered last, so every `/api/...` route above wins.
+mount_frontend(app, get_settings().frontend_dir)

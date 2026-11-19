@@ -107,3 +107,28 @@ jobs:
         with:
           name: playwright-traces
           path: e2e/test-results
+
+  kicad-image:
+    name: docker image + KiCad export
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the app image (official KiCad base)
+        run: docker build -t create-design .
+      - name: kicad-cli export tests inside the image
+        run: |
+          docker run --rm --user root --entrypoint sh create-design -c \
+            "pip install -q -r requirements-dev.txt && pytest -q -m kicad"
+      - name: Generate a design and export the PDF
+        run: |
+          mkdir -p out && chmod 777 out
+          docker run --rm -e DESIGNS_ROOT=/out -e DATA_DIR=/out/data -v "$PWD/out:/out" \
+            create-design python -m app.cli create-design --dept HW --number HL-HW-26-0042 \
+            --rev A --name "Bead Drill Controller" --designer "C. Velazquez" \
+            --material 000000000040001236 --project P-26-0108 --date 2026-11-17
+          test -s out/HW/HL-HW-26-0042/A/output/HL-HW-26-0042_A.pdf
+          cp out/HW/HL-HW-26-0042/A/output/HL-HW-26-0042_A.pdf after.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: after-pdf
+          path: after.pdf
