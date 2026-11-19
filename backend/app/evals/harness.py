@@ -66,6 +66,7 @@ class Turn:
 @dataclass(frozen=True)
 class Expect:
     tools: tuple[str, ...] = ()  # each must have been called
+    any_tools: tuple[str, ...] = ()  # at least one must have been called (alternative routes)
     not_tools: tuple[str, ...] = ()  # none may have been called
     codes: tuple[str, ...] = ()  # issue/error codes the tools must have reported
     cards: tuple[str, ...] = ()  # card kinds opened, in order
@@ -309,6 +310,12 @@ def evaluate(sc: Scenario, env: Env, seen: Observed, folders_before: set[str]) -
     )
     missing = [t for t in exp.tools if t not in called]
     add("expected_tools", not missing, f"not called: {missing}; called: {called}")
+    if exp.any_tools:
+        add(
+            "expected_any_tool",
+            any(t in called for t in exp.any_tools),
+            f"none of {list(exp.any_tools)} called; called: {called}",
+        )
     forbidden = [t for t in exp.not_tools if t in called]
     add("forbidden_tools", not forbidden, f"called: {forbidden}")
     if exp.codes:
