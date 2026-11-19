@@ -120,6 +120,8 @@ def test_ollama_native_tool_calls_get_ids_and_dict_arguments():
         '<tool_call>{"name": "sap_get_design", "arguments": {"design_number": "X"}}</tool_call>',
         '```json\n{"name": "sap_get_design", "arguments": {"design_number": "X"}}\n```',
         '{"name": "sap_get_design", "arguments": {"design_number": "X"}}',
+        'sap_get_design{"design_number": "X"}',
+        ' sap_get_design({"design_number": "X"}) ',
     ],
 )
 def test_ollama_recovers_tool_calls_written_as_text(content):
@@ -134,6 +136,22 @@ def test_ollama_recovers_tool_calls_written_as_text(content):
 
 def test_ollama_text_that_names_an_unoffered_tool_stays_text():
     content = '{"name": "delete_everything", "arguments": {}}'
+    turn = ollama(lambda r: reply({"role": "assistant", "content": content})).chat(
+        [Message("user", "x")], [SPEC]
+    )
+    assert turn.tool_calls == ()
+    assert turn.content == content
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        'delete_everything{"x": 1}',  # not an offered tool
+        "sap_get_design{not json}",  # arguments are not JSON
+        'Use sap_get_design{"design_number": "X"} to look it up.',  # prose around the call
+    ],
+)
+def test_ollama_name_json_form_is_strict(content):
     turn = ollama(lambda r: reply({"role": "assistant", "content": content})).chat(
         [Message("user", "x")], [SPEC]
     )
