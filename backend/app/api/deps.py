@@ -7,10 +7,11 @@ from collections.abc import Callable
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy import Engine
 
 from app.core.config import MANUAL_DIR, Settings, get_settings
+from app.core.limits import client_ip, get_limiter
 from app.db.session import get_engine
 from app.kicad.exporter import Runner
 from app.llm.base import LLMClient
@@ -61,6 +62,26 @@ def llm_factory_dep(settings: SettingsDep) -> LLMFactory:
 def runner_dep() -> Runner:
     return subprocess.run
 
+
+def rate_limit_dep(request: Request, settings: SettingsDep) -> None:
+    """Per-IP limit on the requests that cost tokens or change things (`RATE_LIMIT_PER_MIN`)."""
+    if settings.rate_limit_per_min <= 0:
+        return
+    ip = client_ip(
+        request.client.host if request.client else None,
+        request.headers.get("x-forwarded-for"),
+        trust_forwarded=settings.trust_forwarded_for,
+    )
+    wait = get_limiter(settings.rate_limit_per_min).hit(ip)
+    if wait is not None:
+        raise HTTPException(
+            429,
+            "rate_limited",
+            headers={"Retry-After": str(wait)},
+        )
+
+
+RateLimited = Depends(rate_limit_dep)
 
 EngineDep = Annotated[Engine, Depends(engine_dep)]
 ManualDep = Annotated[ManualIndex, Depends(manual_dep)]

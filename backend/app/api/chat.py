@@ -17,13 +17,24 @@ from pydantic import BaseModel, Field
 
 from app.agent.loop import AgentEvent
 from app.agent.service import AgentDeps, chat_turn
-from app.api.deps import EngineDep, LLMFactoryDep, ManualDep, SapFactoryDep, SettingsDep
+from app.api.deps import (
+    EngineDep,
+    LLMFactoryDep,
+    ManualDep,
+    RateLimited,
+    SapFactoryDep,
+    SettingsDep,
+)
 from app.db import store
 from app.llm.base import LLMError
 
 router = APIRouter(prefix="/api", tags=["assistant"])
 
 MESSAGE_MAX = 2000
+DAILY_CAP_MESSAGE = (
+    "The demo has used its daily model budget. The form, the checks and the confirmation "
+    "cards still work; the assistant is back tomorrow (UTC)."
+)
 
 
 class ChatRequest(BaseModel):
@@ -37,7 +48,7 @@ def sse(event: AgentEvent) -> str:
     return f"event: {event.type}\ndata: {json.dumps(event.data, ensure_ascii=False)}\n\n"
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=[RateLimited])
 def chat(
     body: ChatRequest,
     settings: SettingsDep,
@@ -49,6 +60,11 @@ def chat(
     form = {k[:40]: v[:200] for k, v in body.form.items()}
 
     def stream() -> Iterator[str]:
+        cap = settings.daily_token_cap
+        if cap and store.tokens_today(engine) >= cap:
+            yield sse(AgentEvent("error", {"message": DAILY_CAP_MESSAGE, "code": "daily_cap"}))
+            yield sse(AgentEvent("done", {"status": "error"}))
+            return
         try:
             client = llm_factory()
         except LLMError as exc:

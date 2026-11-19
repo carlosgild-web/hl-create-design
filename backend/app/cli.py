@@ -16,6 +16,7 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 from app.actions import ActionNotFound, ActionNotPending, cancel_action, confirm_action
 from app.agent.service import AgentDeps, chat_turn
@@ -24,7 +25,7 @@ from app.db.session import get_engine
 from app.designs import DesignValidationError, create_design
 from app.kicad.exporter import ExportError
 from app.kicad.renderer import DesignFolderExistsError
-from app.llm.base import LLMClient, LLMError
+from app.llm.base import LLMClient, LLMError, Message
 from app.llm.factory import make_client
 from app.sap.client import SapClient
 from app.standards.manual_search import ManualIndex
@@ -69,6 +70,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     cancel = commands.add_parser("cancel", help="Cancel a pending action")
     cancel.add_argument("action_id")
+
+    clean = commands.add_parser("cleanup", help="Delete generated designs older than N hours")
+    clean.add_argument(
+        "--older-than", type=float, default=None, metavar="HOURS", help="default: DESIGNS_TTL_HOURS"
+    )
+
+    ev = commands.add_parser("agent-eval", help="Run the agent scenario suite (PLAN Phase 6)")
+    which = ev.add_mutually_exclusive_group(required=True)
+    which.add_argument("--fake", action="store_true", help="Scripted model (CI, no LLM needed)")
+    which.add_argument("--provider", choices=("ollama", "anthropic"), help="Real provider")
+    ev.add_argument("--only", action="append", default=[], metavar="ID", help="Run these scenarios")
+    ev.add_argument("--json", type=Path, metavar="FILE", help="Write the results as JSON")
+    ev.add_argument("--markdown", type=Path, metavar="FILE", help="Write a Markdown report")
+    ev.add_argument(
+        "--allow-failures", action="store_true", help="Exit 0 even if scenarios fail (real runs)"
+    )
     return parser
 
 
@@ -133,6 +150,10 @@ def main(argv: Sequence[str] | None = None, settings: Settings | None = None) ->
         return run_confirm(args, settings)
     if args.command == "cancel":
         return run_cancel(args, settings)
+    if args.command == "cleanup":
+        return run_cleanup(args, settings)
+    if args.command == "agent-eval":
+        return run_agent_eval(args, settings)
     return 2  # pragma: no cover - argparse rejects unknown commands
 
 
@@ -236,6 +257,59 @@ def run_cancel(args: argparse.Namespace, settings: Settings) -> int:
         return 1
     print(f"{action.kind}: {action.status}")
     return 0
+
+
+def run_cleanup(args: argparse.Namespace, settings: Settings) -> int:
+    from app.cleanup import cleanup_designs
+
+    hours = args.older_than if args.older_than is not None else settings.designs_ttl_hours
+    if hours <= 0:
+        print("error give --older-than HOURS or set DESIGNS_TTL_HOURS", file=sys.stderr)
+        return 2
+    removed = cleanup_designs(
+        settings.designs_root, get_engine(settings.data_dir), older_than_hours=hours
+    )
+    for item in removed:
+        print(f"removed {item.department}/{item.design_number}/{item.revision}")
+    print(f"{len(removed)} revision folder(s) removed")
+    return 0
+
+
+def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
+    from app.evals import harness, report
+    from app.evals.scenarios import SCENARIOS
+
+    scenarios = [s for s in SCENARIOS if not args.only or s.id in args.only]
+    unknown = set(args.only) - {s.id for s in SCENARIOS}
+    if unknown:
+        print(f"error unknown scenario(s): {', '.join(sorted(unknown))}", file=sys.stderr)
+        return 2
+    if args.fake:
+        client_for, provider, model = harness.scripted(), "fake", "scripted"
+    else:
+        scenarios = [s for s in scenarios if "fake-only" not in s.tags]
+        try:
+            client = make_client(settings.model_copy(update={"llm_provider": args.provider}))
+        except LLMError as exc:
+            print(f"error {exc}", file=sys.stderr)
+            return 1
+        try:  # fail fast on a wrong model name or a stopped server, not 27 times
+            client.chat([Message("user", "Reply with the word ok.")], [])
+        except LLMError as exc:
+            print(f"error the model is not reachable: {exc}", file=sys.stderr)
+            return 1
+        client_for, provider, model = harness.real(client), client.provider, client.model
+        print(f"{provider}: {model}; {len(scenarios)} scenarios (fake-only ones skipped)")
+    results = harness.run_all(scenarios, client_for, provider=provider, model=model)
+    print(report.console(results))
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(report.to_json(results), encoding="utf-8")
+    if args.markdown:
+        args.markdown.parent.mkdir(parents=True, exist_ok=True)
+        args.markdown.write_text(report.to_markdown(results), encoding="utf-8")
+    passed, total = report.score(results)
+    return 0 if passed == total or args.allow_failures else 1
 
 
 if __name__ == "__main__":

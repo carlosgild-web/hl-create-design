@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import EngineDep, SettingsDep
+from app.api.deps import EngineDep, RateLimited, SettingsDep
 from app.db import store
 from app.db.models import AuditLog
 from app.standards import validators as v
@@ -38,7 +38,7 @@ def departments() -> list[dict[str, str]]:
     return [{"code": code, "name": name} for code, name in v.DEPARTMENTS.items()]
 
 
-@router.post("/actions", status_code=201)
+@router.post("/actions", status_code=201, dependencies=[RateLimited])
 def propose_action(body: ProposeAction, engine: EngineDep) -> dict[str, Any]:
     """The user's own form opens a pending action. Nothing is executed here."""
     conversation_id = body.conversation_id

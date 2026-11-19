@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     # Agent
     agent_max_iterations: int = Field(default=6, ge=1, le=20)
 
+    # Public demo safety (0 = off, the default for local use)
+    rate_limit_per_min: int = Field(default=0, ge=0)  # state-changing requests per IP per minute
+    daily_token_cap: int = Field(default=0, ge=0)  # model tokens per UTC day, all users together
+    designs_ttl_hours: int = Field(default=0, ge=0)  # delete design folders older than this
+    trust_forwarded_for: bool = False  # take the client IP from X-Forwarded-For (behind a proxy)
+
     @field_validator("designs_root", "data_dir")
     @classmethod
     def _relative_to_repo(cls, path: Path) -> Path:
