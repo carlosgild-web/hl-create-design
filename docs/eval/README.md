@@ -8,6 +8,7 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
 |---|---|---|---|
 | fake (scripted) | - | 30/30 (27 + 3 fake-only) | CI job "agent eval" |
 | ollama | qwen3:4b-instruct-2507-q4_K_M | 11/27 | [md](ollama-qwen3-4b.md), [json](ollama-qwen3-4b.json) |
+| ollama, tuned prompt (targeted) | qwen3:4b-instruct-2507-q4_K_M | 11/13 of the scenarios the tuning aimed at (the other 14 were not re-run) | [md](ollama-qwen3-4b-tuned.md), [json](ollama-qwen3-4b-tuned.json) |
 | groq | openai/gpt-oss-120b | not run yet (daily quota used 2026-11-19) | - |
 
 ## Reading the Ollama run (2026-11-17, 4B model, CPU)
@@ -33,3 +34,28 @@ how well a small model follows the workflow:
 
 Run in 6 batches of up to 5 scenarios (the machine had little free memory); 12-87 s per
 scenario. The three `fake-only` scenarios are skipped for real models.
+
+## Reading the tuned-prompt run (2026-11-19, same model, targeted)
+
+Prompt changes (commit 9b5c66f): open the card in the same turn once validation is ok, cite
+only ids a tool returned, search the manual before answering a rule question. The three
+status scenarios were also loosened to accept `sap_get_design` or `validate_design_request`
+(same status code required), so those three are not strictly comparable with the first run.
+
+This run covered only the 13 scenarios the tuning aimed at, so it is **not** a 27-scenario
+score. Those 13 went from 0/13 (the three loosened ones aside, all failed) to **11/13**.
+
+- **Fixed:** all five "validates but never opens the card" scenarios (`create-valid`,
+  `create-not-confirmed`, `create-cancelled`, `sap-slow-recovers`, `reserve-confirm-sap-down`),
+  the invented citation in `revision-skipped-letter`, the missing citations in
+  `unknown-number` and `sap-timeout`, and the three status scenarios.
+- **Still failing:** `manual-question` and `injection-in-name`. The model answers without
+  calling any tool, so the prompt rule did not change that behaviour. Both are safe (nothing
+  is created); the model answers from memory or refuses in prose instead of validating.
+- **Invariants held** in all 13 scenarios (the only failed checks were `expected_tools` x2
+  and `cites_manual` x1).
+- **Not yet checked:** the 14 scenarios outside this run, including the 11 that passed
+  before. The prompt change could have broken some of them; a full run is needed before
+  claiming an overall score.
+- Time per scenario: 10-141 s; the longest are the ones that now go all the way to a card
+  (4 tool calls).
