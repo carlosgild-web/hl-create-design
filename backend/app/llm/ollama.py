@@ -22,6 +22,8 @@ NUM_CTX = 8192
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 _TAGGED_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
 _FENCED_JSON_RE = re.compile(r"^```(?:json)?\s*(\{.*\})\s*```$", re.DOTALL)
+# `tool_name{"arg": 1}` or `tool_name({"arg": 1})`: the whole message is exactly one call.
+_NAME_JSON_RE = re.compile(r"^(\w+)\s*\(?\s*(\{.*\})\s*\)?$", re.DOTALL)
 
 
 class OllamaClient(LLMClient):
@@ -143,7 +145,8 @@ def _arguments(raw: Any) -> dict[str, Any]:
 
 def _calls_from_text(content: str, offered: set[str]) -> list[tuple[str, Any]]:
     """Tool calls written as text: `<tool_call>{...}</tool_call>`, a fenced JSON block or a
-    bare JSON object, with `name` (one of the offered tools) and `arguments`."""
+    bare JSON object, with `name` (one of the offered tools) and `arguments`; or the whole
+    message as `tool_name{...}`."""
     candidates = _TAGGED_CALL_RE.findall(content)
     if not candidates:
         text = content.strip()
@@ -153,6 +156,14 @@ def _calls_from_text(content: str, offered: set[str]) -> list[tuple[str, Any]]:
         elif text.startswith("{") and text.endswith("}"):
             candidates = [text]
     found: list[tuple[str, Any]] = []
+    if not candidates:
+        named = _NAME_JSON_RE.match(content.strip())
+        if named and named.group(1) in offered:
+            try:
+                arguments = json.loads(named.group(2))
+            except ValueError:
+                return found
+            return [(named.group(1), arguments)]
     for candidate in candidates:
         try:
             data = json.loads(candidate)
