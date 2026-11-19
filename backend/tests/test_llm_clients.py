@@ -50,6 +50,9 @@ def test_factory_picks_the_provider():
     assert make_client(Settings(_env_file=None, llm_provider="fake")).provider == "fake"
     local = make_client(Settings(_env_file=None, llm_provider="ollama", ollama_model="m"))
     assert (local.provider, local.model) == ("ollama", "m")
+    assert local._http.timeout.read == 180.0
+    slow = make_client(Settings(_env_file=None, llm_provider="ollama", ollama_timeout_s=600))
+    assert slow._http.timeout.read == 600.0
     cloud = make_client(Settings(_env_file=None, llm_provider="groq", groq_api_key="gsk_x"))
     assert (cloud.provider, cloud.model) == ("groq", "openai/gpt-oss-120b")
     with pytest.raises(LLMError, match="GROQ_API_KEY"):
