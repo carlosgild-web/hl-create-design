@@ -20,7 +20,9 @@
 5. **CI job `kicad-image`** builds the image, runs the `kicad`-marked tests inside it
    (they were skipped everywhere before), generates a design and uploads `after.pdf`.
 
-## Not done here
+## No hosted demo
 
-Hugging Face Spaces deployment (needs the account and the Groq secret; the image already
-honours `PORT`, so Spaces' 7860 works with `PORT=7860`).
+The owner decided (2026-11-19) not to host a public demo. Phase 8 publishes a demo video
+and the repo; anyone who wants to try it clones and runs `start.cmd` / `start.sh`. The
+per-IP rate limit, daily token cap and cleanup job from decision 0011 stay (off by default)
+for anyone who hosts it themselves; the image honours `PORT`.

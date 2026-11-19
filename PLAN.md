@@ -56,7 +56,7 @@ date. Then `kicad-cli` exports a PDF preview.
 | SAP | Separate FastAPI service that looks like an SAP OData v2 API |
 | Numbering and manual | Invented here (section 3), written in `docs/manual/` |
 | Repo | New: `hl-create-design` (GitHub `carlosgild-web/hl-create-design`) |
-| Deliverables | All: README, screenshots, GIF, video, before/after PDFs, online demo |
+| Deliverables | All: README, screenshots, GIF, video, before/after PDFs; a demo video, and the repo for anyone who wants to try it (no hosted demo, decision 0013) |
 | Roles | Creation only (no approval workflow yet) |
 
 ---
@@ -246,16 +246,16 @@ Start with `app/agent/prompts.py`. Failing scenarios to re-run with `--only` (ba
 cite the `ref` of an error; answer manual questions only after `search_design_manual`. Also loosen the three
 status scenarios to accept `sap_get_design` or `validate_design_request`. Publish a new run next to the old one.
 
-### Phase 7 — Packaging and online demo
+### Phase 7 — Packaging
 - `Dockerfile` based on the official KiCad image (it has `kicad-cli`) + Python + the built frontend.
 - `compose.yaml`: app + sap-mock (+ optional ollama). `start.cmd` / `start.sh` like luna.
-- Online demo: one container on Hugging Face Spaces (Docker, free tier) with `LLM_PROVIDER=groq`,
-  key as a secret, rate limits on. A fallback "demo mode" uses the Fake provider if the key is missing.
+- No hosted online demo (decision 0013). The "try it" path is `git clone` + `start.cmd`/`start.sh`;
+  without a key the assistant runs in scripted demo mode (`LLM_PROVIDER=fake`).
 - CI job that runs the generator inside the KiCad image and uploads `after.pdf` as an artifact.
 
-**Done when:** `docker compose up` works on a clean machine; public URL works; CI exports the PDF.
+**Done when:** `docker compose up` works on a clean machine; CI exports the PDF.
 
-**Status:** image, compose, start scripts and the CI KiCad job are done (decision 0013; compose flow verified locally: reserve, create, PDF). Open: Hugging Face Spaces deployment, Groq eval run (decision 0012).
+**Status:** image, compose, start scripts and the CI KiCad job are done (decision 0013; compose flow verified locally: reserve, create, PDF). Open: Groq eval run (decision 0012).
 
 ### Phase 8 — Showcase
 - README (English): problem, 30-second GIF, before/after title block, architecture diagram,
@@ -275,13 +275,13 @@ status scenarios to accept `sap_get_design` or `validate_design_request`. Publis
 | Python 3.11+ | venv per service |
 | Node 20+ | frontend |
 | Ollama | `qwen3:4b-instruct-2507-q4_K_M` (already used in luna) |
-| Groq API key | only for the cloud provider and online demo |
+| Groq API key | only for the optional cloud provider |
 | Docker Desktop | Phase 7 |
 | GitHub CLI `gh` | create the repo |
 
 ## 8. Open questions (decide before the phase that needs them)
 
 1. Phase 1: keep the story "Hilda & Luna Electronics designs the machines of the bead factory", or a different product line?
-2. Phase 4: cloud model and monthly budget for the online demo.
-3. Phase 7: Hugging Face Spaces vs. Render vs. Fly.io.
+2. Phase 4: cloud model: decided, Groq `openai/gpt-oss-120b` (decision 0012).
+3. Phase 7: hosting: decided, no hosted demo (decision 0013).
 4. Later: approval workflow (designer → lead), real login, ECO numbers for released designs.

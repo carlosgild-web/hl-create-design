@@ -29,7 +29,7 @@ is not xAI's Grok.
 
 - The interface (`LLMClient`) did not change, so adding or swapping a provider stays a
   one-file change.
-- Free-tier rate limits apply to the demo; the per-IP limit and daily token cap from
-  decision 0011 matter more here.
+- Free-tier rate limits apply (the daily quota was hit on 2026-11-19), so real eval runs may need
+  `--only` batches or another day. There is no hosted demo (decision 0013).
 - `gpt-oss` is a reasoning model; if it returns reasoning text outside `content`, it is
   ignored, as with Ollama's `<think>` blocks.
