@@ -255,6 +255,8 @@ status scenarios to accept `sap_get_design` or `validate_design_request`. Publis
 
 **Done when:** `docker compose up` works on a clean machine; public URL works; CI exports the PDF.
 
+**Status:** image, compose, start scripts and the CI KiCad job are done (decision 0013; compose flow verified locally: reserve, create, PDF). Open: Hugging Face Spaces deployment, Groq eval run (decision 0012).
+
 ### Phase 8 — Showcase
 - README (English): problem, 30-second GIF, before/after title block, architecture diagram,
   "AI as a guide" principles, eval table, try-it steps, decisions.
