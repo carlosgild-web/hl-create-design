@@ -8,7 +8,7 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
 |---|---|---|---|
 | fake (scripted) | - | 30/30 (27 + 3 fake-only) | CI job "agent eval" |
 | ollama | qwen3:4b-instruct-2507-q4_K_M | 11/27 | [md](ollama-qwen3-4b.md), [json](ollama-qwen3-4b.json) |
-| anthropic | - | not run yet (Phase 7) | - |
+| groq | openai/gpt-oss-120b | not run yet (daily quota used 2026-11-19) | - |
 
 ## Reading the Ollama run (2026-11-17, 4B model, CPU)
 

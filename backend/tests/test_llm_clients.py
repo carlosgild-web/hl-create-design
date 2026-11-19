@@ -9,6 +9,7 @@ from app.core.config import Settings
 from app.llm.base import LLMError, Message, ToolCall, ToolSpec
 from app.llm.factory import make_client
 from app.llm.fake import DEMO_NOTICE, FakeClient, FakeScriptExhausted, call, say
+from app.llm.groq import GroqClient
 from app.llm.ollama import OllamaClient
 
 SPEC = ToolSpec(
@@ -49,8 +50,10 @@ def test_factory_picks_the_provider():
     assert make_client(Settings(_env_file=None, llm_provider="fake")).provider == "fake"
     local = make_client(Settings(_env_file=None, llm_provider="ollama", ollama_model="m"))
     assert (local.provider, local.model) == ("ollama", "m")
-    with pytest.raises(LLMError, match="Phase 7"):
-        make_client(Settings(_env_file=None, llm_provider="anthropic"))
+    cloud = make_client(Settings(_env_file=None, llm_provider="groq", groq_api_key="gsk_x"))
+    assert (cloud.provider, cloud.model) == ("groq", "openai/gpt-oss-120b")
+    with pytest.raises(LLMError, match="GROQ_API_KEY"):
+        make_client(Settings(_env_file=None, llm_provider="groq"))
 
 
 # --- OllamaClient ------------------------------------------------------------------------
@@ -155,3 +158,102 @@ def test_ollama_not_running_is_a_clear_error():
 
     with pytest.raises(LLMError, match="not reachable"):
         ollama(handler).chat([], [])
+
+
+# --- GroqClient --------------------------------------------------------------------------
+
+
+def groq(handler) -> GroqClient:
+    return GroqClient("gsk_test", "gpt-test", transport=httpx.MockTransport(handler))
+
+
+def completion(message: dict, **usage) -> httpx.Response:
+    return httpx.Response(200, json={"choices": [{"message": message}], "usage": usage})
+
+
+def test_groq_request_is_openai_shaped_with_bearer_key():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["auth"] = request.headers["authorization"]
+        seen["body"] = json.loads(request.content)
+        return completion({"content": "ok"})
+
+    history = [
+        Message("system", "rules"),
+        Message("user", "hi"),
+        Message("assistant", "", (ToolCall("c1", "sap_get_design", {"design_number": "X"}),)),
+        Message("tool", '{"ok": true}', tool_call_id="c1", name="sap_get_design"),
+    ]
+    groq(handler).chat(history, [SPEC])
+
+    body = seen["body"]
+    assert seen["url"] == "https://api.groq.com/openai/v1/chat/completions"
+    assert seen["auth"] == "Bearer gsk_test"
+    assert body["model"] == "gpt-test" and body["temperature"] == 0
+    assert body["tools"][0]["function"]["name"] == "sap_get_design"
+    call_msg = body["messages"][2]["tool_calls"][0]
+    assert call_msg["id"] == "c1"
+    assert json.loads(call_msg["function"]["arguments"]) == {"design_number": "X"}
+    assert body["messages"][3]["tool_call_id"] == "c1"
+
+
+def test_groq_parses_tool_calls_text_and_usage():
+    raw = {
+        "content": None,
+        "tool_calls": [
+            {
+                "id": "abc",
+                "type": "function",
+                "function": {"name": "sap_get_design", "arguments": '{"design_number": "Y"}'},
+            },
+            {"id": "bad", "type": "function", "function": {"name": "t", "arguments": "{oops"}},
+        ],
+    }
+    turn = groq(lambda r: completion(raw, prompt_tokens=11, completion_tokens=4)).chat([], [SPEC])
+
+    assert turn.tool_calls[0] == ToolCall("abc", "sap_get_design", {"design_number": "Y"})
+    assert turn.tool_calls[1].arguments == {"__invalid__": "{oops"}
+    assert (turn.prompt_tokens, turn.completion_tokens) == (11, 4)
+
+
+def test_groq_omits_tools_when_none_offered():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["body"] = json.loads(request.content)
+        return completion({"content": " hello "})
+
+    assert groq(handler).chat([Message("user", "hi")], []).content == "hello"
+    assert "tools" not in seen["body"]
+
+
+def test_groq_rate_limit_says_when_to_retry():
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            429, headers={"retry-after": "42"}, json={"error": {"message": "daily tokens"}}
+        )
+
+    with pytest.raises(LLMError, match=r"rate limit.*42 s"):
+        groq(handler).chat([], [])
+
+
+@pytest.mark.parametrize(
+    ("status", "expect"),
+    [(401, "GROQ_API_KEY"), (404, "GROQ_MODEL"), (500, "Groq error 500")],
+)
+def test_groq_errors_are_actionable(status, expect):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status, json={"error": {"message": "nope"}})
+
+    with pytest.raises(LLMError, match=expect):
+        groq(handler).chat([], [])
+
+
+def test_groq_unreachable_is_an_llm_error():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("down")
+
+    with pytest.raises(LLMError, match="not reachable"):
+        groq(handler).chat([], [])

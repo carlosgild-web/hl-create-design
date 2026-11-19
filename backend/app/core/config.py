@@ -24,11 +24,12 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    llm_provider: Literal["fake", "ollama", "anthropic"] = "fake"
+    llm_provider: Literal["fake", "ollama", "groq"] = "fake"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:4b-instruct-2507-q4_K_M"
-    anthropic_api_key: SecretStr | None = None
-    anthropic_model: str = "claude-sonnet-5-5"
+    groq_api_key: SecretStr | None = None
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
 
     # Mock SAP
     sap_base_url: str = "http://localhost:8100"

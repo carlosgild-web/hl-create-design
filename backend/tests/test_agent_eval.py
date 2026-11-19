@@ -153,9 +153,9 @@ def test_cli_agent_eval_unknown_scenario(settings, capsys):
     assert cli.main(["agent-eval", "--fake", "--only", "nope"], settings) == 2
 
 
-def test_cli_agent_eval_provider_not_available(settings, capsys):
-    assert cli.main(["agent-eval", "--provider", "anthropic"], settings) == 1
-    assert "Phase 7" in capsys.readouterr().err
+def test_cli_agent_eval_provider_without_key(settings, capsys):
+    assert cli.main(["agent-eval", "--provider", "groq"], settings) == 1
+    assert "GROQ_API_KEY" in capsys.readouterr().err
 
 
 def test_report_lists_failures():

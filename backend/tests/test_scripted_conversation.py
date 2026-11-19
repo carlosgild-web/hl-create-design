@@ -250,9 +250,9 @@ def test_failed_confirm_returns_the_reason(api, fake_sap):
     assert response.json()["result"]["error_kind"] == "sap_unavailable"
 
 
-def test_anthropic_provider_is_reported_not_crashing(api, settings):
+def test_groq_without_key_is_reported_not_crashing(api, settings):
     app.dependency_overrides[deps.llm_factory_dep] = lambda: deps.llm_factory_dep(
-        settings.model_copy(update={"llm_provider": "anthropic"})
+        settings.model_copy(update={"llm_provider": "groq"})
     )
     out = chat(api, "hello")
-    assert "Phase 7" in of(out, "error")[0]["message"]
+    assert "GROQ_API_KEY" in of(out, "error")[0]["message"]
