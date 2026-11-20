@@ -3,6 +3,7 @@
 - The model is a scripted `FakeClient`: one chat turn fills the form, looks the design
   up in SAP and opens a confirmation card. No Ollama, no key.
 - `kicad-cli` is a stub that writes a small PDF and SVG, so the test needs no KiCad.
+  `E2E_REAL_KICAD=1` (with `KICAD_CLI` set) uses the real one, for the showcase images.
 
 SAP is the real mock service (started by Playwright next to this process).
 Run: python harness.py   (env: E2E_DATA_DIR, E2E_PORT, SAP_BASE_URL)
@@ -69,7 +70,8 @@ def stub_kicad_cli(command, **kwargs):
 
 
 app.dependency_overrides[deps.llm_factory_dep] = lambda: script
-app.dependency_overrides[deps.runner_dep] = lambda: stub_kicad_cli
+if not os.environ.get("E2E_REAL_KICAD"):
+    app.dependency_overrides[deps.runner_dep] = lambda: stub_kicad_cli
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=int(os.environ.get("E2E_PORT", "8191")))

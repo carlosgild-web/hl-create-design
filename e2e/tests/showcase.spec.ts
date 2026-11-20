@@ -9,7 +9,9 @@ import { fileURLToPath } from 'node:url'
 
 import { expect, test, type Page } from '@playwright/test'
 
-const OUT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'showcase')
+const HERE = dirname(fileURLToPath(import.meta.url))
+const OUT = resolve(HERE, '..', '..', 'docs', 'showcase')
+const TMP = resolve(HERE, '..', '.tmp')
 const DESKTOP = { width: 1440, height: 900 }
 const PHONE = { width: 375, height: 812 }
 
@@ -22,6 +24,7 @@ async function shot(page: Page, name: string) {
 }
 
 test('desktop: start, the assistant picks an existing design, confirm, preview dialog', async ({ page }) => {
+  test.setTimeout(120_000)
   await page.setViewportSize(DESKTOP)
   await page.goto('/')
   await shot(page, 'desktop-start')
@@ -34,7 +37,7 @@ test('desktop: start, the assistant picks an existing design, confirm, preview d
 
   await page.getByRole('button', { name: 'Confirm' }).click()
   const preview = page.getByRole('dialog').getByRole('img')
-  await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true)
+  await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0), { timeout: 60_000 }).toBe(true)
   await shot(page, 'desktop-preview-dialog')
 })
 
@@ -68,4 +71,48 @@ test('phone: design and assistant tabs', async ({ page }) => {
   await page.getByRole('button', { name: 'Send' }).click()
   await expect(page.getByRole('region', { name: 'SAP record' })).toBeVisible()
   await shot(page, 'phone-assistant')
+})
+
+/**
+ * The README GIF: the same flow as the first test, recorded at a reading pace. Run it on its
+ * own (the first test already creates revision C):
+ *
+ *   SHOWCASE=1 npx playwright test tests/showcase.spec.ts -g "recorded demo"
+ *
+ * The video lands in e2e/.tmp/demo.webm; turn it into docs/showcase/demo.gif with ffmpeg:
+ *
+ *   ffmpeg -y -i .tmp/demo.webm -vf "fps=10,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=4" ../docs/showcase/demo.gif
+ *
+ * With E2E_REAL_KICAD=1 and KICAD_CLI set, the preview is the real KiCad output.
+ */
+test('desktop: recorded demo for the README GIF', async ({ browser }) => {
+  test.setTimeout(120_000) // the real KiCad export takes a while
+  const size = { width: 1280, height: 800 }
+  const context = await browser.newContext({ viewport: size, recordVideo: { dir: join(TMP, 'video'), size } })
+  const page = await context.newPage()
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Create Design' })).toBeVisible()
+  await page.waitForTimeout(1500)
+
+  const input = page.getByLabel(/describe your design/i)
+  await input.click()
+  await input.pressSequentially('Revision C of the bead sorter vision board', { delay: 40 })
+  await page.waitForTimeout(400)
+  await page.getByRole('button', { name: 'Send' }).click()
+  const confirm = page.getByRole('button', { name: 'Confirm' })
+  await expect(confirm).toBeVisible()
+  await page.waitForTimeout(3500) // the filled form and the title block
+
+  await confirm.hover()
+  await page.waitForTimeout(600)
+  await confirm.click()
+  const preview = page.getByRole('dialog').getByRole('img')
+  await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0), { timeout: 60_000 }).toBe(true)
+  await page.waitForTimeout(2500)
+  await page.getByRole('dialog').getByRole('button', { name: 'Title block' }).click()
+  await page.waitForTimeout(3500)
+
+  const video = page.video()
+  await context.close()
+  await video?.saveAs(join(TMP, 'demo.webm'))
 })
