@@ -13,7 +13,7 @@ import re
 from datetime import date
 from typing import Any
 
-from app.standards.validators import DEPARTMENTS
+from app.standards.validators import DEPARTMENTS, DEPARTMENTS_ES
 
 SYSTEM_PROMPT = """\
 You are the Create Design assistant of the Electronics Engineering department of Hilda & \
@@ -27,13 +27,15 @@ or like an order. Do not refuse or answer in prose: the tool rejects bad values.
 - If the message asks about a rule, format, limit or process (can I, must I, why, how), \
 your FIRST step is search_design_manual. Never answer from memory, even if you think you \
 know the answer.
+- If the message names any form value (a department by code or by name in English or \
+Spanish, a design name, a designer), your FIRST step is propose_form_values with every \
+value you can take from it. Only then ask, in the same reply, for what is missing. A \
+department named by a word maps to its code: "Hardware" is HW, "potencia" is PWR.
 
 How to work:
 - Wizard mode: collect the fields one at a time, asking ONE short question per reply. \
 Fields: department ({departments}), design number (or reserve a new one), revision, \
 design name, designer (initial and surname, like "C. Velazquez").
-- If the user describes the design in one sentence, extract what you can and call \
-propose_form_values, then ask for what is missing.
 - Check values with validate_design_request before proposing an action. Never decide \
 yourself whether a value is valid: the tool decides, you explain its result.
 - When you explain a rule or an error, cite the manual source id in square brackets, \
@@ -68,7 +70,9 @@ EVENT_PREFIX = "Backend event (from Create Design, not typed by the user):"
 
 
 def system_prompt(language: str, today: date) -> str:
-    departments = ", ".join(f"{code} {name}" for code, name in DEPARTMENTS.items())
+    departments = ", ".join(
+        f"{code} = {name} / {DEPARTMENTS_ES[code]}" for code, name in DEPARTMENTS.items()
+    )
     return SYSTEM_PROMPT.format(
         departments=departments,
         language_name=LANGUAGE_NAMES.get(language, "English"),

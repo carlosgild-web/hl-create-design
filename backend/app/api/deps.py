@@ -15,7 +15,7 @@ from app.core.limits import client_ip, get_limiter
 from app.db.session import get_engine
 from app.kicad.exporter import Runner
 from app.llm.base import LLMClient
-from app.llm.factory import make_client
+from app.llm.factory import make_client, switch_options
 from app.sap.client import SapClient
 from app.standards.manual_search import ManualIndex
 
@@ -59,6 +59,11 @@ def llm_factory_dep(settings: SettingsDep) -> LLMFactory:
     return lambda: make_client(settings)
 
 
+def switch_options_dep(settings: SettingsDep) -> Callable[[], list[str]]:
+    """Providers to offer when a turn times out (probes Ollama only when asked)."""
+    return lambda: switch_options(settings)
+
+
 def runner_dep() -> Runner:
     return subprocess.run
 
@@ -87,4 +92,5 @@ EngineDep = Annotated[Engine, Depends(engine_dep)]
 ManualDep = Annotated[ManualIndex, Depends(manual_dep)]
 SapFactoryDep = Annotated[SapFactory, Depends(sap_factory_dep)]
 LLMFactoryDep = Annotated[LLMFactory, Depends(llm_factory_dep)]
+SwitchOptionsDep = Annotated[Callable[[], list[str]], Depends(switch_options_dep)]
 RunnerDep = Annotated[Runner, Depends(runner_dep)]

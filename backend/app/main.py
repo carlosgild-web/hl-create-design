@@ -16,8 +16,24 @@ from app.api import actions, chat, designs
 from app.cleanup import cleanup_designs
 from app.core.config import get_settings
 from app.db.session import get_engine
+from app.llm.factory import current_override
 from app.llm.resolve import current_resolution, resolve_auto
 
+
+def _console_logging() -> None:
+    """Show the app's own INFO lines (each model call, the provider choice) in the console
+    next to uvicorn's. Python's default would drop them (root level WARNING)."""
+    app_log = logging.getLogger("app")
+    if app_log.level == logging.NOTSET:
+        app_log.setLevel(logging.INFO)
+    if not any(getattr(h, "_hl_console", False) for h in app_log.handlers):
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)-9s %(name)s: %(message)s"))
+        handler._hl_console = True  # type: ignore[attr-defined]
+        app_log.addHandler(handler)
+
+
+_console_logging()
 log = logging.getLogger("app.cleanup")
 CLEANUP_EVERY_S = 3600
 
@@ -84,6 +100,14 @@ def health() -> dict[str, str]:
     """Liveness probe. Reports the version and which LLM provider is configured."""
     configured = get_settings().llm_provider
     resolved = current_resolution() if configured == "auto" else None
+    override = current_override()
+    if override is not None:  # switched in the UI after a stuck turn
+        return {
+            "status": "ok",
+            "version": __version__,
+            "llm_provider": override.provider,
+            "llm_note": f"switched by the user to {override.provider} ({override.model})",
+        }
     return {
         "status": "ok",
         "version": __version__,

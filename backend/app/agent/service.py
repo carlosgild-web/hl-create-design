@@ -5,13 +5,14 @@ Used by `POST /api/chat` (as server-sent events) and by `python -m app.cli chat`
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
 from sqlalchemy import Engine
 
+from app.agent import runs
 from app.agent.loop import AgentEvent, RunOutcome, run_agent
 from app.agent.prompts import system_prompt, user_message
 from app.agent.tools import ToolContext, ToolRegistry
@@ -32,6 +33,8 @@ class AgentDeps:
     manual: ManualIndex
     registry: ToolRegistry = field(default_factory=ToolRegistry)
     today: date | None = None
+    # Which providers the UI may offer when a turn times out (`POST /api/llm/switch`).
+    switch_options: Callable[[], list[str]] = field(default=lambda: [])
 
 
 def model_history(stored: list[dict[str, Any]]) -> list[Message]:
@@ -99,8 +102,10 @@ def chat_turn(
     )
     trace = AgentTrace(client.provider, client.model, deps.settings.agent_max_iterations)
     outcome = RunOutcome()
+    cancel = runs.register(run_id)
+    yield AgentEvent("run", {"id": run_id})
     try:
-        yield from run_agent(
+        for event in run_agent(
             client,
             deps.registry,
             ctx,
@@ -108,8 +113,14 @@ def chat_turn(
             max_iterations=deps.settings.agent_max_iterations,
             trace=trace,
             outcome=outcome,
-        )
+            cancel=cancel,
+            timeout_s=deps.settings.agent_turn_timeout_s,
+        ):
+            if event.data.get("code") == "turn_timeout":
+                event = AgentEvent("error", {**event.data, "can_switch_to": deps.switch_options()})
+            yield event
     finally:
+        runs.release(run_id)
         # Also when the client disconnects mid-stream: keep what happened.
         if outcome.status == "running":
             outcome.status = trace.status = "error"

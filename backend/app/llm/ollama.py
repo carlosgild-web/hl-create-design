@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import itertools
 import json
+import logging
 import os
 import re
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -25,6 +27,8 @@ from app.llm.base import ChatTurn, LLMClient, LLMError, Message, ToolCall, ToolS
 DEFAULT_TIMEOUT_S = 180.0
 PROBE_TIMEOUT_S = 3.0
 NUM_CTX = 8192
+
+log = logging.getLogger("app.llm")
 
 OllamaState = Literal["ready", "no_model", "not_running", "not_installed"]
 
@@ -107,19 +111,33 @@ class OllamaClient(LLMClient):
                 }
                 for t in tools
             ]
+        started = time.perf_counter()
         try:
             response = self._http.post("/api/chat", json=body)
         except httpx.TimeoutException as exc:
+            log.warning(
+                "ollama %s: timed out after %.0f s", self.model, time.perf_counter() - started
+            )
             raise LLMError(f"Ollama at {self._base_url} took too long to answer ({exc}).") from exc
         except httpx.HTTPError as exc:
+            log.warning("ollama %s: not reachable (%s)", self.model, type(exc).__name__)
             raise LLMError(
                 f"Ollama is not reachable at {self._base_url}. Start Ollama, or set "
                 "OLLAMA_BASE_URL."
             ) from exc
+        ms = (time.perf_counter() - started) * 1000
         if not response.is_success:
+            log.warning("ollama %s: HTTP %d in %.0f ms", self.model, response.status_code, ms)
             raise LLMError(self._error_text(response))
 
         data = response.json()
+        log.info(
+            "ollama %s: HTTP 200 in %.0f ms, %s+%s tokens",
+            self.model,
+            ms,
+            data.get("prompt_eval_count", "?"),
+            data.get("eval_count", "?"),
+        )
         message = data.get("message") or {}
         content = _THINK_RE.sub("", message.get("content") or "").strip()
         offered = {t.name for t in tools}

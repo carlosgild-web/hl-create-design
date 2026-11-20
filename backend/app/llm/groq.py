@@ -8,6 +8,7 @@ running the tool can fix (no key, rate limit, unknown model) say what to do.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 from collections.abc import Callable
@@ -24,7 +25,11 @@ from app.llm.base import (
     QuotaExhausted,
     ToolCall,
     ToolSpec,
+    report,
+    wait,
 )
+
+log = logging.getLogger("app.llm")
 
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_TIMEOUT_S = 60.0
@@ -91,7 +96,7 @@ class GroqClient(LLMClient):
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_S,
         transport: httpx.BaseTransport | None = None,
-        sleep: Callable[[float], None] = time.sleep,
+        sleep: Callable[[float], None] | None = None,  # tests; default: interruptible wait
     ) -> None:
         if not api_key:
             raise LLMError("LLM_PROVIDER=groq needs GROQ_API_KEY. Set it in .env.")
@@ -153,15 +158,29 @@ class GroqClient(LLMClient):
         )
 
     def _post(self, body: dict[str, Any]) -> httpx.Response:
-        """POST, waiting out per-minute limits (HTTP 429); a daily limit returns at once."""
+        """POST, waiting out per-minute limits (HTTP 429); a daily limit returns at once.
+        Each wait is reported (`report("rate_limited")`) and can be interrupted."""
         for attempt in range(MAX_RETRIES + 1):
+            started = time.perf_counter()
             response = self._http.post("/chat/completions", json=body)
-            if response.status_code != 429 or attempt == MAX_RETRIES:
+            ms = (time.perf_counter() - started) * 1000
+            if response.status_code != 429:
+                _log_call(self.model, response, ms)
                 return response
             limit = rate_limit(response)
+            log.warning(
+                "groq %s: 429 %s limit, wait %s s (%.0f ms)",
+                self.model,
+                limit.scope,
+                f"{limit.wait:.1f}" if limit.wait is not None else "?",
+                ms,
+            )
+            if attempt == MAX_RETRIES:
+                return response
             if limit.scope == "day" or limit.wait is None or limit.wait > MAX_WAIT_S:
                 return response
-            self._sleep(limit.wait + 0.5)
+            report("rate_limited", provider=self.provider, scope=limit.scope, wait_s=limit.wait)
+            wait(limit.wait + 0.5, self._sleep)
         return response  # pragma: no cover
 
     def probe(
@@ -222,6 +241,19 @@ def _human(seconds: float) -> str:
     if minutes < 60:
         return f"{max(minutes, 1)} min"
     return f"{minutes // 60} h {minutes % 60} min"
+
+
+def _log_call(model: str, response: httpx.Response, ms: float) -> None:
+    tokens = ""
+    if response.is_success:
+        try:
+            usage = response.json().get("usage") or {}
+            tokens = (
+                f", {usage.get('prompt_tokens', '?')}+{usage.get('completion_tokens', '?')} tokens"
+            )
+        except ValueError:
+            pass
+    log.info("groq %s: HTTP %d in %.0f ms%s", model, response.status_code, ms, tokens)
 
 
 def rate_limit(response: httpx.Response) -> RateLimit:

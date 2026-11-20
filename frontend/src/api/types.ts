@@ -65,6 +65,9 @@ export type RecentDesign = {
 
 export type PreviewTarget = { department: string; design_number: string; revision: string }
 
+/** A provider the user can move to after a stuck turn (`POST /api/llm/switch`). */
+export type SwitchTarget = 'ollama' | 'fake'
+
 /** One server-sent event of `POST /api/chat`. */
 export type ChatEvent =
   | { type: 'conversation'; data: { id: string } }
@@ -77,7 +80,12 @@ export type ChatEvent =
   | { type: 'form_proposal'; data: { fields: Partial<FormValues> } }
   | { type: 'pending_action'; data: { action: Action } }
   | { type: 'message'; data: { role: 'assistant'; content: string } }
-  | { type: 'error'; data: { message: string } }
+  | { type: 'run'; data: { id: number } }
+  | { type: 'status'; data: { kind: 'rate_limited'; wait_s: number; provider: string; scope?: string } }
+  | {
+      type: 'error'
+      data: { message: string; code?: string; timeout_s?: number; can_switch_to?: SwitchTarget[] }
+    }
   | {
       type: 'notice'
       data: { code: 'provider_switched'; from: string; to: string; model: string; reason: string }

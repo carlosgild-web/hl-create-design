@@ -6,22 +6,29 @@
 3. The run makes at most `max_iterations` model calls, the final answer included: the
    last allowed call offers no tools, so the model must answer with what it has.
 
+Each model call runs in a worker thread, so the loop can pass on what the client reports
+while it waits (`status`, e.g. a rate limit), stop when the user cancels, and end the turn
+after `AGENT_TURN_TIMEOUT_S` (decision 0017).
+
 The loop yields events for the UI as they happen (`tool_call`, `tool_result`,
-`form_proposal`, `pending_action`, `message`, `notice`, `error`) and records everything in an
-`AgentTrace` (invariant 6). It never executes a side effect: the gated tools only open
+`form_proposal`, `pending_action`, `message`, `notice`, `status`, `error`) and records
+everything in an `AgentTrace` (invariant 6). It never executes a side effect: the gated tools only open
 confirmation cards (invariant 2).
 """
 
 from __future__ import annotations
 
+import queue
+import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Generator, Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
 from app.agent.tools import ToolContext, ToolRegistry
 from app.agent.trace import AgentTrace
-from app.llm.base import LLMClient, LLMError, Message
+from app.llm.base import ChatTurn, LLMClient, LLMError, Message, ToolSpec, call_with
 
 LIMIT_FALLBACK = (
     "I couldn't finish within the steps allowed for one answer. Please tell me what you "
@@ -42,7 +49,7 @@ class RunOutcome:
 
     new_messages: list[Message] = field(default_factory=list)
     answer: str = ""
-    status: str = "running"  # answered | limit | error
+    status: str = "running"  # answered | limit | error | cancelled | timeout
 
 
 def _notice(client: LLMClient, trace: AgentTrace, iteration: int) -> Iterator[AgentEvent]:
@@ -54,6 +61,58 @@ def _notice(client: LLMClient, trace: AgentTrace, iteration: int) -> Iterator[Ag
         yield AgentEvent("notice", notice)
 
 
+class RunStopped(Exception):
+    """The run ends early: `status` is "cancelled" (the user pressed Stop) or "timeout"."""
+
+    def __init__(self, status: str) -> None:
+        super().__init__(status)
+        self.status = status
+
+
+_executor = ThreadPoolExecutor(max_workers=8, thread_name_prefix="model-call")
+POLL_S = 0.2
+
+
+def _model_call(
+    client: LLMClient,
+    conversation: list[Message],
+    offered: list[ToolSpec],
+    *,
+    cancel: threading.Event | None,
+    deadline: float | None,
+) -> Generator[AgentEvent, None, ChatTurn]:
+    """Run `client.chat` in a worker thread. Meanwhile yield what the client reports (e.g.
+    `status` rate_limited) and stop waiting on cancel or when the turn's time is up."""
+    reports: queue.Queue[tuple[str, dict[str, Any]]] = queue.Queue()
+    stop = threading.Event()  # tells the client to stop waiting out a rate limit
+    future = _executor.submit(
+        call_with,
+        lambda kind, data: reports.put((kind, data)),
+        stop,
+        lambda: client.chat(conversation, offered),
+    )
+    try:
+        while True:
+            try:
+                kind, data = reports.get(timeout=POLL_S)
+                yield AgentEvent("status", {"kind": kind, **data})
+                continue
+            except queue.Empty:
+                pass
+            if cancel is not None and cancel.is_set():
+                raise RunStopped("cancelled")
+            if deadline is not None and time.monotonic() >= deadline:
+                raise RunStopped("timeout")
+            if future.done():
+                while not reports.empty():  # anything reported just before the end
+                    kind, data = reports.get_nowait()
+                    yield AgentEvent("status", {"kind": kind, **data})
+                return future.result()  # raises the client's LLMError, if any
+    finally:
+        # A call in flight finishes in the background; its result is dropped.
+        stop.set()
+
+
 def run_agent(
     client: LLMClient,
     registry: ToolRegistry,
@@ -63,8 +122,43 @@ def run_agent(
     max_iterations: int,
     trace: AgentTrace,
     outcome: RunOutcome,
+    cancel: threading.Event | None = None,
+    timeout_s: float | None = None,
 ) -> Iterator[AgentEvent]:
-    """`messages` = system prompt + history + the new user message."""
+    """`messages` = system prompt + history + the new user message. `cancel` stops the run
+    (Stop button); `timeout_s` caps the whole turn (`AGENT_TURN_TIMEOUT_S`)."""
+    deadline = time.monotonic() + timeout_s if timeout_s else None
+    try:
+        yield from _run(
+            client, registry, ctx, messages, max_iterations, trace, outcome, cancel, deadline
+        )
+    except RunStopped as stopped:
+        outcome.status = trace.status = stopped.status
+        if stopped.status == "timeout":
+            trace.error = f"no answer within {timeout_s:g} s"
+            yield AgentEvent(
+                "error",
+                {
+                    "code": "turn_timeout",
+                    "message": f"The model did not answer within {timeout_s:g} s.",
+                    "timeout_s": timeout_s,
+                },
+            )
+        else:
+            trace.error = "stopped by the user"
+
+
+def _run(
+    client: LLMClient,
+    registry: ToolRegistry,
+    ctx: ToolContext,
+    messages: list[Message],
+    max_iterations: int,
+    trace: AgentTrace,
+    outcome: RunOutcome,
+    cancel: threading.Event | None,
+    deadline: float | None,
+) -> Iterator[AgentEvent]:
     conversation = list(messages)
     trace.record_input(conversation)
     specs = registry.specs
@@ -74,7 +168,9 @@ def run_agent(
         offered = [] if last_call else specs
         started = time.perf_counter()
         try:
-            turn = client.chat(conversation, offered)
+            turn = yield from _model_call(
+                client, conversation, offered, cancel=cancel, deadline=deadline
+            )
         except LLMError as exc:
             yield from _notice(client, trace, iteration)  # e.g. switched, then that failed
             trace.status, trace.error = "error", str(exc)
@@ -106,6 +202,8 @@ def run_agent(
             yield AgentEvent("thinking", {"content": turn.content.strip()})
 
         for call in turn.tool_calls:
+            if cancel is not None and cancel.is_set():  # no card opens after Stop
+                raise RunStopped("cancelled")
             yield AgentEvent(
                 "tool_call", {"id": call.id, "name": call.name, "arguments": call.arguments}
             )

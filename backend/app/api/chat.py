@@ -1,8 +1,9 @@
 """`POST /api/chat`: one turn with the assistant, streamed as server-sent events.
 
-Events, in order: `conversation` {id}; then any of `thinking`, `tool_call`,
-`tool_result`, `form_proposal`, `pending_action`, `message`, `error`; finally `done`
-{conversation_id, run_id, status}.
+Events, in order: `conversation` {id}; `run` {id} (for Stop); then any of `thinking`,
+`status` (e.g. {kind: rate_limited, wait_s}), `tool_call`, `tool_result`, `form_proposal`,
+`pending_action`, `notice`, `message`, `error` (a stuck turn: code `turn_timeout` with
+`can_switch_to`); finally `done` {conversation_id, run_id, status}.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.agent import runs
 from app.agent.loop import AgentEvent
 from app.agent.service import AgentDeps, chat_turn
 from app.api.deps import (
@@ -24,9 +26,11 @@ from app.api.deps import (
     RateLimited,
     SapFactoryDep,
     SettingsDep,
+    SwitchOptionsDep,
 )
 from app.db import store
 from app.llm.base import LLMError
+from app.llm.factory import SwitchUnavailable, switch_to
 
 router = APIRouter(prefix="/api", tags=["assistant"])
 
@@ -56,6 +60,7 @@ def chat(
     manual: ManualDep,
     sap_factory: SapFactoryDep,
     llm_factory: LLMFactoryDep,
+    switch_options: SwitchOptionsDep,
 ) -> StreamingResponse:
     form = {k[:40]: v[:200] for k, v in body.form.items()}
 
@@ -73,7 +78,12 @@ def chat(
             return
         with sap_factory() as sap:
             deps = AgentDeps(
-                settings=settings, engine=engine, client=client, sap=sap, manual=manual
+                settings=settings,
+                engine=engine,
+                client=client,
+                sap=sap,
+                manual=manual,
+                switch_options=switch_options,
             )
             for event in chat_turn(
                 deps,
@@ -116,3 +126,27 @@ def get_run(run_id: int, engine: EngineDep) -> dict:
     if run is None:
         raise HTTPException(404, "Run not found")
     return run
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel_run(run_id: int) -> dict:
+    """The Stop button: the run ends as `cancelled` at its next check (within ~0.2 s while
+    it waits for the model; no card opens after this)."""
+    if not runs.cancel(run_id):
+        raise HTTPException(404, "This run is not running")
+    return {"id": run_id, "cancelling": True}
+
+
+class SwitchRequest(BaseModel):
+    to: Literal["ollama", "fake"]
+
+
+@router.post("/llm/switch")
+def switch_provider(body: SwitchRequest, settings: SettingsDep) -> dict:
+    """The user's choice after a stuck turn: answer with Ollama or the demo model from now
+    on (this process). Touches no files and no SAP."""
+    try:
+        client = switch_to(settings, body.to)
+    except SwitchUnavailable as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {"provider": client.provider, "model": client.model}

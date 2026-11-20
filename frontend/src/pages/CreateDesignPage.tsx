@@ -115,8 +115,11 @@ export default function CreateDesignPage() {
             timeline={chat.timeline}
             actions={chat.actions}
             busy={chat.busy}
+            activity={chat.activity}
             onSend={(text) => void chat.send(text)}
-            onStop={chat.stop}
+            onStop={() => void chat.stop()}
+            onNewConversation={chat.reset}
+            onSwitch={(to) => void chat.switchTo(to)}
             onActionChange={onActionChange}
             onUseNumber={useNumber}
             onShowPreview={showPreview}

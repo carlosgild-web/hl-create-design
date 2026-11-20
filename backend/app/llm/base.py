@@ -6,9 +6,14 @@ Each client translates these types to and from its provider's API. Nothing outsi
 
 from __future__ import annotations
 
+import threading
+import time
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
+
+T = TypeVar("T")
 
 Role = Literal["system", "user", "assistant", "tool"]
 
@@ -103,3 +108,46 @@ class LLMClient(ABC):
 
 class QuotaExhausted(LLMError):
     """The provider's quota for today is used up: waiting a minute will not help."""
+
+
+class CallInterrupted(LLMError):
+    """The caller stopped waiting (the user pressed Stop, or the turn ran out of time)."""
+
+
+# --- per-call context ------------------------------------------------------------------
+# The agent runs each `chat()` in a worker thread with a listener and a stop flag, so a
+# client can say "waiting 40 s for a rate limit" while it waits, and stop waiting when told.
+# Thread-local, so a client shared by several requests reports to the right one.
+
+Listener = Callable[[str, dict[str, Any]], None]
+_call = threading.local()
+
+
+def call_with(listener: Listener | None, stop: threading.Event | None, fn: Callable[[], T]) -> T:
+    """Run `fn` (a `chat()` call) with this listener and stop flag for the current thread."""
+    _call.listener, _call.stop = listener, stop
+    try:
+        return fn()
+    finally:
+        _call.listener = _call.stop = None
+
+
+def report(kind: str, **data: Any) -> None:
+    """Tell whoever runs this call what is happening (e.g. kind="rate_limited", wait_s=40)."""
+    listener = getattr(_call, "listener", None)
+    if listener is not None:
+        listener(kind, data)
+
+
+def wait(seconds: float, sleep: Callable[[float], None] | None = None) -> None:
+    """Sleep, unless the caller stops waiting first (then raise `CallInterrupted`). A test
+    `sleep` is used as is."""
+    stop: threading.Event | None = getattr(_call, "stop", None)
+    if sleep is not None:
+        sleep(seconds)
+    elif stop is not None:
+        stop.wait(seconds)
+    else:
+        time.sleep(seconds)
+    if stop is not None and stop.is_set():
+        raise CallInterrupted("stopped while waiting")

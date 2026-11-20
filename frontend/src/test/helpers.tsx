@@ -23,6 +23,23 @@ export function sseResponse(events: [string, unknown][]): Response {
   return new Response(sseBody(events), { headers: { 'Content-Type': 'text/event-stream' } })
 }
 
+/** A chat stream that stays open: `send` more events, then `close`. For Stop and progress. */
+export function openStream(first: [string, unknown][]) {
+  let controller!: ReadableStreamDefaultController<Uint8Array>
+  const encoder = new TextEncoder()
+  const body = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c
+      c.enqueue(encoder.encode(sseBody(first)))
+    },
+  })
+  return {
+    response: new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }),
+    send: (events: [string, unknown][]) => controller.enqueue(encoder.encode(sseBody(events))),
+    close: () => controller.close(),
+  }
+}
+
 export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,

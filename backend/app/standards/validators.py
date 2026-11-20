@@ -55,6 +55,14 @@ DEPARTMENTS: dict[str, str] = {
     "EMB": "Embedded Boards",
     "TFX": "Test Fixtures",
 }
+# The Spanish names, as SAP has them (sap-mock/seed/departments.json): for the UI and the
+# assistant, which match a department named in either language.
+DEPARTMENTS_ES: dict[str, str] = {
+    "HW": "Diseño de Hardware",
+    "PWR": "Electrónica de Potencia",
+    "EMB": "Placas Embebidas",
+    "TFX": "Utillajes de Prueba",
+}
 
 
 def validate_department(code: str) -> FieldCheck:

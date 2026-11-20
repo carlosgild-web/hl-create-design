@@ -185,6 +185,40 @@ SCENARIOS: tuple[Scenario, ...] = (
         ),
         tags=("happy", "fill"),
     ),
+    # The UI's "Try an example" button sends exactly these texts (frontend i18n
+    # `chat.example.message`): the department must reach the form, not only a question.
+    *(
+        Scenario(
+            f"example-button-fill-{lang}",
+            f"The 'Try an example' message ({lang.upper()}) fills the department",
+            (
+                Turn(
+                    text,
+                    [
+                        call("propose_form_values", department=HW, name=name),
+                        say(question),
+                    ],
+                    language=lang,
+                ),
+            ),
+            Expect(tools=("propose_form_values",), form={"department": "HW"}),
+            tags=("fill",),
+        )
+        for lang, text, name, question in (
+            (
+                "en",
+                "New controller board for the drilling machine, Hardware.",
+                "Drilling Machine Controller",
+                "Who is the designer?",
+            ),
+            (
+                "es",
+                "Nueva placa controladora para la taladradora, Hardware.",
+                "Controladora Taladradora",
+                "¿Quién es el diseñador?",
+            ),
+        )
+    ),
     Scenario(
         "wizard-reserve-then-create",
         "Reserve a number, then create revision A with it",

@@ -28,7 +28,7 @@ def test_plain_answer_is_one_model_call(deps, engine):
     d = deps([say("Hi! Which department?")])
     out = events(d)
 
-    assert [e.type for e in out] == ["conversation", "message", "done"]
+    assert [e.type for e in out] == ["conversation", "run", "message", "done"]
     done = out[-1].data
     assert done["status"] == "answered"
     run = store.get_run(engine, done["run_id"])
@@ -40,7 +40,14 @@ def test_tool_results_go_back_to_the_model_and_into_the_trace(deps, engine):
     d = deps([call("sap_get_design", design_number="HL-HW-26-0042"), say("It is IN_WORK.")])
     out = events(d, text="status of HL-HW-26-0042?")
 
-    assert [e.type for e in out] == ["conversation", "tool_call", "tool_result", "message", "done"]
+    assert [e.type for e in out] == [
+        "conversation",
+        "run",
+        "tool_call",
+        "tool_result",
+        "message",
+        "done",
+    ]
     second_call = d.client.calls[1].messages
     assert second_call[-1].role == "tool"
     assert '"status": "IN_WORK"' in second_call[-1].content
@@ -72,7 +79,7 @@ def test_provider_failure_is_an_error_event_and_a_stored_run(deps, engine):
 
     out = events(deps([broken]))
 
-    assert [e.type for e in out] == ["conversation", "error", "done"]
+    assert [e.type for e in out] == ["conversation", "run", "error", "done"]
     run = store.get_run(engine, out[-1].data["run_id"])
     assert run["status"] == "error"
     assert run["trace"]["error"] == "Ollama is not reachable"
@@ -139,8 +146,8 @@ def test_a_provider_switch_is_announced_and_traced(settings, engine, sap, manual
     d = AgentDeps(settings=settings, engine=engine, client=client, sap=sap, manual=manual)
     out = events(d)
 
-    assert [e.type for e in out] == ["conversation", "notice", "message", "done"]
-    assert out[1].data["to"] == "fake" and out[1].data["code"] == "provider_switched"
+    assert [e.type for e in out] == ["conversation", "run", "notice", "message", "done"]
+    assert out[2].data["to"] == "fake" and out[2].data["code"] == "provider_switched"
     trace = store.get_run(engine, out[-1].data["run_id"])["trace"]
     [notice] = [s for s in trace["steps"] if s["type"] == "notice"]
     assert notice["from"] == "groq" and "daily" in notice["reason"]
@@ -165,5 +172,5 @@ def test_the_switch_is_announced_even_when_the_fallback_fails(settings, engine, 
     d = AgentDeps(settings=settings, engine=engine, client=client, sap=sap, manual=manual)
     out = events(d)
 
-    assert [e.type for e in out] == ["conversation", "notice", "error", "done"]
-    assert out[1].data["to"] == "ollama"
+    assert [e.type for e in out] == ["conversation", "run", "notice", "error", "done"]
+    assert out[2].data["to"] == "ollama"

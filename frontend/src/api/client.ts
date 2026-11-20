@@ -5,6 +5,7 @@ import type {
   RecentDesign,
   RunTrace,
   PreviewTarget,
+  SwitchTarget,
 } from './types'
 
 async function json<T>(response: Response): Promise<T> {
@@ -17,6 +18,18 @@ export const getDepartments = () => fetch('/api/departments').then((r) => json<D
 export const getRecentDesigns = () => fetch('/api/designs').then((r) => json<RecentDesign[]>(r))
 
 export const getRun = (id: number) => fetch(`/api/runs/${id}`).then((r) => json<RunTrace>(r))
+
+/** The Stop button: the run ends as `cancelled` and the stream sends `done`. */
+export const cancelRun = (id: number) =>
+  fetch(`/api/runs/${id}/cancel`, { method: 'POST' }).then((r) => r.ok)
+
+/** After a stuck turn: answer with Ollama or the demo model from now on. */
+export const switchProvider = (to: SwitchTarget) =>
+  fetch('/api/llm/switch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to }),
+  }).then((r) => json<{ provider: string; model: string }>(r))
 
 /** The form opens a confirmation card; nothing happens until `confirmAction`. */
 export const proposeAction = (
