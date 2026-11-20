@@ -110,17 +110,94 @@ def _say(text: str = "") -> None:
     print(text, file=sys.stderr, flush=True)
 
 
-def ask_terminal(question: str, yes_letter: str) -> bool | None:
-    """Wait for the person at the terminal: Enter takes the suggestion (the capital letter)."""
-    if not sys.stdin.isatty():
+PROMPT_TIMEOUT_S = 10
+POLL_S = 0.05
+
+
+class Keys:
+    """One key at a time from the console, without blocking (`poll` returns None when no
+    key is waiting). Windows uses `msvcrt`; elsewhere a whole line is read once `select`
+    says one is ready (a terminal hands over input line by line)."""
+
+    def __init__(self) -> None:
+        self._buffer = ""
+
+    def poll(self) -> str | None:
+        if self._buffer:
+            key, self._buffer = self._buffer[0], self._buffer[1:]
+            return key
+        if sys.platform == "win32":
+            import msvcrt
+
+            return msvcrt.getwche() if msvcrt.kbhit() else None
+        import select
+
+        ready, _, _ = select.select([sys.stdin], [], [], 0)
+        if not ready:
+            return None
+        line = sys.stdin.readline()
+        if not line:
+            raise EOFError
+        self._buffer = line.rstrip("\n") + "\r"
+        return self.poll()
+
+
+def read_answer(
+    timeout_s: float,
+    keys: Keys | None = None,
+    *,
+    clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> str | None:
+    """A line typed by the person, or None if no key came within `timeout_s`. Once they
+    start typing there is no time limit: they finish with Enter."""
+    keys = keys or Keys()
+    deadline = clock() + timeout_s
+    typed = ""
+    started = False
+    while True:
+        key = keys.poll()
+        if key is None:
+            if not started and clock() >= deadline:
+                return None
+            sleep(POLL_S)
+            continue
+        started = True
+        if key in ("\r", "\n"):
+            return typed
+        if key == "\x03":
+            raise KeyboardInterrupt
+        if key in ("\b", "\x7f"):
+            typed = typed[:-1]
+        else:
+            typed += key
+
+
+def ask_terminal(
+    question: str,
+    yes_letter: str,
+    *,
+    timeout_s: float = PROMPT_TIMEOUT_S,
+    reader: Callable[[float], str | None] = read_answer,
+    interactive: Callable[[], bool] = lambda: sys.stdin.isatty(),
+) -> bool | None:
+    """Ask the person at the terminal. Enter takes the suggestion (the capital letter), and
+    so does silence: after `timeout_s` without a key the suggestion is taken, so an
+    unattended start never hangs. None when there is no terminal at all."""
+    if not interactive():
         return None
-    sys.stderr.write(question)
+    sys.stderr.write(f"{question}(suggestion in {timeout_s:g} s) ")
     sys.stderr.flush()
     try:
-        answer = input().strip().lower()
+        answer = reader(timeout_s)
     except EOFError:  # e.g. `start.cmd < nul`: Windows reports NUL as a terminal
         sys.stderr.write("\n")
         return None
+    if answer is None:
+        sys.stderr.write(f"\n  No answer in {timeout_s:g} s: taking the suggestion.\n")
+        return True
+    sys.stderr.write("\n")
+    answer = answer.strip().lower()
     return answer == "" or answer.startswith(yes_letter)
 
 

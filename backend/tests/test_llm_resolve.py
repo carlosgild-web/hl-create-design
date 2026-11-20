@@ -480,3 +480,76 @@ def test_fallback_is_ollama_when_ready_else_the_demo(monkeypatch):
     assert factory.fallback_client(settings()).provider == "ollama"
     monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("not_running", ""))
     assert factory.fallback_client(settings()).provider == "fake"
+
+
+# --- the start-script question times out (decision 0017, block E) ------------------------
+
+
+class FakeKeys:
+    """Keys that arrive at given times on a fake clock."""
+
+    def __init__(self, clock, timed_keys):
+        self.clock, self.pending = clock, list(timed_keys)
+
+    def poll(self):
+        if self.pending and self.clock.now >= self.pending[0][0]:
+            return self.pending.pop(0)[1]
+        return None
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
+def read(timed_keys, timeout=10):
+    clock = FakeClock()
+    answer = cli.read_answer(timeout, FakeKeys(clock, timed_keys), clock=clock, sleep=clock.sleep)
+    return answer, clock.now
+
+
+def test_no_key_within_the_timeout_gives_none():
+    answer, waited = read([])
+    assert answer is None and 10 <= waited < 10.2
+
+
+def test_typing_stops_the_countdown():
+    # first key at 9 s, Enter at 30 s: still read, no timeout once typing started
+    answer, waited = read([(9, "n"), (30, "\r")])
+    assert answer == "n" and waited >= 30
+
+
+def test_enter_alone_and_backspace():
+    assert read([(1, "\r")])[0] == ""
+    assert read([(1, "d"), (1, "x"), (1, "\b"), (1, "\r")])[0] == "d"
+
+
+def test_ask_terminal_takes_the_suggestion_after_the_timeout(capsys):
+    yes = cli.ask_terminal("Use Groq? [Y/n] ", "y", reader=lambda t: None, interactive=lambda: True)
+    assert yes is True
+    assert "No answer in 10 s: taking the suggestion" in capsys.readouterr().err
+
+
+def test_ask_terminal_reads_the_answer(capsys):
+    def ask(reply):
+        return cli.ask_terminal("[O/d] ", "o", reader=lambda t: reply, interactive=lambda: True)
+
+    assert ask("") is True and ask("O") is True and ask("d") is False
+    assert "(suggestion in 10 s)" in capsys.readouterr().err
+
+
+def test_a_timeout_on_start_ollama_starts_it():
+    started = []
+
+    def start(s):
+        started.append(1)
+        return OLLAMA_READY
+
+    timed_out = lambda q, y: True  # noqa: E731 - what ask_terminal returns after 10 s
+    assert choose(GROQ_DAILY, OLLAMA_STOPPED, timed_out, start) == "ollama" and started

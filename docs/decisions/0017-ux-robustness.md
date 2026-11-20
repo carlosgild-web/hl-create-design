@@ -119,6 +119,18 @@ and Stop could not reach the backend. The console logged nothing about the model
     layout is chosen with `matchMedia` (`useMediaQuery`); without it (unit tests) the
     desktop layout is used.
 
+## Decision (block E: the start question does not wait forever)
+
+22. `llm-check`'s questions now take the suggestion after **10 s without a key**
+    ("(suggestion in 10 s)", then "No answer in 10 s: taking the suggestion"). This replaces
+    decision 0016's "waits for Enter", at the user's request.
+    - Once a key is pressed there is no limit: the person finishes with Enter.
+    - Keys are polled (`msvcrt` on Windows, `select` elsewhere), so no thread is left
+      blocked on stdin.
+    - A timeout counts as "yes" to the suggestion, so "Start Ollama now? [Y/n]" starts it.
+      Without a terminal (CI, Docker) nothing is asked and Ollama is never started, as
+      before.
+
 ## Consequences
 
 - One extra thread per model call (pool of 8). Tests with `FakeClient` work as before; the
