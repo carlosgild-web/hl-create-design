@@ -146,11 +146,31 @@ def check_fields(fields: dict[str, str], designs_root: Path, lookup: SapLookup) 
     }
     if "design_number" in given:
         content["next_free_revision"] = report.next_revision
+    suggest = _suggestions(request, report.next_revision if "design_number" in given else None)
+    if suggest:
+        content["suggest"] = suggest
     if sap is not None:
         content["sap"] = {"status": sap.status, "material": sap.material, "wbs": sap.wbs}
     if sap_note is not None:
         content["sap_unavailable"] = sap_note
     return content
+
+
+def number_prefix(department: str, today: date | None = None) -> str:
+    """`HL-HW-26-`: the part of a new design number known before SAP issues it (format
+    only, 01-design-numbering#format; the sequence always comes from SAP)."""
+    return f"HL-{department}-{(today or date.today()).year % 100:02d}-"
+
+
+def _suggestions(request: DesignRequest, next_revision: str | None) -> dict[str, str]:
+    """Values the form can offer before the user types them, from the rules and SAP."""
+    suggest: dict[str, str] = {}
+    department = request.department.strip()
+    if v.validate_department(department).ok:
+        suggest["design_number_prefix"] = number_prefix(department)
+    if next_revision:
+        suggest["revision"] = next_revision
+    return suggest
 
 
 def normalize_payload(payload: dict[str, str]) -> dict[str, str]:

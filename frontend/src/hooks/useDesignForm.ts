@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { FORM_FIELDS, type FormField, type FormValues, type Issue, type ValueSource } from '@/api/types'
+import { isFilled, isPrefixOnly } from '@/lib/fields'
 
 export const EMPTY_FORM: FormValues = { department: '', design_number: '', revision: '', name: '', designer: '' }
 
@@ -35,7 +36,7 @@ export function useDesignForm() {
     for (const f of FORM_FIELDS) {
       const value = fields[f]
       if (typeof value !== 'string' || !value.trim() || value === now[f]) continue
-      if (!now[f].trim() || from[f] === 'ai') take[f] = value
+      if (!isFilled(f, now[f]) || from[f] === 'ai') take[f] = value
       else suggest[f] = value
     }
     const taken = Object.keys(take) as FormField[]
@@ -89,6 +90,15 @@ export function useDesignForm() {
     [suggestions],
   )
 
+  /** The department's number prefix (`HL-HW-26-`), when the number is empty or still only
+   * a prefix (of another department). Format only: the user types the digits or reserves. */
+  const prefillNumber = useCallback((prefix: string) => {
+    const current = state.current.values.design_number
+    if (current === prefix || (current.trim() && !isPrefixOnly(current))) return
+    setValues((v) => ({ ...v, design_number: prefix }))
+    setSource((s) => Object.fromEntries(Object.entries(s).filter(([f]) => f !== 'design_number')))
+  }, [])
+
   const markCreated = useCallback((design_number: string, revision: string) => {
     setCreated({ values: state.current.values, design_number, revision })
   }, [])
@@ -115,6 +125,7 @@ export function useDesignForm() {
     canUndo: (actionId: string) => actionId in undo,
     propose,
     fillFromSap,
+    prefillNumber,
     undoFill,
     edit,
     takeSuggestion,

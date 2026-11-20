@@ -2,6 +2,7 @@ import { Check } from 'lucide-react'
 
 import type { FormField, FormValues, Validation } from '@/api/types'
 import { useI18n, type MessageKey } from '@/i18n'
+import { isFilled } from '@/lib/fields'
 import { cn } from '@/lib/utils'
 
 const STEPS: { key: MessageKey; fields: FormField[] }[] = [
@@ -23,7 +24,7 @@ export function FormStepper({ values, validation, created }: Props) {
   const done = STEPS.map(({ fields }) =>
     fields.length === 0
       ? created
-      : fields.every((f) => values[f].trim() && !validation?.errors.some((e) => e.field === f)),
+      : fields.every((f) => isFilled(f, values[f]) && !validation?.errors.some((e) => e.field === f)),
   )
   const current = done.findIndex((d) => !d)
 

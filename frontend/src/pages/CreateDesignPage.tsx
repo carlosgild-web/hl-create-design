@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 
-import { getDepartments, proposeAction } from '@/api/client'
+import { getDepartments, getRecentDesigns, proposeAction } from '@/api/client'
 import { FORM_FIELDS, type Action, type PreviewTarget } from '@/api/types'
 import { AssistantPanel } from '@/components/AssistantPanel'
 import { DesignForm } from '@/components/DesignForm'
@@ -15,6 +15,7 @@ import { useDesignForm } from '@/hooks/useDesignForm'
 import { DESKTOP, useMediaQuery } from '@/hooks/useMediaQuery'
 import { useValidation } from '@/hooks/useValidation'
 import { useI18n } from '@/i18n'
+import { filledValues, isFilled } from '@/lib/fields'
 
 export default function CreateDesignPage() {
   const { lang, t } = useI18n()
@@ -23,6 +24,15 @@ export default function CreateDesignPage() {
 
   const form = useDesignForm()
   const validation = useValidation(form.values)
+  const recentDesigns = useQuery({ queryKey: ['recent-designs'], queryFn: getRecentDesigns, retry: false })
+  const lastDesigner = recentDesigns.data?.[0]?.designer
+
+  // Picking a department pre-fills its number prefix (HL-HW-26-), from the backend's rules.
+  const prefix = validation?.suggest?.design_number_prefix
+  const prefillNumber = form.prefillNumber
+  useEffect(() => {
+    if (prefix && form.values.department && prefix.includes(`-${form.values.department}-`)) prefillNumber(prefix)
+  }, [prefix, form.values.department, prefillNumber])
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const [opening, setOpening] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
@@ -37,7 +47,7 @@ export default function CreateDesignPage() {
 
   const chat = useChat({
     language: lang,
-    getForm: () => Object.fromEntries(FORM_FIELDS.filter((f) => valuesRef.current[f]).map((f) => [f, valuesRef.current[f]])),
+    getForm: () => filledValues(valuesRef.current) as Record<string, string>,
     onFormProposal: form.propose,
   })
 
@@ -46,7 +56,7 @@ export default function CreateDesignPage() {
     try {
       const v = form.values
       const payload = Object.fromEntries(
-        FORM_FIELDS.filter((f) => v[f].trim() && (kind === 'create_design' || (f !== 'design_number' && f !== 'revision'))).map(
+        FORM_FIELDS.filter((f) => isFilled(f, v[f]) && (kind === 'create_design' || (f !== 'design_number' && f !== 'revision'))).map(
           (f) => [f, v[f].trim()],
         ),
       )
@@ -101,6 +111,7 @@ export default function CreateDesignPage() {
       created={form.created}
       sameAsCreated={form.sameAsCreated}
       departments={departments.data ?? []}
+      lastDesigner={lastDesigner}
       busy={opening}
       onChange={form.edit}
       onTakeSuggestion={form.takeSuggestion}
@@ -139,27 +150,39 @@ export default function CreateDesignPage() {
   const recent = <RecentDesigns selected={preview} onSelect={show} />
   const waitingCards = Object.values(chat.actions).filter((a) => a.status === 'pending').length
 
+  if (desktop) {
+    // One screen, no page scroll: the chat (left) and the side tabs scroll inside.
+    return (
+      <div className="flex h-svh min-h-[40rem] flex-col overflow-hidden bg-background">
+        <Header />
+        <main className="mx-auto grid min-h-0 w-full max-w-[100rem] flex-1 grid-cols-[minmax(22rem,2fr)_3fr] gap-4 px-4 pb-4">
+          <div className="min-h-0">{assistant}</div>
+          <div className="flex min-h-0 flex-col gap-3">
+            <div className="shrink-0">{designForm}</div>
+            <Tabs value={sideTab} onValueChange={(v) => setSideTab(v as SideTab)} className="min-h-0 flex-1 gap-2">
+              <TabsList aria-label={t('layout.side')} className="shrink-0">
+                <TabsTrigger value="preview">{t('preview.title')}</TabsTrigger>
+                <TabsTrigger value="recent">{t('recent.title')}</TabsTrigger>
+              </TabsList>
+              {/* pb-14: room for the demo-guide pill, which floats bottom right here */}
+              <TabsContent value="preview" className="min-h-0 flex-1 overflow-y-auto pb-14">
+                {previewPane}
+              </TabsContent>
+              <TabsContent value="recent" className="min-h-0 flex-1 overflow-y-auto pb-14">
+                {recent}
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-svh bg-background">
       <Header />
       {/* pb-20: the floating demo-guide pill (bottom left) never covers the last card */}
-      {desktop ? (
-        <main className="mx-auto grid max-w-7xl items-start gap-4 px-4 pb-20 lg:grid-cols-2">
-          <div className="space-y-4">
-            {designForm}
-            <Tabs value={sideTab} onValueChange={(v) => setSideTab(v as SideTab)}>
-              <TabsList aria-label={t('layout.side')}>
-                <TabsTrigger value="preview">{t('preview.title')}</TabsTrigger>
-                <TabsTrigger value="recent">{t('recent.title')}</TabsTrigger>
-              </TabsList>
-              <TabsContent value="preview">{previewPane}</TabsContent>
-              <TabsContent value="recent">{recent}</TabsContent>
-            </Tabs>
-          </div>
-          {/* The chat keeps a fixed height next to the form; its input is always in view. */}
-          <div className="sticky top-4 h-[calc(100svh-2rem)] min-h-[32rem]">{assistant}</div>
-        </main>
-      ) : (
+      {(
         <main className="mx-auto max-w-7xl px-4 pb-20">
           <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as MobileTab)}>
             <TabsList aria-label={t('layout.sections')} className="sticky top-0 z-10">
@@ -180,7 +203,7 @@ export default function CreateDesignPage() {
             <TabsContent value="form" forceMount className="data-[state=inactive]:hidden">
               {designForm}
             </TabsContent>
-            <TabsContent value="assistant" forceMount className="h-[75svh] data-[state=inactive]:hidden">
+            <TabsContent value="assistant" forceMount className="h-[calc(100svh-9rem)] min-h-96 data-[state=inactive]:hidden">
               {assistant}
             </TabsContent>
             <TabsContent value="preview" className="space-y-4">

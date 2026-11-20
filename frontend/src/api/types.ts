@@ -14,6 +14,8 @@ export type Validation = {
   warnings: Issue[]
   missing?: FormField[]
   next_free_revision?: string
+  /** Values the form can offer before the user types (from the rules and SAP). */
+  suggest?: { design_number_prefix?: string; revision?: string }
   sap?: { status: string; material: string; wbs: string }
   sap_unavailable?: { code: string; message: string; ref?: string }
 }

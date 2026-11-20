@@ -73,7 +73,7 @@ export function DemoGuide({ config = defaultGuide }: { config?: GuideConfig }) {
         <div role="region" aria-label={text(config.pill)} className={cn(FRAME, 'border-b')}>
           {/* One line on phones (the banner took a quarter of the screen): no tag, the text
               cut to one line, the button as an icon. Full text and button from `sm` up. */}
-          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-1.5 text-xs sm:items-start sm:py-2.5">
+          <div className="mx-auto flex max-w-[100rem] items-center gap-3 px-4 py-1.5 text-xs sm:items-start sm:py-2.5">
             <Compass className="mt-0.5 size-4 shrink-0 text-zinc-400 max-sm:hidden" aria-hidden />
             <div className="min-w-0 flex-1 sm:space-y-1">
               <p className="font-mono text-[0.65rem] tracking-[0.12em] text-zinc-400 uppercase max-sm:hidden">
@@ -109,7 +109,8 @@ export function DemoGuide({ config = defaultGuide }: { config?: GuideConfig }) {
           onClick={reopen}
           className={cn(
             FRAME,
-            'fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold shadow-lg hover:bg-zinc-800',
+            // bottom left on phones; bottom right on desktop, where the chat input is bottom left
+            'fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-semibold shadow-lg hover:bg-zinc-800 lg:right-4 lg:left-auto',
           )}
         >
           <Compass className="size-4 text-zinc-400" aria-hidden /> {text(config.pill)}

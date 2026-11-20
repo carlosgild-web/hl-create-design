@@ -166,3 +166,19 @@ def test_cards_from_the_form_show_the_stored_values(api):
 def test_departments_have_spanish_names(api):
     hw = api.get("/api/departments").json()[0]
     assert hw == {"code": "HW", "name": "Hardware Design", "name_es": "Diseño de Hardware"}
+
+
+# --- suggestions before typing (decision 0017, block F) ---------------------------------
+
+
+def test_validate_suggests_the_number_prefix_for_the_department(api):
+    from datetime import date
+
+    result = validate(api, department="PWR")
+    assert result["suggest"] == {"design_number_prefix": f"HL-PWR-{date.today().year % 100:02d}-"}
+    assert "suggest" not in validate(api, department="XX")
+
+
+def test_validate_suggests_the_next_free_revision(api):
+    result = validate(api, department="HW", design_number="HL-HW-26-0042")
+    assert result["suggest"]["revision"] == result["next_free_revision"] == "C"

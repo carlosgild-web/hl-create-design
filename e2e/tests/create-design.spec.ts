@@ -88,7 +88,8 @@ test('reserves a number in SAP from the form and fills it in at once', async ({ 
   await expect(page.getByText('From SAP')).toHaveCount(2)
 
   await card.getByRole('button', { name: 'Undo' }).click()
-  await expect(page.getByLabel('Design number')).toHaveValue('')
+  // back to what was there: the department's prefix, waiting for digits
+  await expect(page.getByLabel('Design number')).toHaveValue(/^HL-PWR-\d{2}-$/)
   await expect(card.getByRole('button', { name: 'Use this number' })).toBeVisible()
 })
 
@@ -127,3 +128,25 @@ test('on a phone: one-line guide banner, tabs, and the chat in view when sending
   await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll')
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
+
+for (const size of [
+  { width: 1440, height: 900 },
+  { width: 1366, height: 768 },
+]) {
+  test(`desktop ${size.width}x${size.height}: one screen, chat left, no page scroll`, async ({ page }) => {
+    await page.setViewportSize(size)
+    await page.goto('/')
+    await page.getByLabel(/describe your design/i).fill('Revision C of the bead sorter vision board')
+    await page.getByRole('button', { name: 'Send' }).click()
+    await expect(page.getByRole('region', { name: 'SAP record' })).toBeVisible()
+
+    expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true)
+    const input = page.getByLabel(/describe your design/i)
+    await expect(input).toBeInViewport()
+    await expect(page.getByRole('button', { name: 'Create design' })).toBeInViewport()
+    // the chat is the left column
+    const chat = (await input.boundingBox())!
+    const form = (await page.getByLabel('Department').boundingBox())!
+    expect(chat.x).toBeLessThan(form.x)
+  })
+}

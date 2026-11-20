@@ -2,7 +2,8 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
 import { validateFields } from '@/api/client'
-import { FORM_FIELDS, type FormValues, type Validation } from '@/api/types'
+import type { FormValues, Validation } from '@/api/types'
+import { filledValues } from '@/lib/fields'
 
 export const VALIDATE_DEBOUNCE_MS = 400
 
@@ -11,7 +12,8 @@ export const VALIDATE_DEBOUNCE_MS = 400
  * keystroke. The backend's validators decide (invariant 1); this only shows the result.
  */
 export function useValidation(values: FormValues): Validation | undefined {
-  const filled = Object.fromEntries(FORM_FIELDS.filter((f) => values[f].trim()).map((f) => [f, values[f]]))
+  // a bare number prefix (HL-HW-26-) is not checked: nothing was typed yet
+  const filled = filledValues(values)
   const key = JSON.stringify(filled)
   const [debounced, setDebounced] = useState(key)
 
