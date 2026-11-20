@@ -83,5 +83,17 @@ export type Decision = { action: Action; http: number }
 export const confirmAction = (id: string) => decide(id, 'confirm')
 export const cancelAction = (id: string) => decide(id, 'cancel')
 
-export const previewUrl = (t: PreviewTarget, format: 'pdf' | 'svg') =>
-  `/api/designs/${t.department}/${t.design_number}/${t.revision}/preview.${format}`
+const designBase = (t: PreviewTarget) => `/api/designs/${t.department}/${t.design_number}/${t.revision}`
+
+export const previewUrl = (t: PreviewTarget, format: 'pdf' | 'svg') => `${designBase(t)}/preview.${format}`
+
+/** The revision folder as a zip (works everywhere, also in Docker). */
+export const projectZipUrl = (t: PreviewTarget) => `${designBase(t)}/project.zip`
+
+export type DesignFiles = { folder: string; project_file: string; can_open: boolean }
+
+export const getDesignFiles = (t: PreviewTarget) => fetch(`${designBase(t)}/files`).then((r) => json<DesignFiles>(r))
+
+/** Start KiCad with the project on the backend's machine (local mode; decision 0019). */
+export const openInKicad = (t: PreviewTarget) =>
+  fetch(`${designBase(t)}/open`, { method: 'POST' }).then((r) => json<{ ok: boolean }>(r))

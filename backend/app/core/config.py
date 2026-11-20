@@ -39,6 +39,9 @@ class Settings(BaseSettings):
 
     # KiCad
     kicad_cli: str = "kicad-cli"
+    # "Open in KiCad" starts the GUI next to kicad-cli on the backend's machine: only useful
+    # when that is the user's own computer (local mode). The Docker image turns it off.
+    kicad_open_enabled: bool = True
 
     # Storage
     designs_root: Path = Path("./data/designs")

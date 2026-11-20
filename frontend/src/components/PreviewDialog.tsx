@@ -1,7 +1,8 @@
-import { Download, ExternalLink, RotateCw, ScanSearch } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { AppWindow, Check, Copy, Download, ExternalLink, FolderArchive, Loader2, RotateCw, ScanSearch } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { previewUrl } from '@/api/client'
+import { getDesignFiles, openInKicad, previewUrl, projectZipUrl } from '@/api/client'
 import type { PreviewTarget } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -64,6 +65,18 @@ function PreviewBody({ target }: { target: PreviewTarget }) {
   const svg = `${previewUrl(target, 'svg')}${attempt ? `?retry=${attempt}` : ''}`
   const pdf = previewUrl(target, 'pdf')
   const folder = target.folder ?? `${target.department}/${target.design_number}/${target.revision}`
+  const files = useQuery({ queryKey: ['design-files', target], queryFn: () => getDesignFiles(target), retry: false })
+  const [opening, setOpening] = useState<'idle' | 'busy' | 'done' | Error>('idle')
+
+  async function open() {
+    setOpening('busy')
+    try {
+      await openInKicad(target)
+      setOpening('done')
+    } catch (error) {
+      setOpening(error instanceof Error ? error : new Error(String(error)))
+    }
+  }
 
   // Tell "no preview" (404) from a failure that a retry may fix.
   async function failed() {
@@ -150,7 +163,21 @@ function PreviewBody({ target }: { target: PreviewTarget }) {
         )}
       </div>
 
-      <DialogFooter>
+      <ProjectFile target={target} />
+
+      <DialogFooter className="flex-wrap">
+        {files.data?.can_open && (
+          <Button size="sm" disabled={opening === 'busy'} aria-busy={opening === 'busy'} onClick={() => void open()}>
+            {opening === 'busy' ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <AppWindow aria-hidden className="size-4" />}
+            {opening === 'busy' ? t('preview.opening') : t('preview.open_kicad')}
+          </Button>
+        )}
+        <Button size="sm" variant="outline" asChild>
+          <a href={projectZipUrl(target)} download={`${target.design_number}_${target.revision}.zip`}>
+            <FolderArchive aria-hidden className="size-4" />
+            {t('preview.download_zip')}
+          </a>
+        </Button>
         <Button size="sm" variant="outline" asChild>
           <a href={pdf} target="_blank" rel="noreferrer">
             <ExternalLink aria-hidden className="size-4" />
@@ -164,9 +191,56 @@ function PreviewBody({ target }: { target: PreviewTarget }) {
           </a>
         </Button>
         <DialogClose asChild>
-          <Button size="sm">{t('preview.close')}</Button>
+          <Button size="sm" variant={files.data?.can_open ? 'outline' : 'default'}>
+            {t('preview.close')}
+          </Button>
         </DialogClose>
       </DialogFooter>
+      {opening === 'done' && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {t('preview.opened')}
+        </p>
+      )}
+      {opening instanceof Error && (
+        <p role="alert" className="text-xs text-destructive">
+          {t('preview.open_failed', { message: opening.message })}
+        </p>
+      )}
     </>
+  )
+}
+
+/** Where the project is, to open it by hand: the full path and a Copy button. */
+function ProjectFile({ target }: { target: PreviewTarget }) {
+  const { t } = useI18n()
+  const files = useQuery({ queryKey: ['design-files', target], queryFn: () => getDesignFiles(target), retry: false })
+  const [copied, setCopied] = useState(false)
+  if (!files.data) return null
+  const path = files.data.project_file
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(path)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false) // no clipboard (http, old browser): the path is selectable
+    }
+  }
+
+  return (
+    <div className="space-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-xs">
+      <p className="font-medium">{t('preview.project_file')}</p>
+      <div className="flex items-center gap-2">
+        <code className="min-w-0 flex-1 truncate font-mono select-all" title={path}>
+          {path}
+        </code>
+        <Button size="xs" variant="outline" onClick={() => void copy()}>
+          {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
+          {copied ? t('preview.copied') : t('preview.copy')}
+        </Button>
+      </div>
+      <p className="text-muted-foreground">{t('preview.how_to_open')}</p>
+    </div>
   )
 }

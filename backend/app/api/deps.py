@@ -14,6 +14,7 @@ from app.core.config import MANUAL_DIR, Settings, get_settings
 from app.core.limits import client_ip, get_limiter
 from app.db.session import get_engine
 from app.kicad.exporter import Runner
+from app.kicad.launcher import Launcher, popen_detached
 from app.llm.base import LLMClient
 from app.llm.factory import make_client, switch_options
 from app.sap.client import SapClient
@@ -68,6 +69,10 @@ def runner_dep() -> Runner:
     return subprocess.run
 
 
+def launcher_dep() -> Launcher:
+    return popen_detached
+
+
 def rate_limit_dep(request: Request, settings: SettingsDep) -> None:
     """Per-IP limit on the requests that cost tokens or change things (`RATE_LIMIT_PER_MIN`)."""
     if settings.rate_limit_per_min <= 0:
@@ -94,3 +99,4 @@ SapFactoryDep = Annotated[SapFactory, Depends(sap_factory_dep)]
 LLMFactoryDep = Annotated[LLMFactory, Depends(llm_factory_dep)]
 SwitchOptionsDep = Annotated[Callable[[], list[str]], Depends(switch_options_dep)]
 RunnerDep = Annotated[Runner, Depends(runner_dep)]
+LauncherDep = Annotated[Launcher, Depends(launcher_dep)]
