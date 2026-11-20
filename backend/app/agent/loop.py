@@ -12,8 +12,8 @@ after `AGENT_TURN_TIMEOUT_S` (decision 0017).
 
 The loop yields events for the UI as they happen (`tool_call`, `tool_result`,
 `form_proposal`, `pending_action`, `message`, `notice`, `status`, `error`) and records
-everything in an `AgentTrace` (invariant 6). It never executes a side effect: the gated tools only open
-confirmation cards (invariant 2).
+everything in an `AgentTrace` (invariant 6). It never executes a side effect: the gated
+tools only open confirmation cards (invariant 2).
 """
 
 from __future__ import annotations

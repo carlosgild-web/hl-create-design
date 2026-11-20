@@ -25,12 +25,12 @@ from sqlalchemy import Engine
 
 from app.core.config import Settings
 from app.db import store
-from app.designs import check_design_request
+from app.designs import SapLookup, check_design_request, check_fields, issue_dict
 from app.llm.base import ToolCall, ToolSpec
 from app.sap.client import SapClient, SapDesign, SapError
 from app.standards import validators as v
 from app.standards.manual_search import ManualIndex
-from app.standards.validators import DesignRequest, Issue, UnsafePathError
+from app.standards.validators import DesignRequest, UnsafePathError
 
 FREE_TEXT_MAX = 200
 GATED_TOOLS = frozenset({"request_create_design", "request_reserve_number"})
@@ -64,8 +64,7 @@ class ToolResult:
         return json.dumps(self.content, ensure_ascii=False)
 
 
-def _issue(issue: Issue) -> dict[str, str]:
-    return {"field": issue.field, "code": issue.code, "message": issue.message, "ref": issue.ref}
+_issue = issue_dict
 
 
 def _error(code: str, message: str, ref: str | None = None) -> ToolResult:
@@ -157,52 +156,27 @@ def _sap_lookup(ctx: ToolContext, number: str) -> tuple[SapDesign | None, ToolRe
         return None, _sap_error(exc)
 
 
+def sap_lookup_for(sap: SapClient) -> SapLookup:
+    """`check_fields`' SAP access: the record, or a note (with its manual ref) on failure."""
+
+    def lookup(number: str) -> tuple[SapDesign | None, dict[str, Any] | None]:
+        try:
+            return sap.get_design(number), None
+        except SapError as exc:
+            return None, _sap_error(exc).content["error"]
+
+    return lookup
+
+
 def validate_design_request(args: DesignFieldsArgs, ctx: ToolContext) -> ToolResult:
-    """Check the fields given so far. Missing fields are listed, not reported as errors."""
+    """Check the fields given so far. Missing fields are listed, not reported as errors.
+    The same check as the form's inline validation (`app.designs.check_fields`)."""
     given = {name: getattr(args, name) for name in FORM_FIELDS if getattr(args, name)}
     if not given:
         return _error("no_fields", "Pass at least one field to check.")
-    request = DesignRequest(**{name: given.get(name, "") for name in FORM_FIELDS})
-
-    sap: SapDesign | None = None
-    sap_note: dict[str, Any] | None = None
-    number_ok = v.validate_design_number(request.design_number, request.department or None).ok
-    if request.design_number and number_ok:
-        sap, failure = _sap_lookup(ctx, request.design_number.strip())
-        if failure is not None:
-            sap_note = failure.content["error"]
-
-    try:
-        report = check_design_request(
-            request,
-            ctx.settings.designs_root,
-            sap=sap,
-            require_sap=bool(request.design_number and number_ok and sap_note is None),
-        )
-    except UnsafePathError as exc:
-        return ToolResult({"ok": False, "errors": [_issue(exc.issue)]})
-
-    # Without a design number the revision can only be checked for its format.
-    sequence_codes = {"rev_first_not_a", "rev_jump", "rev_reused"}
-    errors = [
-        _issue(e)
-        for e in report.errors
-        if (e.field in given or e.field == "status")
-        and not ("design_number" not in given and e.code in sequence_codes)
-    ]
-    content: dict[str, Any] = {
-        "ok": not errors,
-        "normalized": {k: getattr(report.request, k) for k in given},
-        "errors": errors,
-        "warnings": [_issue(w) for w in report.warnings],
-        "missing": [name for name in FORM_FIELDS if name not in given],
-    }
-    if "design_number" in given:
-        content["next_free_revision"] = report.next_revision
-    if sap is not None:
-        content["sap"] = {"status": sap.status, "material": sap.material, "wbs": sap.wbs}
-    if sap_note is not None:
-        content["sap_unavailable"] = sap_note
+    content = check_fields(given, ctx.settings.designs_root, sap_lookup_for(ctx.sap))
+    if not content["normalized"] and not content["ok"]:  # a path outside DESIGNS_ROOT
+        return ToolResult({"ok": False, "errors": content["errors"]})
     return ToolResult(content)
 
 

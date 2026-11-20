@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, MessageSquarePlus } from 'lucide-react'
 
-import type { Action, SwitchTarget } from '@/api/types'
+import type { Action, Department, SwitchTarget } from '@/api/types'
 import type { Activity, TimelineItem } from '@/hooks/useChat'
 import { ActionCard } from '@/components/ActionCard'
 import { SapCard } from '@/components/SapCard'
@@ -22,7 +22,10 @@ type Props = {
   onSwitch?: (to: SwitchTarget) => void
   onActionChange: (action: Action) => void
   onUseNumber: (action: Action) => void
+  onUndoNumber?: (action: Action) => void
+  canUndoNumber?: (action: Action) => boolean
   onShowPreview: (action: Action) => void
+  departments?: Department[]
   stepsButton?: React.ReactNode
 }
 
@@ -57,7 +60,10 @@ export function AssistantPanel({
   onSwitch,
   onActionChange,
   onUseNumber,
+  onUndoNumber,
+  canUndoNumber,
   onShowPreview,
+  departments,
   stepsButton,
 }: Props) {
   const { t } = useI18n()
@@ -161,8 +167,11 @@ export function AssistantPanel({
                   <ActionCard
                     key={item.id}
                     action={action}
+                    departments={departments}
                     onChange={onActionChange}
                     onUseNumber={onUseNumber}
+                    onUndoNumber={onUndoNumber}
+                    canUndoNumber={canUndoNumber}
                     onShowPreview={onShowPreview}
                   />
                 ) : null

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
@@ -87,6 +88,87 @@ def check_design_request(
         block_reason=sap.block_reason or None,
         successor=sap.successor or None,
     )
+
+
+FORM_FIELDS = ("department", "design_number", "revision", "name", "designer")
+# Without a design number the revision can only be checked for its format.
+_SEQUENCE_CODES = frozenset({"rev_first_not_a", "rev_jump", "rev_reused"})
+
+# Looks a number up in SAP for `check_fields`: (record or None, or a note when SAP failed).
+SapLookup = Callable[[str], tuple[SapDesign | None, dict[str, Any] | None]]
+
+
+def issue_dict(issue: Issue) -> dict[str, str]:
+    return {"field": issue.field, "code": issue.code, "message": issue.message, "ref": issue.ref}
+
+
+def check_fields(fields: dict[str, str], designs_root: Path, lookup: SapLookup) -> dict[str, Any]:
+    """Check the fields given so far, read-only: missing fields are listed, not reported
+    as errors. The assistant's `validate_design_request` tool and the form's inline check
+    (`POST /api/validate`) both use this, so they always agree (invariant 1).
+
+    The result has `ok`, `normalized` (the given fields as they would be stored),
+    `errors`, `warnings`, `missing`, and when a number is given `next_free_revision`,
+    `sap` {status, material, wbs} or `sap_unavailable`. `lookup` is the caller's SAP
+    access (through `SapClient`); this module never calls SAP.
+    """
+    given = {name: fields[name] for name in FORM_FIELDS if fields.get(name, "").strip()}
+    request = DesignRequest(**{name: given.get(name, "") for name in FORM_FIELDS})
+
+    sap: SapDesign | None = None
+    sap_note: dict[str, Any] | None = None
+    number_ok = v.validate_design_number(request.design_number, request.department or None).ok
+    if request.design_number and number_ok:
+        sap, sap_note = lookup(request.design_number.strip())
+
+    try:
+        report = check_design_request(
+            request,
+            designs_root,
+            sap=sap,
+            require_sap=bool(request.design_number and number_ok and sap_note is None),
+        )
+    except v.UnsafePathError as exc:
+        return {"ok": False, "normalized": {}, "errors": [issue_dict(exc.issue)], "warnings": []}
+
+    errors = [
+        issue_dict(e)
+        for e in report.errors
+        if (e.field in given or e.field == "status")
+        and not ("design_number" not in given and e.code in _SEQUENCE_CODES)
+    ]
+    content: dict[str, Any] = {
+        "ok": not errors,
+        "normalized": {k: getattr(report.request, k) for k in given},
+        "errors": errors,
+        "warnings": [issue_dict(w) for w in report.warnings],
+        "missing": [name for name in FORM_FIELDS if name not in given],
+    }
+    if "design_number" in given:
+        content["next_free_revision"] = report.next_revision
+    if sap is not None:
+        content["sap"] = {"status": sap.status, "material": sap.material, "wbs": sap.wbs}
+    if sap_note is not None:
+        content["sap_unavailable"] = sap_note
+    return content
+
+
+def normalize_payload(payload: dict[str, str]) -> dict[str, str]:
+    """The values of a card as they will be stored (`Bead Sorter Vision Board`, `C`),
+    so the card shows exactly that. Only the formatting changes; the rules are still
+    checked at confirm."""
+    checks: dict[str, Callable[[str], v.FieldCheck]] = {
+        "department": v.validate_department,
+        "design_number": v.validate_design_number,
+        "revision": v.validate_revision,
+        "name": v.validate_design_name,
+        "designer": v.validate_designer,
+    }
+    out = dict(payload)
+    for name, check in checks.items():
+        if out.get(name):
+            out[name] = check(out[name]).value or out[name]
+    return out
 
 
 def create_design(

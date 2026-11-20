@@ -6,6 +6,7 @@ import type {
   RunTrace,
   PreviewTarget,
   SwitchTarget,
+  Validation,
 } from './types'
 
 async function json<T>(response: Response): Promise<T> {
@@ -18,6 +19,15 @@ export const getDepartments = () => fetch('/api/departments').then((r) => json<D
 export const getRecentDesigns = () => fetch('/api/designs').then((r) => json<RecentDesign[]>(r))
 
 export const getRun = (id: number) => fetch(`/api/runs/${id}`).then((r) => json<RunTrace>(r))
+
+/** The form's inline check (read-only; the validators decide, invariant 1). */
+export const validateFields = (fields: Record<string, string>, signal?: AbortSignal) =>
+  fetch('/api/validate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields }),
+    signal,
+  }).then((r) => json<Validation>(r))
 
 /** The Stop button: the run ends as `cancelled` and the stream sends `done`. */
 export const cancelRun = (id: number) =>

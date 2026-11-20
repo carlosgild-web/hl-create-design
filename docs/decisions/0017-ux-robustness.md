@@ -46,6 +46,39 @@ and Stop could not reach the backend. The console logged nothing about the model
    first, and the department list carries both names (`validators.DEPARTMENTS_ES`, as in SAP).
    New eval scenarios `example-button-fill-en/-es` use the exact button texts.
 
+## Decision (block B: the form says what it knows)
+
+7. **One read-only check for the form and the assistant**: `app.designs.check_fields`
+   (moved out of the `validate_design_request` tool) backs both the tool and the new
+   `POST /api/validate`. Same input, same result, which a test asserts. It writes nothing and
+   reaches SAP only through `SapClient` (invariants 1 and 4).
+8. **Inline validation**: the form sends the filled fields 400 ms after the last keystroke
+   and shows errors and warnings under each field with their manual reference. Revision `I`
+   now shows `rev_skipped_letter` at once and stays `I`: no code ever replaced it. The "A"
+   seen in the manual test was the assistant re-proposing a value (see 9).
+9. **Where a value came from**: each field is marked `ai` (amber, "Suggested by the
+   assistant"), `sap` (sea, "From SAP") or nothing (the user's own value).
+   - An assistant proposal fills empty fields, or fields it filled itself, and only marks
+     values it changes.
+   - It never overwrites a value the user typed or SAP gave. The proposal shows as "The
+     assistant suggests: X [Use it]".
+10. **Stored values are visible before confirming**:
+    - The form shows "Will be saved as: Bead Sorter Vision Board".
+    - `POST /api/actions` stores card payloads normalized (`normalize_payload`: title case,
+      capitals), so the card shows what will be written. The rules are still checked at
+      confirm.
+11. **Flow**:
+    - A confirmed reservation fills the number and revision A (marked as SAP values), and
+      the card offers Undo.
+    - After creating, the form shows "Created ✓" and a "New design" button, and Create is
+      disabled while the values match the created revision.
+    - Confirm and Cancel show a spinner.
+    - The preview scrolls into view, and the selected recent design is highlighted.
+12. Pulled forward from blocks C and D because they were in the same files:
+    - Translated card labels, with the department name in the UI language. `/api/departments`
+      now returns `name_es`.
+    - A `success` color token, a green distinct from sea, which marks SAP values.
+
 ## Consequences
 
 - One extra thread per model call (pool of 8). Tests with `FakeClient` work as before; the

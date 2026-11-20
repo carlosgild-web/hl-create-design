@@ -95,6 +95,8 @@ export const baseRoutes: Route[] = [
         ])
       : undefined,
   (url) => (url === '/api/designs' ? jsonResponse([]) : undefined),
+  (url) =>
+    url === '/api/validate' ? jsonResponse({ ok: true, normalized: {}, errors: [], warnings: [] }) : undefined,
 ]
 
 /** The few user gestures the tests need, without an extra dependency. */

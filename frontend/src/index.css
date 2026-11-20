@@ -25,6 +25,7 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-success: var(--success);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -66,6 +67,8 @@
     --accent: #e6eafb;
     --accent-foreground: #18204a;
     --destructive: #c0392b;
+    /* "done" states; a green apart from sea, which marks values from SAP */
+    --success: #2e7d4f;
     --border: #dde1ea;
     --input: #dde1ea;
     --ring: #2f45b5;
@@ -101,6 +104,7 @@
     --accent: #252c63;
     --accent-foreground: #eef0f8;
     --destructive: #ef7b6e;
+    --success: #6cc58f;
     --border: rgb(238 240 248 / 14%);
     --input: rgb(238 240 248 / 18%);
     --ring: #8a9bf0;

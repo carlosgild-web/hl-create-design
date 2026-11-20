@@ -34,7 +34,10 @@ test('assistant fills the form, nothing is created until the click, then the pre
 
   await confirm.click()
 
-  await expect(page.getByText('Created HL-HW-26-0003 rev C')).toBeVisible()
+  await expect(page.getByText('Created HL-HW-26-0003 rev C').first()).toBeVisible()
+  // the form says so too, and will not create the same revision twice
+  await expect(page.getByRole('button', { name: 'New design' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Create design' })).toBeDisabled()
   const preview = page.getByRole('img', { name: /Title block of HL-HW-26-0003 rev C/ })
   await expect(preview).toBeVisible()
   await expect
@@ -61,19 +64,38 @@ test('a revision that SAP already knows is refused with the manual reference', a
   await expect(page.getByRole('alert').filter({ hasText: '[02-revisions' }).first()).toBeVisible()
 })
 
-test('reserves a number in SAP from the form and uses it', async ({ page }) => {
+test('reserves a number in SAP from the form and fills it in at once', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Department').selectOption('PWR')
-  await page.getByLabel('Design name').fill('Test Fixture Supply')
+  await page.getByLabel('Design name').fill('test fixture supply')
   await page.getByLabel('Designer').fill('C. Velazquez')
+  // inline check from the real validators: the stored name is in title case
+  await expect(page.getByText('Will be saved as:')).toContainText('Test Fixture Supply')
 
   await page.getByRole('button', { name: 'Reserve a new number' }).click()
-  await page.getByRole('button', { name: 'Confirm' }).click()
+  // the card shows the stored values, translated labels and the department name
+  const card = page.getByRole('region', { name: 'Reserve a new SAP number?' })
+  await expect(card.getByText('Test Fixture Supply')).toBeVisible()
+  await expect(card.getByText('PWR – Power Electronics')).toBeVisible()
+  await card.getByRole('button', { name: 'Confirm' }).click()
   await expect(page.getByText(/Reserved HL-PWR-26-\d{4}/)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Use this number' }).click()
   await expect(page.getByLabel('Design number')).toHaveValue(/HL-PWR-26-\d{4}/)
   await expect(page.getByLabel('Revision')).toHaveValue('A')
+  await expect(page.getByText('From SAP')).toHaveCount(2)
+
+  await card.getByRole('button', { name: 'Undo' }).click()
+  await expect(page.getByLabel('Design number')).toHaveValue('')
+  await expect(card.getByRole('button', { name: 'Use this number' })).toBeVisible()
+})
+
+test('a skipped revision letter is flagged while typing, never replaced', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Revision').fill('I')
+
+  await expect(page.getByRole('alert').filter({ hasText: '[02-revisions#skipped-letters]' })).toBeVisible()
+  await expect(page.getByLabel('Revision')).toHaveAttribute('aria-invalid', 'true')
+  await expect(page.getByLabel('Revision')).toHaveValue('I')
 })
 
 test('switches to Spanish', async ({ page }) => {

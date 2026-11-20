@@ -16,9 +16,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import EngineDep, RateLimited, SettingsDep
+from app.agent.tools import sap_lookup_for
+from app.api.deps import EngineDep, RateLimited, SapFactoryDep, SettingsDep
 from app.db import store
 from app.db.models import AuditLog
+from app.designs import check_fields, normalize_payload
 from app.standards import validators as v
 
 router = APIRouter(prefix="/api", tags=["designs"])
@@ -35,18 +37,37 @@ class ProposeAction(BaseModel):
 
 @router.get("/departments")
 def departments() -> list[dict[str, str]]:
-    return [{"code": code, "name": name} for code, name in v.DEPARTMENTS.items()]
+    return [
+        {"code": code, "name": name, "name_es": v.DEPARTMENTS_ES.get(code, name)}
+        for code, name in v.DEPARTMENTS.items()
+    ]
+
+
+class ValidateRequest(BaseModel):
+    fields: dict[str, str] = Field(default_factory=dict, max_length=10)
+
+
+@router.post("/validate")
+def validate(body: ValidateRequest, settings: SettingsDep, sap_factory: SapFactoryDep) -> dict:
+    """The form's inline check: the same result as the assistant's `validate_design_request`
+    tool (`app.designs.check_fields`). Read-only: it writes nothing and reserves nothing."""
+    fields = {k[:40]: val[:FIELD_MAX] for k, val in body.fields.items()}
+    if not any(val.strip() for val in fields.values()):
+        return {"ok": True, "normalized": {}, "errors": [], "warnings": [], "missing": []}
+    with sap_factory() as sap:
+        return check_fields(fields, settings.designs_root, sap_lookup_for(sap))
 
 
 @router.post("/actions", status_code=201, dependencies=[RateLimited])
 def propose_action(body: ProposeAction, engine: EngineDep) -> dict[str, Any]:
-    """The user's own form opens a pending action. Nothing is executed here."""
+    """The user's own form opens a pending action. Nothing is executed here. The values
+    are stored as they will be written (title case, capitals), so the card shows that."""
     conversation_id = body.conversation_id
     if conversation_id is None:
         conversation_id = store.create_conversation(engine)
     elif store.get_messages(engine, conversation_id) is None:
         raise HTTPException(404, "Conversation not found")
-    payload = {k[:40]: val[:FIELD_MAX] for k, val in body.payload.items()}
+    payload = normalize_payload({k[:40]: val[:FIELD_MAX] for k, val in body.payload.items()})
     action = store.create_action(
         engine, conversation_id=conversation_id, run_id=None, kind=body.kind, payload=payload
     )

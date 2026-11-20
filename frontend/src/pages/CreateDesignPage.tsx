@@ -1,15 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { getDepartments, proposeAction } from '@/api/client'
-import {
-  FORM_FIELDS,
-  type Action,
-  type FormField,
-  type FormValues,
-  type Issue,
-  type PreviewTarget,
-} from '@/api/types'
+import { FORM_FIELDS, type Action, type PreviewTarget } from '@/api/types'
 import { AssistantPanel } from '@/components/AssistantPanel'
 import { DesignForm } from '@/components/DesignForm'
 import { Header } from '@/components/Header'
@@ -17,53 +10,40 @@ import { PreviewPane } from '@/components/PreviewPane'
 import { RecentDesigns } from '@/components/RecentDesigns'
 import { StepsDrawer } from '@/components/StepsDrawer'
 import { useChat } from '@/hooks/useChat'
+import { useDesignForm } from '@/hooks/useDesignForm'
+import { useValidation } from '@/hooks/useValidation'
 import { useI18n } from '@/i18n'
-
-const EMPTY: FormValues = { department: '', design_number: '', revision: '', name: '', designer: '' }
 
 export default function CreateDesignPage() {
   const { lang } = useI18n()
   const queryClient = useQueryClient()
   const departments = useQuery({ queryKey: ['departments'], queryFn: getDepartments, retry: false })
 
-  const [values, setValues] = useState<FormValues>(EMPTY)
-  const [proposed, setProposed] = useState<ReadonlySet<FormField>>(new Set())
-  const [errors, setErrors] = useState<Issue[]>([])
+  const form = useDesignForm()
+  const validation = useValidation(form.values)
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const [opening, setOpening] = useState(false)
+  const previewRef = useRef<HTMLDivElement>(null)
 
-  const valuesRef = useRef(values)
-  valuesRef.current = values
-
-  const fill = useCallback((fields: Partial<FormValues>) => {
-    const known = FORM_FIELDS.filter((f) => typeof fields[f] === 'string' && fields[f] !== '')
-    setValues((v) => ({ ...v, ...Object.fromEntries(known.map((f) => [f, fields[f]])) }))
-    setProposed((p) => new Set([...p, ...known]))
-  }, [])
+  const valuesRef = useRef(form.values)
+  useEffect(() => {
+    valuesRef.current = form.values
+  }, [form.values])
 
   const chat = useChat({
     language: lang,
     getForm: () => Object.fromEntries(FORM_FIELDS.filter((f) => valuesRef.current[f]).map((f) => [f, valuesRef.current[f]])),
-    onFormProposal: fill,
+    onFormProposal: form.propose,
   })
-
-  function edit(field: FormField, value: string) {
-    setValues((v) => ({ ...v, [field]: value }))
-    // Once the user touches a suggested field it is theirs: no more highlight.
-    setProposed((p) => {
-      if (!p.has(field)) return p
-      const next = new Set(p)
-      next.delete(field)
-      return next
-    })
-    setErrors((all) => all.filter((e) => e.field !== field))
-  }
 
   async function openCard(kind: 'create_design' | 'reserve_number') {
     setOpening(true)
     try {
+      const v = form.values
       const payload = Object.fromEntries(
-        FORM_FIELDS.filter((f) => values[f].trim() && (kind === 'create_design' || f !== 'design_number' && f !== 'revision')).map((f) => [f, values[f].trim()]),
+        FORM_FIELDS.filter((f) => v[f].trim() && (kind === 'create_design' || (f !== 'design_number' && f !== 'revision'))).map(
+          (f) => [f, v[f].trim()],
+        ),
       )
       chat.addAction(await proposeAction(kind, payload, chat.conversationId))
     } finally {
@@ -72,25 +52,37 @@ export default function CreateDesignPage() {
   }
 
   function onActionChange(action: Action) {
+    const before = chat.actions[action.id]?.status
     chat.putAction(action)
-    setErrors(action.status === 'failed' ? (action.result.errors ?? []) : [])
-    if (action.status === 'confirmed') {
-      void queryClient.invalidateQueries({ queryKey: ['recent-designs'] })
-      if (action.kind === 'create_design') showPreview(action)
+    form.setErrors(action.status === 'failed' ? (action.result.errors ?? []) : [])
+    if (action.status !== 'confirmed' || before === 'confirmed') return
+    void queryClient.invalidateQueries({ queryKey: ['recent-designs'] })
+    const { design_number, revision } = action.result
+    if (action.kind === 'reserve_number' && design_number) {
+      // The number comes from SAP: fill it at once (the card offers Undo).
+      form.fillFromSap(action.id, { design_number, revision: revision ?? 'A', department: action.result.department ?? action.payload.department })
     }
+    if (action.kind === 'create_design') {
+      if (design_number && revision) form.markCreated(design_number, revision)
+      showPreview(action)
+    }
+  }
+
+  function show(target: PreviewTarget) {
+    setPreview(target)
+    // The preview can be below the fold (one column on small screens).
+    requestAnimationFrame(() => previewRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }))
   }
 
   function showPreview(action: Action) {
     const { design_number, revision } = action.result
     const department = action.payload.department
-    if (design_number && revision && department) {
-      setPreview({ department, design_number, revision })
-    }
+    if (design_number && revision && department) show({ department, design_number, revision })
   }
 
   function useNumber(action: Action) {
     const { design_number, revision, department } = action.result
-    fill({ design_number, revision: revision ?? 'A', department })
+    form.fillFromSap(action.id, { design_number, revision: revision ?? 'A', department: department ?? action.payload.department })
   }
 
   return (
@@ -99,16 +91,22 @@ export default function CreateDesignPage() {
       <main className="mx-auto grid max-w-7xl gap-4 px-4 pb-8 lg:grid-cols-2">
         <div className="space-y-4">
           <DesignForm
-            values={values}
-            proposed={proposed}
-            errors={errors}
+            values={form.values}
+            source={form.source}
+            suggestions={form.suggestions}
+            errors={form.errors}
+            validation={validation}
+            created={form.created}
+            sameAsCreated={form.sameAsCreated}
             departments={departments.data ?? []}
             busy={opening}
-            onChange={edit}
+            onChange={form.edit}
+            onTakeSuggestion={form.takeSuggestion}
             onReserve={() => void openCard('reserve_number')}
             onCreate={() => void openCard('create_design')}
+            onNewDesign={form.reset}
           />
-          <RecentDesigns onSelect={setPreview} />
+          <RecentDesigns selected={preview} onSelect={show} />
         </div>
         <div className="space-y-4">
           <AssistantPanel
@@ -122,10 +120,15 @@ export default function CreateDesignPage() {
             onSwitch={(to) => void chat.switchTo(to)}
             onActionChange={onActionChange}
             onUseNumber={useNumber}
+            onUndoNumber={(action) => form.undoFill(action.id)}
+            canUndoNumber={(action) => form.canUndo(action.id)}
             onShowPreview={showPreview}
+            departments={departments.data ?? []}
             stepsButton={<StepsDrawer steps={chat.steps} runId={chat.runId} />}
           />
-          <PreviewPane target={preview} />
+          <div ref={previewRef}>
+            <PreviewPane target={preview} />
+          </div>
         </div>
       </main>
     </div>

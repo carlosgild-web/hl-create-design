@@ -1,46 +1,55 @@
 import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 
 import { cancelAction, confirmAction } from '@/api/client'
-import type { Action } from '@/api/types'
+import { FORM_FIELDS, type Action, type Department } from '@/api/types'
+import { departmentName, FIELD_LABELS } from '@/lib/fields'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n'
 
 type Props = {
   action: Action
+  departments?: Department[]
   onChange: (action: Action) => void
   onUseNumber: (action: Action) => void
+  onUndoNumber?: (action: Action) => void
+  canUndoNumber?: (action: Action) => boolean
   onShowPreview: (action: Action) => void
 }
-
-const SHOWN = ['department', 'design_number', 'revision', 'name', 'designer'] as const
 
 /**
  * The confirmation gate in the UI (invariant 2): the only way to reserve a number or
  * create files is this card's Confirm button.
  */
-export function ActionCard({ action, onChange, onUseNumber, onShowPreview }: Props) {
-  const { t } = useI18n()
-  const [busy, setBusy] = useState(false)
+export function ActionCard({ action, departments = [], onChange, onUseNumber, onUndoNumber, canUndoNumber, onShowPreview }: Props) {
+  const { t, lang } = useI18n()
+  const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null)
   const [failure, setFailure] = useState('')
 
-  async function decide(verb: typeof confirmAction) {
-    setBusy(true)
+  async function decide(verb: 'confirm' | 'cancel') {
+    setBusy(verb)
     setFailure('')
     try {
-      const { action: next, http } = await verb(action.id)
+      const { action: next, http } = await (verb === 'confirm' ? confirmAction : cancelAction)(action.id)
       onChange(next)
       if (http === 410) setFailure(t('action.expired'))
       else if (http === 409 && next.status !== 'failed') setFailure(t('action.already'))
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error))
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
   const { status, result } = action
   const pending = status === 'pending'
-  const shown = SHOWN.filter((k) => action.payload[k])
+  const shown = FORM_FIELDS.filter((k) => action.payload[k])
+  const display = (k: (typeof FORM_FIELDS)[number]) => {
+    const value = action.payload[k]
+    const dept = k === 'department' ? departments.find((d) => d.code === value) : undefined
+    return dept ? `${value} – ${departmentName(dept, lang)}` : value
+  }
+  const filled = canUndoNumber?.(action) ?? false
 
   return (
     <section
@@ -54,18 +63,20 @@ export function ActionCard({ action, onChange, onUseNumber, onShowPreview }: Pro
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
         {shown.map((k) => (
           <div key={k} className="contents">
-            <dt className="text-muted-foreground">{k.replace('_', ' ')}</dt>
-            <dd className="break-words font-mono">{action.payload[k]}</dd>
+            <dt className="text-muted-foreground">{t(FIELD_LABELS[k])}</dt>
+            <dd className="break-words font-mono">{display(k)}</dd>
           </div>
         ))}
       </dl>
 
       {pending && (
         <div className="mt-3 flex gap-2">
-          <Button size="sm" disabled={busy} onClick={() => decide(confirmAction)}>
-            {t('action.confirm')}
+          <Button size="sm" disabled={busy !== null} aria-busy={busy === 'confirm'} onClick={() => decide('confirm')}>
+            {busy === 'confirm' && <Loader2 aria-hidden className="size-4 animate-spin" />}
+            {busy === 'confirm' ? t('action.confirming') : t('action.confirm')}
           </Button>
-          <Button size="sm" variant="outline" disabled={busy} onClick={() => decide(cancelAction)}>
+          <Button size="sm" variant="outline" disabled={busy !== null} aria-busy={busy === 'cancel'} onClick={() => decide('cancel')}>
+            {busy === 'cancel' && <Loader2 aria-hidden className="size-4 animate-spin" />}
             {t('action.cancel')}
           </Button>
         </div>
@@ -95,9 +106,18 @@ export function ActionCard({ action, onChange, onUseNumber, onShowPreview }: Pro
             </p>
           ))}
           {action.kind === 'reserve_number' ? (
-            <Button size="sm" variant="outline" onClick={() => onUseNumber(action)}>
-              {t('action.use_number')}
-            </Button>
+            filled && onUndoNumber ? (
+              <p className="flex flex-wrap items-center gap-2 text-xs text-hl-sea-ink dark:text-hl-sea">
+                {t('action.number_filled')}
+                <Button size="xs" variant="outline" onClick={() => onUndoNumber(action)}>
+                  {t('action.undo')}
+                </Button>
+              </p>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => onUseNumber(action)}>
+                {t('action.use_number')}
+              </Button>
+            )
           ) : (
             result.pdf && (
               <Button size="sm" variant="outline" onClick={() => onShowPreview(action)}>

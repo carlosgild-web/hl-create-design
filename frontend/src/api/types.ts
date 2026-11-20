@@ -2,9 +2,24 @@ export const FORM_FIELDS = ['department', 'design_number', 'revision', 'name', '
 export type FormField = (typeof FORM_FIELDS)[number]
 export type FormValues = Record<FormField, string>
 
-export type Department = { code: string; name: string }
+export type Department = { code: string; name: string; name_es?: string }
 
 export type Issue = { field: string; code: string; message: string; ref: string }
+
+/** `POST /api/validate`: the same check as the assistant's validate tool. */
+export type Validation = {
+  ok: boolean
+  normalized: Partial<FormValues>
+  errors: Issue[]
+  warnings: Issue[]
+  missing?: FormField[]
+  next_free_revision?: string
+  sap?: { status: string; material: string; wbs: string }
+  sap_unavailable?: { code: string; message: string; ref?: string }
+}
+
+/** Where a form value came from: the assistant, SAP, or (no entry) the user. */
+export type ValueSource = 'ai' | 'sap'
 
 export type ActionKind = 'create_design' | 'reserve_number'
 export type ActionStatus = 'pending' | 'executing' | 'confirmed' | 'failed' | 'cancelled'

@@ -73,7 +73,10 @@ describe('Create Design', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Confirm' }))
 
-    expect(await screen.findByText('Created HL-HW-26-0042 rev C')).toBeInTheDocument()
+    // the card and the form both say so; the form offers a new design and won't create it twice
+    expect(await screen.findAllByText('Created HL-HW-26-0042 rev C')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'New design' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create design' })).toBeDisabled()
     const preview = await screen.findByRole('img', { name: /Title block of HL-HW-26-0042 rev C/ })
     expect(preview).toHaveAttribute('src', '/api/designs/HW/HL-HW-26-0042/C/preview.svg')
     // the chat request carried the language and the current form
