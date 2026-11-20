@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { getDepartments, getRecentDesigns, listSapDesigns, proposeAction } from '@/api/client'
-import { FORM_FIELDS, type Action, type FormMode, type FormValues, type PreviewTarget } from '@/api/types'
+import { FORM_FIELDS, type Action, type ActionKind, type FormMode, type FormValues, type PreviewTarget } from '@/api/types'
 import { AssistantPanel } from '@/components/AssistantPanel'
 import { DesignForm } from '@/components/DesignForm'
 import { Header } from '@/components/Header'
@@ -11,7 +11,7 @@ import { RecentDesigns } from '@/components/RecentDesigns'
 import { StartPanel } from '@/components/StartPanel'
 import { StepsDrawer } from '@/components/StepsDrawer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useChat } from '@/hooks/useChat'
+import { samePayload, useChat } from '@/hooks/useChat'
 import { useDesignForm } from '@/hooks/useDesignForm'
 import { DESKTOP, WIDE, useMediaQuery } from '@/hooks/useMediaQuery'
 import { useValidation } from '@/hooks/useValidation'
@@ -78,17 +78,39 @@ export default function CreateDesignPage() {
     onFormProposal,
   })
 
-  async function openCard(kind: 'create_design' | 'reserve_number') {
+  function cardPayload(kind: ActionKind) {
+    const v = form.values
+    return Object.fromEntries(
+      FORM_FIELDS.filter(
+        (f) => isFilled(f, v[f]) && (kind === 'create_design' || (f !== 'design_number' && f !== 'revision')),
+      ).map((f) => [f, v[f].trim()]),
+    )
+  }
+
+  /** Bring a card into view and put the focus on its Confirm button. */
+  function showCard(id: string) {
+    setMobileTab('assistant')
+    requestAnimationFrame(() => {
+      const card = document.querySelector<HTMLElement>(`[data-action-id="${id}"]`)
+      card?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+      card?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
+    })
+  }
+
+  async function openCard(kind: ActionKind) {
+    const payload = cardPayload(kind)
+    // The same request is already waiting (the assistant opened it, or a second click):
+    // show that card instead of a copy.
+    const waiting = chat.waitingCard(kind, payload)
+    if (waiting) {
+      showCard(waiting.id)
+      return
+    }
     setOpening(true)
     try {
-      const v = form.values
-      const payload = Object.fromEntries(
-        FORM_FIELDS.filter(
-          (f) => isFilled(f, v[f]) && (kind === 'create_design' || (f !== 'design_number' && f !== 'revision')),
-        ).map((f) => [f, v[f].trim()]),
-      )
-      chat.addAction(await proposeAction(kind, payload, chat.conversationId))
-      setMobileTab('assistant') // the card is in the chat
+      const action = await proposeAction(kind, payload, chat.conversationId)
+      chat.addAction(action)
+      showCard(action.id)
     } finally {
       setOpening(false)
     }
@@ -134,6 +156,7 @@ export default function CreateDesignPage() {
 
   function changeMode(mode: FormMode) {
     form.startOver(mode)
+    chat.retire()
     setReservation(null)
     setAiSelected(null)
   }
@@ -192,8 +215,12 @@ export default function CreateDesignPage() {
       onChange={form.edit}
       onTakeSuggestion={form.takeSuggestion}
       onCreate={() => void openCard('create_design')}
+      cardWaiting={Object.values(chat.actions).some(
+        (a) => a.status === 'pending' && a.kind === 'create_design' && samePayload(a.payload, cardPayload('create_design')),
+      )}
       onNewDesign={() => {
         form.reset()
+        chat.retire()
         setReservation(null)
         setAiSelected(null)
       }}
@@ -217,6 +244,7 @@ export default function CreateDesignPage() {
       onUndoNumber={(action) => form.undoFill(action.id)}
       canUndoNumber={(action) => form.canUndo(action.id)}
       onShowPreview={showPreview}
+      epoch={chat.epoch}
       departments={departments.data ?? []}
       stepsButton={<StepsDrawer steps={chat.steps} runId={chat.runId} />}
     />

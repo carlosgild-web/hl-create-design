@@ -6,9 +6,12 @@ import { FORM_FIELDS, type Action, type Department } from '@/api/types'
 import { departmentName, FIELD_LABELS } from '@/lib/fields'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n'
+import { cn } from '@/lib/utils'
 
 type Props = {
   action: Action
+  /** From before the form started over: shown for the record, no buttons that change the form. */
+  stale?: boolean
   departments?: Department[]
   onChange: (action: Action) => void
   onUseNumber: (action: Action) => void
@@ -21,7 +24,7 @@ type Props = {
  * The confirmation gate in the UI (invariant 2): the only way to reserve a number or
  * create files is this card's Confirm button.
  */
-export function ActionCard({ action, departments = [], onChange, onUseNumber, onUndoNumber, canUndoNumber, onShowPreview }: Props) {
+export function ActionCard({ action, stale = false, departments = [], onChange, onUseNumber, onUndoNumber, canUndoNumber, onShowPreview }: Props) {
   const { t, lang } = useI18n()
   const [busy, setBusy] = useState<'confirm' | 'cancel' | null>(null)
   const [failure, setFailure] = useState('')
@@ -54,8 +57,13 @@ export function ActionCard({ action, departments = [], onChange, onUseNumber, on
   return (
     <section
       aria-label={t(action.kind === 'create_design' ? 'action.create_design' : 'action.reserve_number')}
-      className="rounded-lg border-2 border-primary/50 bg-card p-3 text-sm"
+      className={cn(
+        'rounded-lg border-2 bg-card p-3 text-sm',
+        pending && !stale ? 'border-primary/50' : 'border-border',
+        stale && 'opacity-75',
+      )}
       data-status={status}
+      data-action-id={action.id}
     >
       <p className="font-medium">
         {t(action.kind === 'create_design' ? 'action.create_design' : 'action.reserve_number')}
@@ -69,7 +77,7 @@ export function ActionCard({ action, departments = [], onChange, onUseNumber, on
         ))}
       </dl>
 
-      {pending && (
+      {pending && !stale && (
         <div className="mt-3 flex gap-2">
           <Button size="sm" disabled={busy !== null} aria-busy={busy === 'confirm'} onClick={() => decide('confirm')}>
             {busy === 'confirm' && <Loader2 aria-hidden className="size-4 animate-spin" />}
@@ -107,7 +115,7 @@ export function ActionCard({ action, departments = [], onChange, onUseNumber, on
             </p>
           ))}
           {action.kind === 'reserve_number' ? (
-            filled && onUndoNumber ? (
+            stale ? null : filled && onUndoNumber ? (
               <p className="flex flex-wrap items-center gap-2 text-xs text-hl-sea-ink dark:text-hl-sea">
                 {t('action.number_filled')}
                 <Button size="xs" variant="outline" onClick={() => onUndoNumber(action)}>
@@ -141,6 +149,7 @@ export function ActionCard({ action, departments = [], onChange, onUseNumber, on
           {result.ref && <p className="text-xs text-muted-foreground">[{result.ref}]</p>}
         </div>
       )}
+      {stale && <p className="mt-2 text-xs text-muted-foreground">{t('action.stale')}</p>}
       {failure && (
         <p role="alert" className="mt-2 text-xs text-destructive">
           {failure}

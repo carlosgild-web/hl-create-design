@@ -25,6 +25,8 @@ type Props = {
   onUndoNumber?: (action: Action) => void
   canUndoNumber?: (action: Action) => boolean
   onShowPreview: (action: Action) => void
+  /** Cards from an earlier epoch (before the form started over) are inert. */
+  epoch?: number
   departments?: Department[]
   stepsButton?: React.ReactNode
 }
@@ -63,6 +65,7 @@ export function AssistantPanel({
   onUndoNumber,
   canUndoNumber,
   onShowPreview,
+  epoch = 0,
   departments,
   stepsButton,
 }: Props) {
@@ -159,6 +162,14 @@ export function AssistantPanel({
                     {t('chat.stopped')}
                   </p>
                 )
+              case 'divider':
+                return (
+                  <div key={item.id} role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span aria-hidden className="h-px flex-1 bg-border" />
+                    {t('chat.started_over')}
+                    <span aria-hidden className="h-px flex-1 bg-border" />
+                  </div>
+                )
               case 'sap':
                 return <SapCard key={item.id} design={item.design} notes={item.notes} />
               case 'action': {
@@ -167,6 +178,7 @@ export function AssistantPanel({
                   <ActionCard
                     key={item.id}
                     action={action}
+                    stale={item.epoch < epoch}
                     departments={departments}
                     onChange={onActionChange}
                     onUseNumber={onUseNumber}

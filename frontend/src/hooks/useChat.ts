@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 
-import { cancelRun, switchProvider } from '@/api/client'
+import { cancelAction, cancelRun, switchProvider } from '@/api/client'
 import { streamChat } from '@/api/sse'
 import type { Action, ChatEvent, FormValues, SapDesign, SwitchTarget } from '@/api/types'
 import type { Lang } from '@/i18n'
@@ -12,7 +12,8 @@ export type TimelineItem =
   | { id: number; kind: 'switched'; to: string; model: string; by: 'quota' | 'user' }
   | { id: number; kind: 'stopped' }
   | { id: number; kind: 'sap'; design: SapDesign; notes: { message: string; ref: string }[] }
-  | { id: number; kind: 'action'; actionId: string }
+  | { id: number; kind: 'action'; actionId: string; epoch: number }
+  | { id: number; kind: 'divider' }
 
 export type Step = { id: string; name: string; arguments?: Record<string, unknown>; ok?: boolean; result?: unknown }
 
@@ -30,6 +31,15 @@ type Options = {
 
 /** After Stop, wait this long for the backend's `done` before dropping the stream. */
 const STOP_GRACE_MS = 3000
+
+const loose = (value: string | undefined) => (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+
+/** The same request as a card's payload, give or take the formatting the backend adds
+ * (`bead sorter` is stored as `Bead Sorter`). */
+export function samePayload(a: Record<string, string>, b: Record<string, string>) {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)].filter((k) => loose(a[k]) || loose(b[k])))
+  return [...keys].every((k) => loose(a[k]) === loose(b[k]))
+}
 
 /**
  * The assistant conversation: streams one turn at a time and keeps the timeline, the
@@ -59,19 +69,67 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
     setConversationId(id)
   }, [])
 
+  const [epoch, setEpoch] = useState(0)
+  const epochRef = useRef(0)
+  const actionsRef = useRef<Record<string, Action>>({})
+
   const putAction = useCallback((action: Action) => {
+    actionsRef.current = { ...actionsRef.current, [action.id]: action }
     setActions((all) => ({ ...all, [action.id]: action }))
   }, [])
+
+  /** Cancel waiting cards (a cancel never has a side effect: invariant 2 holds). */
+  const cancelWaiting = useCallback(
+    async (keep: (action: Action) => boolean) => {
+      const waiting = Object.values(actionsRef.current).filter((a) => a.status === 'pending' && !keep(a))
+      await Promise.all(
+        waiting.map((a) =>
+          cancelAction(a.id)
+            .then(({ action }) => putAction(action))
+            .catch(() => putAction({ ...a, status: 'cancelled' })),
+        ),
+      )
+    },
+    [putAction],
+  )
+
+  /** The waiting card of this kind that already asks for this, if any. */
+  const waitingCard = useCallback(
+    (kind: Action['kind'], payload: Record<string, string>) =>
+      Object.values(actionsRef.current).find(
+        (a) => a.status === 'pending' && a.kind === kind && samePayload(a.payload, payload),
+      ) ?? null,
+    [],
+  )
+
+  /** One live card per kind: a new card replaces (cancels) an older waiting one. */
+  const openCard = useCallback(
+    (action: Action) => {
+      void cancelWaiting((a) => a.kind !== action.kind || a.id === action.id)
+      putAction(action)
+      push({ kind: 'action', actionId: action.id, epoch: epochRef.current })
+    },
+    [cancelWaiting, push, putAction],
+  )
 
   /** A card opened outside the chat stream (the form's buttons). */
   const addAction = useCallback(
     (action: Action) => {
       setConversation(action.conversation_id)
-      putAction(action)
-      push({ kind: 'action', actionId: action.id })
+      openCard(action)
     },
-    [push, putAction, setConversation],
+    [openCard, setConversation],
   )
+
+  /** The form started over (mode switch, New design): waiting cards are cancelled and the
+   * earlier ones lose their buttons, so none of them can change the new form. */
+  const retire = useCallback(() => {
+    const hasCards = Object.keys(actionsRef.current).length > 0
+    void cancelWaiting(() => false)
+    epochRef.current += 1
+    setEpoch(epochRef.current)
+    if (hasCards) push({ kind: 'divider' })
+  }, [cancelWaiting, push])
 
   const handle = useCallback(
     (event: ChatEvent) => {
@@ -113,8 +171,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
           onFormProposal(event.data.fields)
           break
         case 'pending_action':
-          putAction(event.data.action)
-          push({ kind: 'action', actionId: event.data.action.id })
+          openCard(event.data.action)
           break
         case 'message':
           push({ kind: 'assistant', text: event.data.content })
@@ -138,7 +195,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
           break
       }
     },
-    [onFormProposal, push, putAction, setConversation],
+    [onFormProposal, openCard, push, setConversation],
   )
 
   const send = useCallback(
@@ -195,6 +252,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
     setConversationId(null)
     setRunId(null)
     setTimeline([])
+    actionsRef.current = {}
     setActions({})
     setSteps([])
   }, [busy])
@@ -226,6 +284,9 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
     switchTo,
     addAction,
     putAction,
+    waitingCard,
+    retire,
+    epoch,
   }
 }
 

@@ -37,6 +37,8 @@ type Props = {
   /** The designer of the most recent design, offered for an empty Designer field. */
   lastDesigner?: string
   busy: boolean
+  /** A card for exactly these values is waiting in the chat: Create shows it. */
+  cardWaiting?: boolean
   onChange: (field: FormField, value: string) => void
   onTakeSuggestion: (field: FormField) => void
   onCreate: () => void
@@ -74,6 +76,7 @@ export function DesignForm({
   departments,
   lastDesigner,
   busy,
+  cardWaiting = false,
   onChange,
   onTakeSuggestion,
   onCreate,
@@ -267,7 +270,7 @@ export function DesignForm({
                 : t('form.create')}
             </Button>
             <p className="min-w-48 flex-1 text-xs text-muted-foreground">
-              {sameAsCreated ? t('form.already_created') : t('form.hint')}
+              {sameAsCreated ? t('form.already_created') : cardWaiting ? t('form.card_waiting') : t('form.hint')}
             </p>
           </div>
         </form>
