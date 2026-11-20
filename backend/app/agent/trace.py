@@ -55,6 +55,11 @@ class AgentTrace:
             }
         )
 
+    def record_notice(self, iteration: int, notice: dict[str, str]) -> None:
+        """The client changed something the model did not see, e.g. a provider switch.
+        Later model calls of this run come from `notice["to"]`."""
+        self.steps.append({"type": "notice", "iteration": iteration, **notice})
+
     def record_tool_call(
         self, iteration: int, name: str, arguments: dict[str, Any], result: str, ok: bool, ms: float
     ) -> None:

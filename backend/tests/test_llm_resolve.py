@@ -10,7 +10,10 @@ from app import cli
 from app.agent.service import probe_turn
 from app.core.config import Settings
 from app.llm import ollama as ollama_mod
-from app.llm.factory import make_client
+from app.llm.base import LLMError, QuotaExhausted
+from app.llm.factory import make_client, reset_shared
+from app.llm.fake import FakeClient, say
+from app.llm.fallback import SwitchingClient
 from app.llm.groq import GroqClient, GroqProbe
 from app.llm.ollama import OllamaClient, OllamaProbe
 from app.llm.resolve import (
@@ -38,8 +41,10 @@ RPD = "Rate limit reached ... on requests per day (RPD): Limit 1000, Used 1000, 
 @pytest.fixture(autouse=True)
 def fresh_cache():
     reset_auto()
+    reset_shared()
     yield
     reset_auto()
+    reset_shared()
 
 
 @pytest.fixture(autouse=True)
@@ -103,7 +108,8 @@ def test_groq_probe_sends_a_real_first_turn():
     assert probe == GroqProbe("ok", "quota available (m)") and probe.usable
     assert seen["messages"][0]["role"] == "system" and len(seen["messages"][0]["content"]) > 1000
     assert {t["function"]["name"] for t in seen["tools"]} >= {"request_create_design"}
-    assert seen["max_tokens"] <= 16
+    # room for a whole turn is asked for (refused if the daily quota lacks it), under 8k TPM
+    assert 2000 <= seen["max_tokens"] <= 5000
 
 
 def test_per_minute_limit_is_usable_and_says_so():
@@ -405,3 +411,72 @@ def test_llm_check_with_fake_configured_probes_nothing(capsys):
 def test_ask_terminal_without_a_tty_returns_none(monkeypatch):
     monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: False, raising=False)
     assert cli.ask_terminal("Use Groq? [Y/n] ", "y") is None
+
+
+# --- mid-session switch when Groq's daily quota runs out ---------------------------------
+
+
+class Scripted(FakeClient):
+    def __init__(self, provider, error=None, answer="ok"):
+        super().__init__([say(answer)] * 5, model=f"{provider}-model")
+        self.provider = provider
+        self.error = error
+        self.calls_made = 0
+
+    def chat(self, messages, tools):
+        self.calls_made += 1
+        if self.error:
+            raise self.error
+        return super().chat(messages, tools)
+
+
+def test_switches_once_on_a_used_up_quota_and_stays_switched():
+    groq = Scripted("groq", QuotaExhausted("daily token quota used up"))
+    built = []
+
+    def fallback():
+        built.append(1)
+        return Scripted("ollama", answer="from ollama")
+
+    client = SwitchingClient(groq, fallback)
+    assert client.provider == "groq"
+
+    assert client.chat([], []).content == "from ollama"
+    notice = client.take_notice()
+    assert notice["from"] == "groq" and notice["to"] == "ollama" and "daily" in notice["reason"]
+    assert client.take_notice() is None  # announced once
+    assert client.provider == "ollama" and client.model == "ollama-model"
+
+    client.chat([], [])
+    assert groq.calls_made == 1 and built == [1]  # Groq is not tried again
+
+
+def test_other_errors_do_not_switch():
+    client = SwitchingClient(Scripted("groq", LLMError("bad key")), lambda: 1 / 0)
+    with pytest.raises(LLMError, match="bad key"):
+        client.chat([], [])
+    assert client.provider == "groq" and client.take_notice() is None
+
+
+def test_groq_chat_raises_quota_exhausted_only_for_daily_limits():
+    with pytest.raises(QuotaExhausted):
+        groq_client(limited(TPD)).chat([], [])
+    with pytest.raises(LLMError) as err:
+        groq_client(limited(TPM)).chat([], [])
+    assert not isinstance(err.value, QuotaExhausted)
+
+
+def test_factory_wraps_groq_once_per_process_and_evals_opt_out():
+    s = settings(llm_provider="groq", groq_api_key="gsk_t")
+    first = make_client(s)
+    assert isinstance(first, SwitchingClient) and make_client(s) is first
+    assert isinstance(make_client(s, fallback=False), GroqClient)
+
+
+def test_fallback_is_ollama_when_ready_else_the_demo(monkeypatch):
+    from app.llm import factory
+
+    monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("ready", ""))
+    assert factory.fallback_client(settings()).provider == "ollama"
+    monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("not_running", ""))
+    assert factory.fallback_client(settings()).provider == "fake"

@@ -345,6 +345,8 @@ def run_chat(
                 print(f"         confirm: python -m app.cli confirm {action['id']}")
             elif event.type == "message":
                 print(f"\n{d['content']}\n")
+            elif event.type == "notice":
+                print(f"  [notice] now on {d['to']} ({d['model']}): {d['reason']}")
             elif event.type == "error":
                 print(f"error {d['message']}", file=sys.stderr)
             elif event.type == "done":
@@ -419,7 +421,9 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
     else:
         scenarios = [s for s in scenarios if "fake-only" not in s.tags]
         try:
-            client = make_client(settings.model_copy(update={"llm_provider": args.provider}))
+            client = make_client(
+                settings.model_copy(update={"llm_provider": args.provider}), fallback=False
+            )
         except LLMError as exc:
             print(f"error {exc}", file=sys.stderr)
             return 1

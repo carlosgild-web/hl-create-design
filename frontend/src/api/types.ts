@@ -78,6 +78,10 @@ export type ChatEvent =
   | { type: 'pending_action'; data: { action: Action } }
   | { type: 'message'; data: { role: 'assistant'; content: string } }
   | { type: 'error'; data: { message: string } }
+  | {
+      type: 'notice'
+      data: { code: 'provider_switched'; from: string; to: string; model: string; reason: string }
+    }
   | { type: 'done'; data: { conversation_id?: string; run_id?: number; status: string } }
 
 export type RunTrace = {

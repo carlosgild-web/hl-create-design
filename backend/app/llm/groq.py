@@ -16,14 +16,25 @@ from typing import Any, Literal
 
 import httpx
 
-from app.llm.base import ChatTurn, LLMClient, LLMError, Message, ToolCall, ToolSpec
+from app.llm.base import (
+    ChatTurn,
+    LLMClient,
+    LLMError,
+    Message,
+    QuotaExhausted,
+    ToolCall,
+    ToolSpec,
+)
 
 DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_TIMEOUT_S = 60.0
 # The free tier has per-minute limits (TPM/RPM) and daily ones (TPD/RPD). A per-minute limit
 # is waited out and retried; a daily one is reported at once.
-PROBE_TIMEOUT_S = 15.0
-PROBE_MAX_TOKENS = 8
+PROBE_TIMEOUT_S = 20.0
+# Groq does not report the daily tokens left, but it refuses a request whose prompt plus
+# `max_tokens` does not fit. So the probe asks for room for a whole first turn (a real turn
+# uses ~2.5k prompt tokens per call over 2-4 calls), staying under the 8k tokens per minute.
+PROBE_MAX_TOKENS = 4000
 MAX_RETRIES = 4
 MAX_WAIT_S = 65.0  # one per-minute window, plus a little
 _WAIT_IN_MESSAGE_RE = re.compile(
@@ -52,8 +63,9 @@ class RateLimit:
             when = f"; calls wait about {self.wait:.0f} s and retry" if self.wait else ""
             return f"per-minute {self.unit} limit reached for the moment{when}"
         usage = f"used {self.used:,} of {self.limit:,}" if self.used and self.limit else ""
-        resets = f"resets in about {_human(self.wait)}" if self.wait else ""
-        details = "; ".join(p for p in (usage, resets) if p)
+        # The day is a rolling window: tokens free up gradually, not all at once.
+        frees = f"room for this request frees up in about {_human(self.wait)}" if self.wait else ""
+        details = "; ".join(p for p in (usage, frees) if p)
         return f"daily {self.unit[:-1]} quota used up" + (f" ({details})" if details else "")
 
 
@@ -122,6 +134,8 @@ class GroqClient(LLMClient):
         except httpx.HTTPError as exc:
             raise LLMError(f"Groq is not reachable at {self._base_url}: {exc}") from exc
         if not response.is_success:
+            if response.status_code == 429 and rate_limit(response).scope == "day":
+                raise QuotaExhausted(self._error_text(response))
             raise LLMError(self._error_text(response))
 
         data = response.json()

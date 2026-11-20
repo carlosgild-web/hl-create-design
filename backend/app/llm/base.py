@@ -94,3 +94,12 @@ class LLMClient(ABC):
     @abstractmethod
     def chat(self, messages: list[Message], tools: list[ToolSpec]) -> ChatTurn:
         """One non-streaming chat turn. An empty `tools` list means: answer in text."""
+
+    def take_notice(self) -> dict[str, str] | None:
+        """Something the user should be told about the last `chat` call (e.g. the client
+        switched provider), once; then None. Plain clients have nothing to say."""
+        return None
+
+
+class QuotaExhausted(LLMError):
+    """The provider's quota for today is used up: waiting a minute will not help."""

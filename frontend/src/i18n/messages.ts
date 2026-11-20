@@ -29,6 +29,10 @@ const en = {
   'chat.example.message': 'New controller board for the drilling machine, Hardware.',
   'chat.working': 'Thinking…',
   'chat.error': 'Something went wrong: {message}',
+  'chat.switched.ollama':
+    "Groq's daily quota is used up, so the assistant continues on Ollama ({model}, local and slower) for the rest of this session.",
+  'chat.switched.fake':
+    "Groq's daily quota is used up and Ollama is not available, so the assistant continues on the demo model (scripted, no real AI). Start Ollama and restart the app to get a real model back.",
   'chat.unreachable': 'The assistant is not reachable. Is the backend running?',
   'sap.card': 'SAP record',
   'sap.material': 'Material',
@@ -102,6 +106,10 @@ const es: Record<MessageKey, string> = {
   'chat.example.message': 'Nueva placa controladora para la taladradora, Hardware.',
   'chat.working': 'Pensando…',
   'chat.error': 'Algo salió mal: {message}',
+  'chat.switched.ollama':
+    'Se ha agotado la cuota diaria de Groq, así que el asistente sigue con Ollama ({model}, local y más lento) el resto de la sesión.',
+  'chat.switched.fake':
+    'Se ha agotado la cuota diaria de Groq y Ollama no está disponible, así que el asistente sigue con el modelo de demostración (con guion, sin IA real). Arranca Ollama y reinicia la aplicación para volver a un modelo real.',
   'chat.unreachable': 'No se puede contactar con el asistente. ¿Está en marcha el backend?',
   'sap.card': 'Registro SAP',
   'sap.material': 'Material',

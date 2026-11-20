@@ -123,3 +123,47 @@ def test_spanish_answers_are_asked_for_in_the_prompt(deps):
     d = deps([say("Hola")])
     events(d, language="es")
     assert "Spanish" in d.client.calls[0].messages[0].content
+
+
+def test_a_provider_switch_is_announced_and_traced(settings, engine, sap, manual):
+    from app.llm.base import QuotaExhausted
+    from app.llm.fallback import SwitchingClient
+
+    class UsedUp(FakeClient):
+        provider = "groq"
+
+        def chat(self, messages, tools):
+            raise QuotaExhausted("daily token quota used up")
+
+    client = SwitchingClient(UsedUp(), lambda: FakeClient([say("Hola.")]))
+    d = AgentDeps(settings=settings, engine=engine, client=client, sap=sap, manual=manual)
+    out = events(d)
+
+    assert [e.type for e in out] == ["conversation", "notice", "message", "done"]
+    assert out[1].data["to"] == "fake" and out[1].data["code"] == "provider_switched"
+    trace = store.get_run(engine, out[-1].data["run_id"])["trace"]
+    [notice] = [s for s in trace["steps"] if s["type"] == "notice"]
+    assert notice["from"] == "groq" and "daily" in notice["reason"]
+
+
+def test_the_switch_is_announced_even_when_the_fallback_fails(settings, engine, sap, manual):
+    from app.llm.base import QuotaExhausted
+    from app.llm.fallback import SwitchingClient
+
+    class Raises(FakeClient):
+        def __init__(self, provider, error):
+            super().__init__([])
+            self.provider, self.error = provider, error
+
+        def chat(self, messages, tools):
+            raise self.error
+
+    client = SwitchingClient(
+        Raises("groq", QuotaExhausted("daily")),
+        lambda: Raises("ollama", LLMError("Ollama took too long")),
+    )
+    d = AgentDeps(settings=settings, engine=engine, client=client, sap=sap, manual=manual)
+    out = events(d)
+
+    assert [e.type for e in out] == ["conversation", "notice", "error", "done"]
+    assert out[1].data["to"] == "ollama"

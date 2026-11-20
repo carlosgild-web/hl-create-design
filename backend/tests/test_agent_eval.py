@@ -172,6 +172,6 @@ def test_cli_agent_eval_stops_when_the_model_is_unreachable(settings, monkeypatc
         def chat(self, messages, tools):
             raise LLMError("Ollama has no model 'x'")
 
-    monkeypatch.setattr(cli, "make_client", lambda s: Down())
+    monkeypatch.setattr(cli, "make_client", lambda s, **kw: Down())
     assert cli.main(["agent-eval", "--provider", "ollama"], settings) == 1
     assert "not reachable" in capsys.readouterr().err

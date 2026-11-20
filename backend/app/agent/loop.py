@@ -7,7 +7,7 @@
    last allowed call offers no tools, so the model must answer with what it has.
 
 The loop yields events for the UI as they happen (`tool_call`, `tool_result`,
-`form_proposal`, `pending_action`, `message`, `error`) and records everything in an
+`form_proposal`, `pending_action`, `message`, `notice`, `error`) and records everything in an
 `AgentTrace` (invariant 6). It never executes a side effect: the gated tools only open
 confirmation cards (invariant 2).
 """
@@ -45,6 +45,15 @@ class RunOutcome:
     status: str = "running"  # answered | limit | error
 
 
+def _notice(client: LLMClient, trace: AgentTrace, iteration: int) -> Iterator[AgentEvent]:
+    """What the client says happened behind the call, e.g. Groq's daily quota ran out and
+    it moved to Ollama: into the trace, and to the UI."""
+    notice = client.take_notice()
+    if notice:
+        trace.record_notice(iteration, notice)
+        yield AgentEvent("notice", notice)
+
+
 def run_agent(
     client: LLMClient,
     registry: ToolRegistry,
@@ -67,10 +76,12 @@ def run_agent(
         try:
             turn = client.chat(conversation, offered)
         except LLMError as exc:
+            yield from _notice(client, trace, iteration)  # e.g. switched, then that failed
             trace.status, trace.error = "error", str(exc)
             outcome.status = "error"
             yield AgentEvent("error", {"message": str(exc)})
             return
+        yield from _notice(client, trace, iteration)
         trace.record_model_call(
             iteration, [s.name for s in offered], turn, (time.perf_counter() - started) * 1000
         )

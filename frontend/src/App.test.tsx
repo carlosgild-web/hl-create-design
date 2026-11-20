@@ -208,4 +208,25 @@ describe('Create Design', () => {
 
     expect(await screen.findByText(/Something went wrong: Chat failed: HTTP 502/)).toBeInTheDocument()
   })
+
+  it('says so when the backend moved from Groq to Ollama mid-session', async () => {
+    stubFetch(
+      (url) =>
+        url === '/api/chat'
+          ? sseResponse([
+              ['conversation', { id: 'c1' }],
+              ['notice', { code: 'provider_switched', from: 'groq', to: 'ollama', model: 'qwen3', reason: 'daily' }],
+              ['message', { role: 'assistant', content: 'Which department?' }],
+              ['done', { conversation_id: 'c1', run_id: 8, status: 'answered' }],
+            ])
+          : undefined,
+      ...baseRoutes,
+    )
+    renderWithProviders(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Guide me step by step' }))
+
+    expect(await screen.findByText(/continues on Ollama \(qwen3, local and slower\)/)).toBeInTheDocument()
+    expect(screen.getByText('Which department?')).toBeInTheDocument()
+  })
 })

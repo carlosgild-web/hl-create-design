@@ -88,6 +88,12 @@ export function AssistantPanel({
                     {t('chat.error', { message: item.text })}
                   </p>
                 )
+              case 'switched':
+                return (
+                  <p key={item.id} role="status" className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                    {t(item.to === 'ollama' ? 'chat.switched.ollama' : 'chat.switched.fake', { model: item.model })}
+                  </p>
+                )
               case 'sap':
                 return <SapCard key={item.id} design={item.design} notes={item.notes} />
               case 'action': {

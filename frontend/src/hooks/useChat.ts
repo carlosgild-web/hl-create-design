@@ -8,6 +8,7 @@ export type TimelineItem =
   | { id: number; kind: 'user'; text: string }
   | { id: number; kind: 'assistant'; text: string }
   | { id: number; kind: 'error'; text: string }
+  | { id: number; kind: 'switched'; to: string; model: string }
   | { id: number; kind: 'sap'; design: SapDesign; notes: { message: string; ref: string }[] }
   | { id: number; kind: 'action'; actionId: string }
 
@@ -94,6 +95,11 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
           break
         case 'error':
           push({ kind: 'error', text: event.data.message })
+          break
+        case 'notice':
+          if (event.data.code === 'provider_switched') {
+            push({ kind: 'switched', to: event.data.to, model: event.data.model })
+          }
           break
         case 'done':
           if (event.data.run_id != null) setRunId(event.data.run_id)

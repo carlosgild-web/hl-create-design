@@ -62,6 +62,23 @@ prompt + tool specs) and makes 2-4 calls, and the free tier allows 8,000 tokens 
   (`start.cmd` reads the file, because a `for /f` capture cannot read the keyboard).
 - The app's own `auto` (Docker) uses the same status without asking.
 
+### Second update (same day): the quota can still run out
+
+Groq's response headers report daily *requests* and per-minute tokens, never the daily tokens
+left. A probe passed at 199,330 of 200,000 tokens, then the first turn failed. So:
+
+- **The probe asks for room for a whole turn**: `max_tokens` 4000 (prompt ~2.5k + 4k stays
+  under the 8k per minute). Groq refuses a request that would not fit, so a nearly used-up
+  quota fails the check. It costs about what a real first call costs.
+- **Mid-session switch** (pulled forward from the UI work): a daily-limit 429 in chat raises
+  `QuotaExhausted`. The app's Groq client is a `SwitchingClient` (`app/llm/fallback.py`, one per
+  process) that then moves to Ollama if it is ready, else the demo model, repeats the same call,
+  and stays there. The loop emits a `notice` event (`provider_switched`, shown in the chat in
+  ES/EN) and a `notice` step in the trace. Evals use `make_client(..., fallback=False)`, so
+  explicit providers stay explicit there.
+- The daily window is rolling, so the message says "room for this request frees up in about N",
+  not "resets in".
+
 ## Consequences
 
 - The code default changed from `fake` to `auto`. A fresh clone with no key and no Ollama still
