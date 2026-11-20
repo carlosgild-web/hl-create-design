@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from app import __version__
+from app.agent.service import probe_turn
 from app.api import actions, chat, designs
 from app.cleanup import cleanup_designs
 from app.core.config import get_settings
@@ -43,7 +44,7 @@ async def _cleanup_loop() -> None:
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     if settings.llm_provider == "auto":  # probe Groq, then Ollama, once, at startup
-        await asyncio.to_thread(resolve_auto, settings)
+        await asyncio.to_thread(resolve_auto, settings, probe_turn())
     task = asyncio.create_task(_cleanup_loop()) if get_settings().designs_ttl_hours > 0 else None
     yield
     if task:

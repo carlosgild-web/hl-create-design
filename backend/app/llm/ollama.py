@@ -9,9 +9,14 @@ from __future__ import annotations
 
 import itertools
 import json
+import os
 import re
 import shutil
-from typing import Any
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Literal
 
 import httpx
 
@@ -20,6 +25,45 @@ from app.llm.base import ChatTurn, LLMClient, LLMError, Message, ToolCall, ToolS
 DEFAULT_TIMEOUT_S = 180.0
 PROBE_TIMEOUT_S = 3.0
 NUM_CTX = 8192
+
+OllamaState = Literal["ready", "no_model", "not_running", "not_installed"]
+
+
+@dataclass(frozen=True)
+class OllamaProbe:
+    state: OllamaState
+    detail: str
+
+    @property
+    def usable(self) -> bool:
+        return self.state == "ready"
+
+
+def find_ollama() -> Path | None:
+    """The `ollama` executable: on PATH, or where the Windows installer puts it."""
+    found = shutil.which("ollama")
+    if found:
+        return Path(found)
+    local = os.environ.get("LOCALAPPDATA")
+    candidate = Path(local) / "Programs" / "Ollama" / "ollama.exe" if local else None
+    return candidate if candidate and candidate.is_file() else None
+
+
+def start_ollama(executable: Path) -> None:
+    """Start `ollama serve` in the background, detached and without a window. It keeps
+    running after the app stops, like the Ollama tray app would."""
+    kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+    }
+    if sys.platform == "win32":
+        # its own process group, so Ctrl+C in the start window does not stop it
+        kwargs["creationflags"] = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        kwargs["start_new_session"] = True
+    subprocess.Popen([str(executable), "serve"], **kwargs)  # noqa: S603 - our own executable
+
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 _TAGGED_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
@@ -93,17 +137,22 @@ class OllamaClient(LLMClient):
             completion_tokens=int(data.get("eval_count") or 0),
         )
 
-    def probe(self) -> tuple[bool, str]:
-        """Is Ollama running here, with the configured model pulled?"""
+    def probe(self) -> OllamaProbe:
+        """Is Ollama running here, with the configured model pulled? If it does not answer,
+        is it installed on this machine (so it could be started)?"""
         try:
             response = self._http.get("/api/tags", timeout=PROBE_TIMEOUT_S)
             names = {m.get("name") for m in response.json().get("models") or ()}
         except (httpx.HTTPError, ValueError, AttributeError):
-            hint = "installed but not running" if shutil.which("ollama") else "not installed"
-            return False, f"Ollama is not reachable at {self._base_url} ({hint})"
+            if find_ollama() is not None:
+                return OllamaProbe("not_running", f"installed, not running at {self._base_url}")
+            return OllamaProbe("not_installed", f"not installed (nothing at {self._base_url})")
         if self.model in names or f"{self.model}:latest" in names:
-            return True, "ok"
-        return False, f"Ollama has no model '{self.model}' (run `ollama pull {self.model}`)"
+            return OllamaProbe("ready", f"installed, running, model ready ({self.model})")
+        return OllamaProbe(
+            "no_model",
+            f"running, but model '{self.model}' is not pulled (run `ollama pull {self.model}`)",
+        )
 
     def close(self) -> None:
         self._http.close()

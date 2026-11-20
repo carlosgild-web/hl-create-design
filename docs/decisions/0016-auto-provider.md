@@ -37,9 +37,35 @@ get a working assistant without editing `.env`, and should be told which one the
 7. A Groq daily-quota error now says so, with the reset time and what to do (restart
    `start.cmd`, or `LLM_PROVIDER=auto`); only waits over 15 minutes are called a daily quota.
 
+## Update (2026-11-20): realistic probe, 429 classes, the person chooses
+
+The 4-token probe passed while the first real chat turn failed: a turn sends ~2-3k tokens (system
+prompt + tool specs) and makes 2-4 calls, and the free tier allows 8,000 tokens per minute. So:
+
+- **The probe sends a real first turn** (`app.agent.service.probe_turn()`: system prompt, all
+  tool specs, a short user message; `max_tokens` 8). The agent builds it and passes it in, so
+  `app/llm/` does not import the agent.
+- **429s are classified by Groq's text**, not only by the wait: `(TPM)`/`(RPM)` is per-minute,
+  `(TPD)`/`(RPD)` is daily, with "used X of Y" and the reset time. Waits like `3h10m5s` are
+  parsed (the old pattern read them as 5 s). Without that text, a wait over 2 minutes counts as
+  daily. Per-minute limits are waited out and retried up to 65 s; daily ones never are. This
+  replaces the 30 s / 15 min thresholds of point 7.
+- **Status, not just a pick**: `check_providers()` reports Groq as `ok | per_minute | daily |
+  no_key | bad_key | unreachable | error` and Ollama as `ready | no_model | not_running |
+  not_installed` ("installed" = on PATH or in `%LOCALAPPDATA%\Programs\Ollama`).
+- **`llm-check` asks** (replaces point 5's silent walk): it prints both statuses, suggests Groq
+  when usable (`Use Groq? [Y/n]`), else Ollama or the demo (`[O/d]`); if Ollama is installed but
+  stopped (and `OLLAMA_BASE_URL` is local) it offers to start `ollama serve` (detached, no
+  window) and waits up to 30 s. A missing model prints the `ollama pull` command; the demo is
+  used. Enter takes the suggestion; with no terminal the suggestion is taken silently and
+  nothing is started. Questions go to stderr; the choice goes to stdout and `--out FILE`
+  (`start.cmd` reads the file, because a `for /f` capture cannot read the keyboard).
+- The app's own `auto` (Docker) uses the same status without asking.
+
 ## Consequences
 
 - The code default changed from `fake` to `auto`. A fresh clone with no key and no Ollama still
   ends up on the scripted model, so "needs no external service" still holds.
-- A probe sends a few tokens to Groq on every app start when a key is configured.
+- A probe sends one first-turn-sized request (~2-3k tokens) to Groq on every start when a key
+  is configured, about 1% of the free daily quota.
 - The UI does not show the resolved provider yet (only `/api/health` does).

@@ -36,11 +36,16 @@ if not exist frontend\dist\index.html (
 rem Without a .env, pin the mock SAP's date so the demo numbers stay in 2026 (decision 0007).
 if not exist .env if not defined SAP_TODAY set "SAP_TODAY=2026-11-17"
 where kicad-cli >nul 2>&1 || findstr /b /c:"KICAD_CLI=" .env >nul 2>&1 || echo Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env.
-rem Which model will answer? Groq if it has tokens, else Ollama if running, else the demo model.
+rem Which model will answer? It checks Groq and Ollama, suggests one and asks (Enter = suggestion).
+rem Run in this console (not in for /f) so the question can read the keyboard.
 echo.
+set "LLM_CHOICE=%TEMP%\hl-create-design-llm.txt"
+del "%LLM_CHOICE%" >nul 2>&1
 pushd backend
-for /f "delims=" %%p in ('.venv\Scripts\python -m app.cli llm-check') do set "LLM_PROVIDER=%%p"
+.venv\Scripts\python -m app.cli llm-check --out "%LLM_CHOICE%" >nul
 popd
+if exist "%LLM_CHOICE%" set /p LLM_PROVIDER=<"%LLM_CHOICE%"
+del "%LLM_CHOICE%" >nul 2>&1
 echo.
 echo Starting the mock SAP on http://localhost:8100 ...
 start "SAP mock (Create Design)" /min cmd /c "cd /d sap-mock && .venv\Scripts\python -m uvicorn app.main:app --port 8100"

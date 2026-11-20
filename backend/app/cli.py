@@ -15,11 +15,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from urllib.parse import urlparse
 
 from app.actions import ActionNotFound, ActionNotPending, cancel_action, confirm_action
-from app.agent.service import AgentDeps, chat_turn
+from app.agent.service import AgentDeps, chat_turn, probe_turn
 from app.core.config import MANUAL_DIR, Settings, get_settings
 from app.db.session import get_engine
 from app.designs import DesignValidationError, create_design
@@ -27,7 +29,8 @@ from app.kicad.exporter import ExportError
 from app.kicad.renderer import DesignFolderExistsError
 from app.llm.base import LLMClient, LLMError, Message
 from app.llm.factory import make_client
-from app.llm.resolve import resolve_from
+from app.llm.ollama import OllamaProbe, find_ollama, start_ollama
+from app.llm.resolve import ProviderStatus, check_ollama, check_providers
 from app.sap.client import SapClient
 from app.standards.manual_search import ManualIndex
 from app.standards.validators import DesignRequest, Issue, UnsafePathError
@@ -77,10 +80,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--older-than", type=float, default=None, metavar="HOURS", help="default: DESIGNS_TTL_HOURS"
     )
 
-    commands.add_parser(
+    check = commands.add_parser(
         "llm-check",
-        help="Check which model will answer (groq, then ollama, then the demo model) and print it",
+        help="Check Groq and Ollama, suggest a model, ask which to use, and print it",
     )
+    check.add_argument("--out", type=Path, metavar="FILE", help="Also write the choice here")
 
     ev = commands.add_parser("agent-eval", help="Run the agent scenario suite (PLAN Phase 6)")
     which = ev.add_mutually_exclusive_group(required=True)
@@ -95,28 +99,120 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def run_llm_check(settings: Settings, resolver=resolve_from) -> int:
-    """Human-readable status on stderr; the chosen provider name alone on stdout, so the
-    start scripts can capture it (`LLM_PROVIDER=<name>`)."""
+# --- llm-check: which model answers (run by start.cmd / start.sh) --------------------
+
+# ask(question, yes_letter) -> True/False, or None when there is no terminal to ask on
+Ask = Callable[[str, str], "bool | None"]
+OLLAMA_START_WAIT_S = 30
+
+
+def _say(text: str = "") -> None:
+    print(text, file=sys.stderr, flush=True)
+
+
+def ask_terminal(question: str, yes_letter: str) -> bool | None:
+    """Wait for the person at the terminal: Enter takes the suggestion (the capital letter)."""
+    if not sys.stdin.isatty():
+        return None
+    sys.stderr.write(question)
+    sys.stderr.flush()
+    try:
+        answer = input().strip().lower()
+    except EOFError:  # e.g. `start.cmd < nul`: Windows reports NUL as a terminal
+        sys.stderr.write("\n")
+        return None
+    return answer == "" or answer.startswith(yes_letter)
+
+
+def _is_local(url: str) -> bool:
+    return urlparse(url).hostname in ("localhost", "127.0.0.1", "::1")
+
+
+def start_and_wait(
+    settings: Settings,
+    *,
+    find: Callable[[], Path | None] = find_ollama,
+    start: Callable[[Path], None] = start_ollama,
+    check: Callable[[Settings], OllamaProbe] = check_ollama,
+    sleep: Callable[[float], None] = time.sleep,
+    wait_s: int = OLLAMA_START_WAIT_S,
+) -> OllamaProbe:
+    """Start `ollama serve` and wait until it answers (at most `wait_s` seconds)."""
+    executable = find()
+    if executable is None:
+        return OllamaProbe("not_installed", "not installed")
+    _say("  Starting Ollama ...")
+    try:
+        start(executable)
+    except OSError as exc:
+        return OllamaProbe("not_running", f"could not be started ({exc})")
+    for _ in range(wait_s):
+        probe = check(settings)
+        if probe.state != "not_running":
+            return probe
+        sleep(1)
+    return OllamaProbe("not_running", f"did not answer within {wait_s} s of starting")
+
+
+def choose_provider(
+    status: ProviderStatus,
+    settings: Settings,
+    ask: Ask,
+    start: Callable[[Settings], OllamaProbe],
+) -> str:
+    """Suggest the best provider and let the person pick. Without a terminal (`ask` returns
+    None) the suggestion is taken, and Ollama is never started."""
+    groq, ollama = status.groq, status.ollama
+    if groq and groq.usable and ask("Use Groq? [Y/n] ", "y") is not False:
+        return "groq"
+    if ollama is None:
+        return "fake"
+    if ollama.state == "not_running" and _is_local(settings.ollama_base_url):
+        if ask("Ollama is installed but not running. Start it now? [Y/n] ", "y"):
+            ollama = start(settings)
+            _say(f"  Ollama    {ollama.detail}")
+            if ollama.usable:
+                return "ollama"
+        return "fake"
+    if ollama.usable:
+        question = (
+            "Use [O]llama (local, slower, needs ~3.5 GB free RAM) or the [D]emo model? [O/d] "
+        )
+        return "ollama" if ask(question, "o") is not False else "fake"
+    return "fake"
+
+
+def run_llm_check(
+    settings: Settings,
+    out: Path | None = None,
+    *,
+    check: Callable[[Settings], ProviderStatus] | None = None,
+    ask: Ask = ask_terminal,
+    start: Callable[[Settings], OllamaProbe] = start_and_wait,
+) -> int:
+    """Show each provider's status, suggest one and ask (when there is a terminal). The
+    questions and status go to stderr; the chosen name goes to stdout and to `out`, so the
+    start scripts can run the app with `LLM_PROVIDER=<name>`."""
     configured = settings.llm_provider
     if configured == "fake":
-        print("Assistant: scripted demo model (LLM_PROVIDER=fake).", file=sys.stderr)
-        print("fake")
-        return 0
-    print(f"Checking the assistant's model (LLM_PROVIDER={configured}) ...", file=sys.stderr)
-    resolution = resolver(settings)
-    for reason in resolution.skipped:
-        print(f"  not available - {reason}", file=sys.stderr)
-    provider = resolution.provider
-    if provider == "fake":
-        print(
-            "  Using the scripted demo model (no real model is available). To use one: "
-            "start Ollama, or set GROQ_API_KEY.",
-            file=sys.stderr,
-        )
+        _say("Assistant: the scripted demo model (LLM_PROVIDER=fake).")
+        provider = "fake"
     else:
-        suffix = " instead" if resolution.skipped else ""
-        print(f"  Using {provider} ({resolution.client.model}){suffix}.", file=sys.stderr)
+        _say("Checking the assistant's model ...")
+        status = (check or (lambda s: check_providers(s, turn=probe_turn())))(settings)
+        if status.groq:
+            _say(f"  Groq      {status.groq.detail}")
+        if status.ollama:
+            _say(f"  Ollama    {status.ollama.detail}")
+        provider = choose_provider(status, settings, ask, start)
+        names = {
+            "groq": f"Groq ({settings.groq_model})",
+            "ollama": f"Ollama ({settings.ollama_model})",
+            "fake": "the demo model (scripted, no real AI)",
+        }
+        _say(f"Using {names[provider]}.")
+    if out:
+        out.write_text(provider, encoding="utf-8")
     print(provider)
     return 0
 
@@ -185,7 +281,7 @@ def main(argv: Sequence[str] | None = None, settings: Settings | None = None) ->
     if args.command == "cleanup":
         return run_cleanup(args, settings)
     if args.command == "llm-check":
-        return run_llm_check(settings)
+        return run_llm_check(settings, args.out)
     if args.command == "agent-eval":
         return run_agent_eval(args, settings)
     return 2  # pragma: no cover - argparse rejects unknown commands

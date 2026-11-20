@@ -44,9 +44,11 @@ case "$mode" in
     [ -f .env ] || export SAP_TODAY="${SAP_TODAY:-2026-11-17}"
     command -v kicad-cli >/dev/null 2>&1 || grep -q '^KICAD_CLI=' .env 2>/dev/null \
       || echo "Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env."
-    # Which model will answer? Groq if it has tokens, else Ollama if running, else the demo model.
+    # Which model will answer? It checks Groq and Ollama, suggests one and asks (Enter = the
+    # suggestion). Questions go to stderr and read the terminal; only the choice is captured.
     echo
-    provider="$(cd backend && .venv/bin/python -m app.cli llm-check)" && [ -n "$provider" ] && export LLM_PROVIDER="$provider"
+    provider="$(cd backend && .venv/bin/python -m app.cli llm-check)" || provider=""
+    [ -n "$provider" ] && export LLM_PROVIDER="$provider"
     echo
     echo "Starting the mock SAP on http://localhost:8100 ..."
     (cd sap-mock && exec .venv/bin/python -m uvicorn app.main:app --port 8100) &

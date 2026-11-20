@@ -18,7 +18,7 @@ from app.agent.tools import ToolContext, ToolRegistry
 from app.agent.trace import AgentTrace
 from app.core.config import Settings
 from app.db import store
-from app.llm.base import LLMClient, Message
+from app.llm.base import LLMClient, Message, ToolSpec
 from app.sap.client import SapClient
 from app.standards.manual_search import ManualIndex
 
@@ -46,6 +46,16 @@ def model_history(stored: list[dict[str, Any]]) -> list[Message]:
         elif role == "event":
             history.append(Message("user", data.get("content") or ""))
     return history
+
+
+def probe_turn(language: str = "en") -> tuple[list[Message], list[ToolSpec]]:
+    """A first chat turn as the model would get it (system prompt, all tool specs, a short
+    user message), for checking that a provider's limits allow a real turn right now."""
+    messages = [
+        Message("system", system_prompt(language, date.today())),
+        Message("user", user_message("Hello", {})),
+    ]
+    return messages, ToolRegistry().specs
 
 
 def chat_turn(
