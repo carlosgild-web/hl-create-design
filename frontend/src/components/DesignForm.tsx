@@ -9,6 +9,7 @@ import {
   type Validation,
   type ValueSource,
 } from '@/api/types'
+import { FormStepper } from '@/components/FormStepper'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -75,8 +76,9 @@ export function DesignForm({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="gap-3">
         <CardTitle className="font-heading text-lg">{t('form.title')}</CardTitle>
+        <FormStepper values={values} validation={validation} created={sameAsCreated} />
       </CardHeader>
       <CardContent>
         {created && (
