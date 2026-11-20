@@ -6,7 +6,7 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
 
 | Provider | Model | Passed | Report |
 |---|---|---|---|
-| fake (scripted) | - | 30/30 (27 + 3 fake-only) | CI job "agent eval" |
+| fake (scripted) | - | 34/34 (31 + 3 fake-only; the real-model runs below used the 27 that existed then) | CI job "agent eval" |
 | ollama, first prompt (v1) | qwen3:4b-instruct-2507-q4_K_M | 11/27 | [md](ollama-qwen3-4b.md), [json](ollama-qwen3-4b.json) |
 | ollama, tuned prompt v3 (full) | qwen3:4b-instruct-2507-q4_K_M | **21/27** | [md](ollama-qwen3-4b-full.md), [json](ollama-qwen3-4b-full.json) |
 | ollama, tuned prompt v2 (targeted) | qwen3:4b-instruct-2507-q4_K_M | 11/13 of the scenarios the tuning aimed at (the other 14 were not re-run) | [md](ollama-qwen3-4b-tuned.md), [json](ollama-qwen3-4b-tuned.json) |

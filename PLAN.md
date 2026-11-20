@@ -234,6 +234,16 @@ validators fully unit tested (including path traversal like `..\..\Windows`); go
 - The start question waits for the user (a 10 s timeout was tried and reverted, 0017 item 23).
 - Screenshots in `docs/showcase/` (`SHOWCASE=1` Playwright spec).
 
+**Later UI work in Phase 8 (decisions 0014, 0015, 0018-0020).** All three carried-over items
+are now done:
+- the H&L palette
+- the demo guide
+- a Start panel (new design or new revision of an SAP design) with a preview dialog
+- one live card per request, with earlier cards going inert
+- an optional description (`${COMMENT1}`)
+- Open in KiCad, the project zip and copy path
+- a polish pass with a live title-block preview
+
 ### Phase 6 — Evaluation and hardening
 - Scenario suite (~25): valid create, wrong format, reused rev, skipped letter `I`, blocked/obsolete
   material, SAP down (503) and slow, folder already exists, path traversal, prompt injection,
@@ -243,7 +253,7 @@ validators fully unit tested (including path traversal like `..\..\Windows`); go
 
 **Done when:** suite passes 100% on Fake; results for both real providers published, including failures.
 
-**Status:** done. Fake 30/30 (CI). Ollama (qwen3 4B, CPU) went from 11/27 to **21/27** after prompt tuning,
+**Status:** done. Fake 30/30 (CI; 34/34 after the Phase 8 scenarios). Ollama (qwen3 4B, CPU) went from 11/27 to **21/27** after prompt tuning,
 no regressions, invariants held (`docs/eval/`). Groq (gpt-oss-120b): **20/27**, invariants held
 (decision 0012). Known small-model gaps, kept visible on purpose: `manual-question` (the model writes the tool call
 as text, `search_design_manual{...}`), `one-sentence-fill` and `wizard-reserve-then-create` (ask for a missing
@@ -267,6 +277,13 @@ field instead of calling the tool), `path-traversal`, and missing citations in `
 - GitHub release v1.0.0, topics, link from the CV and LinkedIn post.
 
 **Done when:** README reviewed; release published; demo link in the CV.
+
+**Status:** in progress.
+- README rewritten: GIF, before/after title block, Mermaid diagram, invariants, eval table,
+  try-it steps.
+- The GIF is recorded by the Playwright showcase spec with the real `kicad-cli`
+  (`E2E_REAL_KICAD=1`). Fake eval is 34/34.
+- Open: the user's video, PR to `main`, the v1.0.0 release, and the CV/LinkedIn links.
 
 ---
 
