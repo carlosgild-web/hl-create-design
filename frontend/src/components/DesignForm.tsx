@@ -160,7 +160,8 @@ export function DesignForm({
                   ))}
                 </div>
                 {warnings.map((w) => (
-                  <p key={w.code} className="text-xs text-hl-amber-ink dark:text-hl-amber">
+                  <p key={w.code} className="text-xs text-foreground/80">
+                    <span aria-hidden>⚠ </span>
                     {w.message} <span className="text-muted-foreground">[{w.ref}]</span>
                   </p>
                 ))}

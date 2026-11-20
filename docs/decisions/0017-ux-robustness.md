@@ -97,6 +97,28 @@ and Stop could not reach the backend. The console logged nothing about the model
     or as a pill. The floating demo-guide pill (bottom left) did overlap that card, so the
     page now has bottom padding to keep content clear of it.
 
+## Decision (block D: layout and visual design)
+
+18. **Luna's palette is kept** (the user's choice); the stricter color meanings are in the
+    addendum to decision 0014.
+19. **Desktop (`lg` and up)**:
+    - Left column: the form with a progress stepper (Department → Number → Revision →
+      Details → Confirm). It is worked out from the fields and the validators' errors, shows
+      progress only and never blocks editing.
+    - Under the form: tabs "Preview | Recent designs". Creating, Show preview and picking a
+      recent design switch to Preview.
+    - Right column: the assistant, sticky at viewport height, so its input is always in view.
+20. **Phones (below `lg`)**:
+    - Tabs "Form | Assistant | Preview". Sending a message opens Assistant, a new preview
+      opens Preview, and the Assistant tab shows a badge while a card waits.
+    - The form and the chat stay mounted, so a draft or a running answer survives a tab
+      switch.
+    - The demo banner is one line: no tag, the text cut to one line, and the button as an
+      icon with an accessible name.
+21. Tabs come from Radix (the `radix-ui` package already in use; no new dependency). The
+    layout is chosen with `matchMedia` (`useMediaQuery`); without it (unit tests) the
+    desktop layout is used.
+
 ## Consequences
 
 - One extra thread per model call (pool of 8). Tests with `FakeClient` work as before; the

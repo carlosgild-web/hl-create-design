@@ -71,20 +71,24 @@ export function DemoGuide({ config = defaultGuide }: { config?: GuideConfig }) {
     <>
       {mode === 'open' && (
         <div role="region" aria-label={text(config.pill)} className={cn(FRAME, 'border-b')}>
-          <div className="mx-auto flex max-w-7xl items-start gap-3 px-4 py-2.5 text-xs">
+          {/* One line on phones (the banner took a quarter of the screen): no tag, the text
+              cut to one line, the button as an icon. Full text and button from `sm` up. */}
+          <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-1.5 text-xs sm:items-start sm:py-2.5">
             <Compass className="mt-0.5 size-4 shrink-0 text-zinc-400 max-sm:hidden" aria-hidden />
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="font-mono text-[0.65rem] tracking-[0.12em] text-zinc-400 uppercase">
+            <div className="min-w-0 flex-1 sm:space-y-1">
+              <p className="font-mono text-[0.65rem] tracking-[0.12em] text-zinc-400 uppercase max-sm:hidden">
                 {text(config.tag)}
               </p>
-              <p className="text-zinc-200">{text(config.banner)}</p>
+              <p className="text-zinc-200 max-sm:truncate">{text(config.banner)}</p>
             </div>
             <button
               type="button"
               onClick={() => setPanelOpen(true)}
-              className="shrink-0 rounded-md border border-zinc-600 px-2.5 py-1 font-semibold text-zinc-100 transition-colors hover:bg-white/10"
+              aria-label={text(config.how)}
+              className="flex shrink-0 items-center gap-1.5 rounded-md border border-zinc-600 px-2.5 py-1 font-semibold text-zinc-100 transition-colors hover:bg-white/10"
             >
-              {text(config.how)}
+              <Compass className="size-4 sm:hidden" aria-hidden />
+              <span className="max-sm:sr-only">{text(config.how)}</span>
             </button>
             <button
               type="button"

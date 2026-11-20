@@ -44,6 +44,9 @@ test('assistant fills the form, nothing is created until the click, then the pre
     .poll(() => preview.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
     .toBe(true)
   expect((await request.get(PREVIEW)).status()).toBe(200)
+  // the preview tab opened by itself; the new revision is in the recent list
+  await expect(page.getByRole('tab', { name: 'Preview' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: 'Recent designs' }).click()
   await expect(page.getByRole('button', { name: /HL-HW-26-0003 C/ })).toBeVisible()
 
 })
@@ -102,4 +105,25 @@ test('switches to Spanish', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'ES', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Crear diseño' })).toBeVisible()
+})
+
+test('on a phone: one-line guide banner, tabs, and the chat in view when sending', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.goto('/')
+  const banner = page.getByRole('region', { name: 'Demo guide' })
+  expect((await banner.boundingBox())!.height).toBeLessThan(60)
+
+  const tabs = page.getByRole('tablist', { name: 'Sections' })
+  await expect(tabs.getByRole('tab', { name: 'Form' })).toHaveAttribute('aria-selected', 'true')
+  await tabs.getByRole('tab', { name: /Assistant/ }).click()
+  await page.getByLabel(/describe your design/i).fill('Revision C of the bead sorter vision board')
+  await page.getByRole('button', { name: 'Send' }).click()
+  await expect(page.getByRole('region', { name: 'SAP record' })).toBeVisible()
+  await expect(page.getByLabel(/describe your design/i)).toBeInViewport()
+
+  // the form was filled meanwhile
+  await tabs.getByRole('tab', { name: 'Form' }).click()
+  await expect(page.getByLabel('Design number')).toHaveValue('HL-HW-26-0003')
+  await expect(page.locator('body')).not.toHaveCSS('overflow-x', 'scroll')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })

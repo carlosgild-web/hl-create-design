@@ -2,11 +2,13 @@ import type { SapDesign } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { useI18n, type MessageKey } from '@/i18n'
 
+// Status colors (decision 0014 addendum): in work = brand blue, released = done,
+// blocked = error, obsolete = neutral. Sea is kept for "this value came from SAP".
 const STATUS_STYLE: Record<string, string> = {
-  IN_WORK: 'bg-hl-sea/25 text-hl-sea-ink dark:text-hl-sea',
-  RELEASED: 'bg-hl-cobalt-soft text-hl-cobalt dark:bg-hl-cobalt/30 dark:text-hl-moon',
+  IN_WORK: 'bg-hl-cobalt-soft text-hl-cobalt dark:bg-hl-cobalt/30 dark:text-hl-moon',
+  RELEASED: 'bg-success/15 text-success',
   BLOCKED: 'bg-destructive/10 text-destructive',
-  OBSOLETE: 'bg-muted text-muted-foreground',
+  OBSOLETE: 'bg-muted text-muted-foreground line-through',
 }
 
 /** Material numbers are shown without leading zeros (03-title-block). */

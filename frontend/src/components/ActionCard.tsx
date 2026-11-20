@@ -54,7 +54,7 @@ export function ActionCard({ action, departments = [], onChange, onUseNumber, on
   return (
     <section
       aria-label={t(action.kind === 'create_design' ? 'action.create_design' : 'action.reserve_number')}
-      className="rounded-lg border-2 border-hl-amber bg-card p-3 text-sm"
+      className="rounded-lg border-2 border-primary/50 bg-card p-3 text-sm"
       data-status={status}
     >
       <p className="font-medium">
@@ -101,7 +101,8 @@ export function ActionCard({ action, departments = [], onChange, onUseNumber, on
             </p>
           )}
           {result.warnings?.map((w) => (
-            <p key={w.code} className="text-xs text-hl-amber-ink dark:text-hl-amber">
+            <p key={w.code} className="text-xs text-foreground/80">
+                    <span aria-hidden>⚠ </span>
               {w.message} [{w.ref}]
             </p>
           ))}

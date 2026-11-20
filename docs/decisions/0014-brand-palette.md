@@ -27,3 +27,16 @@ so the UI should look like part of the same portfolio.
 
 No new dependency. Lint, unit tests, build and the Playwright e2e pass unchanged, because no
 test depends on colors.
+
+## Addendum (2026-11-20, decision 0017 block D)
+
+After the first manual test the user chose to keep this palette (not a new blue/amber/teal
+set), with stricter meanings:
+
+- **Amber marks only values the assistant suggested** (the field ring and its label). The
+  confirmation card's border is now `primary`, and warnings use a neutral style with ⚠.
+- **Sea marks only values that came from SAP** ("From SAP").
+- **A new `success` token** (`#2e7d4f`, dark `#6cc58f`) for done states: "Created ✓", a
+  RELEASED badge, the finished stepper steps.
+- SAP status badges: IN_WORK cobalt, RELEASED success, BLOCKED destructive, OBSOLETE muted
+  (struck through).

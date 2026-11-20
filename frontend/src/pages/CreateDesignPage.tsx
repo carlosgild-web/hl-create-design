@@ -9,13 +9,15 @@ import { Header } from '@/components/Header'
 import { PreviewPane } from '@/components/PreviewPane'
 import { RecentDesigns } from '@/components/RecentDesigns'
 import { StepsDrawer } from '@/components/StepsDrawer'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useChat } from '@/hooks/useChat'
 import { useDesignForm } from '@/hooks/useDesignForm'
+import { DESKTOP, useMediaQuery } from '@/hooks/useMediaQuery'
 import { useValidation } from '@/hooks/useValidation'
 import { useI18n } from '@/i18n'
 
 export default function CreateDesignPage() {
-  const { lang } = useI18n()
+  const { lang, t } = useI18n()
   const queryClient = useQueryClient()
   const departments = useQuery({ queryKey: ['departments'], queryFn: getDepartments, retry: false })
 
@@ -24,6 +26,9 @@ export default function CreateDesignPage() {
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const [opening, setOpening] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
+  const desktop = useMediaQuery(DESKTOP)
+  const [sideTab, setSideTab] = useState<SideTab>('recent')
+  const [mobileTab, setMobileTab] = useState<MobileTab>('form')
 
   const valuesRef = useRef(form.values)
   useEffect(() => {
@@ -70,7 +75,8 @@ export default function CreateDesignPage() {
 
   function show(target: PreviewTarget) {
     setPreview(target)
-    // The preview can be below the fold (one column on small screens).
+    setSideTab('preview')
+    setMobileTab('preview')
     requestAnimationFrame(() => previewRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }))
   }
 
@@ -85,53 +91,108 @@ export default function CreateDesignPage() {
     form.fillFromSap(action.id, { design_number, revision: revision ?? 'A', department: department ?? action.payload.department })
   }
 
+  const designForm = (
+    <DesignForm
+      values={form.values}
+      source={form.source}
+      suggestions={form.suggestions}
+      errors={form.errors}
+      validation={validation}
+      created={form.created}
+      sameAsCreated={form.sameAsCreated}
+      departments={departments.data ?? []}
+      busy={opening}
+      onChange={form.edit}
+      onTakeSuggestion={form.takeSuggestion}
+      onReserve={() => void openCard('reserve_number')}
+      onCreate={() => void openCard('create_design')}
+      onNewDesign={form.reset}
+    />
+  )
+  const assistant = (
+    <AssistantPanel
+      timeline={chat.timeline}
+      actions={chat.actions}
+      busy={chat.busy}
+      activity={chat.activity}
+      onSend={(text) => {
+        setMobileTab('assistant')
+        void chat.send(text)
+      }}
+      onStop={() => void chat.stop()}
+      onNewConversation={chat.reset}
+      onSwitch={(to) => void chat.switchTo(to)}
+      onActionChange={onActionChange}
+      onUseNumber={useNumber}
+      onUndoNumber={(action) => form.undoFill(action.id)}
+      canUndoNumber={(action) => form.canUndo(action.id)}
+      onShowPreview={showPreview}
+      departments={departments.data ?? []}
+      stepsButton={<StepsDrawer steps={chat.steps} runId={chat.runId} />}
+    />
+  )
+  const previewPane = (
+    <div ref={previewRef}>
+      <PreviewPane target={preview} />
+    </div>
+  )
+  const recent = <RecentDesigns selected={preview} onSelect={show} />
+  const waitingCards = Object.values(chat.actions).filter((a) => a.status === 'pending').length
+
   return (
     <div className="min-h-svh bg-background">
       <Header />
       {/* pb-20: the floating demo-guide pill (bottom left) never covers the last card */}
-      <main className="mx-auto grid max-w-7xl gap-4 px-4 pb-20 lg:grid-cols-2">
-        <div className="space-y-4">
-          <DesignForm
-            values={form.values}
-            source={form.source}
-            suggestions={form.suggestions}
-            errors={form.errors}
-            validation={validation}
-            created={form.created}
-            sameAsCreated={form.sameAsCreated}
-            departments={departments.data ?? []}
-            busy={opening}
-            onChange={form.edit}
-            onTakeSuggestion={form.takeSuggestion}
-            onReserve={() => void openCard('reserve_number')}
-            onCreate={() => void openCard('create_design')}
-            onNewDesign={form.reset}
-          />
-          <RecentDesigns selected={preview} onSelect={show} />
-        </div>
-        <div className="space-y-4">
-          <AssistantPanel
-            timeline={chat.timeline}
-            actions={chat.actions}
-            busy={chat.busy}
-            activity={chat.activity}
-            onSend={(text) => void chat.send(text)}
-            onStop={() => void chat.stop()}
-            onNewConversation={chat.reset}
-            onSwitch={(to) => void chat.switchTo(to)}
-            onActionChange={onActionChange}
-            onUseNumber={useNumber}
-            onUndoNumber={(action) => form.undoFill(action.id)}
-            canUndoNumber={(action) => form.canUndo(action.id)}
-            onShowPreview={showPreview}
-            departments={departments.data ?? []}
-            stepsButton={<StepsDrawer steps={chat.steps} runId={chat.runId} />}
-          />
-          <div ref={previewRef}>
-            <PreviewPane target={preview} />
+      {desktop ? (
+        <main className="mx-auto grid max-w-7xl items-start gap-4 px-4 pb-20 lg:grid-cols-2">
+          <div className="space-y-4">
+            {designForm}
+            <Tabs value={sideTab} onValueChange={(v) => setSideTab(v as SideTab)}>
+              <TabsList aria-label={t('layout.side')}>
+                <TabsTrigger value="preview">{t('preview.title')}</TabsTrigger>
+                <TabsTrigger value="recent">{t('recent.title')}</TabsTrigger>
+              </TabsList>
+              <TabsContent value="preview">{previewPane}</TabsContent>
+              <TabsContent value="recent">{recent}</TabsContent>
+            </Tabs>
           </div>
-        </div>
-      </main>
+          {/* The chat keeps a fixed height next to the form; its input is always in view. */}
+          <div className="sticky top-4 h-[calc(100svh-2rem)] min-h-[32rem]">{assistant}</div>
+        </main>
+      ) : (
+        <main className="mx-auto max-w-7xl px-4 pb-20">
+          <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as MobileTab)}>
+            <TabsList aria-label={t('layout.sections')} className="sticky top-0 z-10">
+              <TabsTrigger value="form">{t('layout.form')}</TabsTrigger>
+              <TabsTrigger value="assistant">
+                {t('chat.title')}
+                {waitingCards > 0 && mobileTab !== 'assistant' && (
+                  <span
+                    aria-label={t('layout.waiting', { count: waitingCards })}
+                    className="grid size-4 place-items-center rounded-full bg-primary text-[0.6rem] text-primary-foreground"
+                  >
+                    {waitingCards}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="preview">{t('preview.title')}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="form" forceMount className="data-[state=inactive]:hidden">
+              {designForm}
+            </TabsContent>
+            <TabsContent value="assistant" forceMount className="h-[75svh] data-[state=inactive]:hidden">
+              {assistant}
+            </TabsContent>
+            <TabsContent value="preview" className="space-y-4">
+              {previewPane}
+              {recent}
+            </TabsContent>
+          </Tabs>
+        </main>
+      )}
     </div>
   )
 }
+
+type SideTab = 'preview' | 'recent'
+type MobileTab = 'form' | 'assistant' | 'preview'
