@@ -70,24 +70,47 @@ export function StartPanel(props: Props) {
   return (
     <Card className="flex h-full min-h-0 flex-col">
       <CardHeader className="gap-3">
-        <CardTitle className="font-heading text-lg">{t('start.title')}</CardTitle>
-        <div role="radiogroup" aria-label={t('start.mode_label')} className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-          {(['new', 'existing'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={mode === m}
-              onClick={() => choose(m)}
-              className={cn(
-                'flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-                mode === m ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {m === 'new' ? <FilePlus2 aria-hidden className="size-4" /> : <Files aria-hidden className="size-4" />}
-              {t(m === 'new' ? 'start.mode_new' : 'start.mode_existing')}
-            </button>
-          ))}
+        <CardTitle className="font-heading text-[0.95rem] font-semibold">{t('start.title')}</CardTitle>
+        <div role="radiogroup" aria-label={t('start.mode_label')} className="grid gap-2">
+          {(['new', 'existing'] as const).map((m) => {
+            const on = mode === m
+            const Icon = m === 'new' ? FilePlus2 : Files
+            return (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-labelledby={`mode-${m}-title`}
+                aria-describedby={`mode-${m}-help`}
+                onClick={() => choose(m)}
+                className={cn(
+                  'flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+                  on
+                    ? 'border-primary bg-hl-cobalt-soft dark:bg-hl-cobalt/20'
+                    : 'border-border hover:border-primary/40 hover:bg-muted/60',
+                )}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    'mt-0.5 grid size-7 shrink-0 place-items-center rounded-md',
+                    on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  <Icon className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span id={`mode-${m}-title`} className={cn('block text-sm font-medium', on && 'text-primary dark:text-foreground')}>
+                    {t(m === 'new' ? 'start.mode_new' : 'start.mode_existing')}
+                  </span>
+                  <span id={`mode-${m}-help`} className="block text-xs text-muted-foreground">
+                    {t(m === 'new' ? 'start.mode_new_help' : 'start.mode_existing_help')}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
         </div>
         {pending && (
           <div role="alertdialog" aria-label={t('start.switch')} className="space-y-2 rounded-lg border p-2 text-sm">
@@ -150,7 +173,7 @@ function NewDesign({ canReserve, busy, onReserve, reservation, canUndoReservatio
             {t('start.reserved', { number: result.design_number, rev: result.revision ?? 'A' })}
           </p>
           {(result.sap_material || result.project) && (
-            <p className="font-mono text-muted-foreground">
+            <p className="tabular-nums text-muted-foreground">
               {[result.sap_material?.replace(/^0+/, ''), result.project].filter(Boolean).join(' · ')}
             </p>
           )}
@@ -320,7 +343,7 @@ function FromExisting({
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-xs">{d.design_number}</span>
+                  <span className="tabular-nums text-xs">{d.design_number}</span>
                   <Badge variant="secondary" className={STATUS_STYLE[d.status]}>
                     {t(`status.${d.status}` as MessageKey)}
                   </Badge>

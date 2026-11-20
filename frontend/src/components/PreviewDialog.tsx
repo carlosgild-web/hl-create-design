@@ -108,7 +108,7 @@ function PreviewBody({ target }: { target: PreviewTarget }) {
           {target.name ? ` · ${target.name}` : ''}
         </DialogTitle>
         <DialogDescription>
-          {target.department} · <span className="font-mono">{folder}</span>
+          {target.department} · <span className="tabular-nums">{folder}</span>
         </DialogDescription>
       </DialogHeader>
 
@@ -232,7 +232,7 @@ function ProjectFile({ target }: { target: PreviewTarget }) {
     <div className="space-y-1 rounded-lg border bg-muted/40 px-3 py-2 text-xs">
       <p className="font-medium">{t('preview.project_file')}</p>
       <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate font-mono select-all" title={path}>
+        <code className="min-w-0 flex-1 truncate tabular-nums select-all" title={path}>
           {path}
         </code>
         <Button size="xs" variant="outline" onClick={() => void copy()}>

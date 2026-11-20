@@ -32,7 +32,7 @@ export function RecentDesigns({ onPreview, bare = false }: Props) {
         {recent.data?.map((d) => (
           <li key={`${d.design_number}-${d.revision}-${d.created_at}`} className="flex items-center gap-2 py-1.5">
             <span className="min-w-0 flex-1">
-              <span className="font-mono">
+              <span className="tabular-nums">
                 {d.design_number} {d.revision}
               </span>{' '}
               <span className="text-muted-foreground">{d.name}</span>

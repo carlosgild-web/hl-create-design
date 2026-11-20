@@ -223,6 +223,8 @@ export default function CreateDesignPage() {
       )}
       canReserve={canReserve}
       onReserve={() => void openCard('reserve_number')}
+      // the wide layout: as tall as the other two columns (less the room kept for the guide pill)
+      className={desktop && wide ? 'min-h-[calc(100%-3.5rem)]' : undefined}
       onNewDesign={() => {
         form.reset()
         chat.retire()
@@ -310,7 +312,7 @@ export default function CreateDesignPage() {
           <TabsContent
             value="assistant"
             forceMount
-            className="h-[calc(100svh-9rem)] min-h-96 data-[state=inactive]:hidden"
+            className="h-[calc(100svh-11.5rem)] min-h-96 data-[state=inactive]:hidden"
           >
             {assistant}
           </TabsContent>

@@ -55,7 +55,7 @@ export function StepsDrawer({ steps, runId }: { steps: Step[]; runId: number | n
           )}
           {steps.map((step) => (
             <li key={step.id} className="rounded-lg border p-2">
-              <p className="font-mono font-medium">
+              <p className="tabular-nums font-medium">
                 {step.name}
                 {step.ok === false && <span className="ml-2 text-destructive">✕</span>}
               </p>

@@ -13,6 +13,7 @@ import {
   type ValueSource,
 } from '@/api/types'
 import { FormStepper } from '@/components/FormStepper'
+import { TitleBlockPreview } from '@/components/TitleBlockPreview'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -47,6 +48,7 @@ type Props = {
   onTakeSuggestion: (field: FormField) => void
   onCreate: () => void
   onNewDesign: () => void
+  className?: string
 }
 
 const fieldClass =
@@ -88,6 +90,7 @@ export function DesignForm({
   onTakeSuggestion,
   onCreate,
   onNewDesign,
+  className,
 }: Props) {
   const { t, lang } = useI18n()
   const folder = folderPreview(values)
@@ -152,9 +155,9 @@ export function DesignForm({
   }
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="gap-3">
-        <CardTitle className="font-heading text-lg">{t('form.title')}</CardTitle>
+        <CardTitle className="font-heading text-[0.95rem] font-semibold">{t('form.title')}</CardTitle>
         <FormStepper mode={mode} values={values} validation={validation} created={sameAsCreated} />
       </CardHeader>
       <CardContent>
@@ -289,7 +292,7 @@ export function DesignForm({
               tabIndex={-1}
               value={folder}
               placeholder="–"
-              className="h-6 flex-1 border-0 bg-transparent px-0 font-mono text-xs shadow-none focus-visible:ring-0"
+              className="h-6 flex-1 border-0 bg-transparent px-0 text-xs tabular-nums shadow-none focus-visible:ring-0"
             />
           </div>
 
@@ -321,6 +324,15 @@ export function DesignForm({
             </p>
           </div>
         </form>
+        <div className="mt-6 border-t pt-4">
+          <TitleBlockPreview
+            // the name as it will be saved (the validators normalize it), not as typed
+            values={normalizedName ? { ...values, name: normalizedName } : values}
+            source={source}
+            departments={departments}
+            sap={validation?.sap}
+          />
+        </div>
       </CardContent>
     </Card>
   )

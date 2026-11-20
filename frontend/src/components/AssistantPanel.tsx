@@ -86,7 +86,7 @@ export function AssistantPanel({
   return (
     <Card className="flex h-full min-h-96 flex-col">
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="font-heading text-lg">{t('chat.title')}</CardTitle>
+        <CardTitle className="font-heading text-[0.95rem] font-semibold">{t('chat.title')}</CardTitle>
         <div className="flex items-center gap-1">
           {onNewConversation && timeline.length > 0 && (
             <Button size="sm" variant="ghost" onClick={onNewConversation} disabled={busy}>
@@ -98,7 +98,7 @@ export function AssistantPanel({
         </div>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1" aria-live="polite">
+        <div className="flex-1 space-y-4 overflow-y-auto pr-1" aria-live="polite">
           {timeline.length === 0 && (
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>{t('chat.empty')}</p>
@@ -116,13 +116,13 @@ export function AssistantPanel({
             switch (item.kind) {
               case 'user':
                 return (
-                  <p key={item.id} className="ml-8 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
+                  <p key={item.id} className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground">
                     {item.text}
                   </p>
                 )
               case 'assistant':
                 return (
-                  <p key={item.id} className="mr-8 whitespace-pre-wrap rounded-lg bg-muted px-3 py-2 text-sm">
+                  <p key={item.id} className="mr-6 border-l-2 border-hl-cobalt/30 pl-3 text-sm leading-relaxed whitespace-pre-wrap">
                     {item.text}
                   </p>
                 )
