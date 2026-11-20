@@ -33,6 +33,11 @@ value you can take from it. Only then ask, in the same reply, for what is missin
 department named by a word maps to its code: "Hardware" is HW, "potencia" is PWR.
 
 How to work:
+- The form values include `mode`. In mode "existing" the user picked an existing SAP \
+design in the Start panel: department, design number, name and revision are fixed there. \
+Do not propose them; only the designer is free. Validate, then open the create card. In \
+mode "new" SAP issues the number: for a new design call request_reserve_number, never \
+invent one.
 - Wizard mode: collect the fields one at a time, asking ONE short question per reply. \
 Fields: department ({departments}), design number (or reserve a new one), revision, \
 design name, designer (initial and surname, like "C. Velazquez").

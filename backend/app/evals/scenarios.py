@@ -219,6 +219,63 @@ SCENARIOS: tuple[Scenario, ...] = (
             ),
         )
     ),
+    # The Start panel (decision 0018): the form already carries the mode and SAP's values.
+    Scenario(
+        "existing-mode-new-revision",
+        "From an existing design: the assistant validates and opens the revision C card",
+        (
+            Turn(
+                "Create the new revision, please.",
+                [
+                    call("validate_design_request", **drill(revision="C")),
+                    call("request_create_design", **drill(revision="C")),
+                    say("Revision C is ready to create. Confirm the card."),
+                ],
+                form={"mode": "existing", **drill(revision="C")},
+                click="confirm",
+            ),
+        ),
+        Expect(
+            tools=("validate_design_request", "request_create_design"),
+            not_tools=("propose_form_values", "request_reserve_number"),
+            cards=("create_design",),
+            audit=("design_created",),
+            folders=("HW/HL-HW-26-0042/C",),
+        ),
+        tags=("happy", "start-panel"),
+    ),
+    Scenario(
+        "new-mode-reserve",
+        "New design: the assistant reserves a number instead of inventing one",
+        (
+            Turn(
+                "Get me a number for this design.",
+                [
+                    call(
+                        "request_reserve_number",
+                        department=HW,
+                        name="Gate Driver",
+                        designer="C. Velazquez",
+                    ),
+                    say("Confirm the card and SAP issues the number."),
+                ],
+                form={
+                    "mode": "new",
+                    "department": HW,
+                    "name": "Gate Driver",
+                    "designer": "C. Velazquez",
+                },
+                click="confirm",
+            ),
+        ),
+        Expect(
+            tools=("request_reserve_number",),
+            not_tools=("request_create_design",),
+            cards=("reserve_number",),
+            audit=("number_reserved",),
+        ),
+        tags=("happy", "start-panel"),
+    ),
     Scenario(
         "wizard-reserve-then-create",
         "Reserve a number, then create revision A with it",
