@@ -249,9 +249,7 @@ export function DesignForm({
           })}
 
           <div className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-2">
-            <Label htmlFor="field-folder" className="text-xs font-normal text-muted-foreground after:content-[':']">
-              {t('form.folder')}
-            </Label>
+            <Label htmlFor="field-folder" className="text-xs font-normal text-muted-foreground after:-ml-1.5 after:content-[':']">{t('form.folder')}</Label>
             <Input
               id="field-folder"
               readOnly

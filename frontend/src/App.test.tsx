@@ -74,6 +74,9 @@ describe('Create Design', () => {
     expect(screen.getByRole('radio', { name: 'From existing design' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByLabelText('Revision')).toHaveValue('C') // next free, from SAP
     expect(screen.getByLabelText('Design number')).toHaveAttribute('aria-readonly', 'true')
+    // SAP set the locked fields: they say "From SAP", never "Suggested by the assistant"
+    expect(screen.queryByText('Suggested by the assistant')).not.toBeInTheDocument()
+    expect(screen.getAllByText('From SAP')).toHaveLength(4)
     expect(screen.getByLabelText('Design folder')).toHaveValue('HW/HL-HW-26-0042/C')
     // SAP card: material without leading zeros
     // one in the chat, one for the selected design in the Start panel

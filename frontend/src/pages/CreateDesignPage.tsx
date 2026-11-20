@@ -60,6 +60,10 @@ export default function CreateDesignPage() {
         if (known && known.selectable && formRef.current.values.design_number !== known.design_number) {
           selectExisting(known)
           setAiSelected(known.design_number)
+          // SAP set these just now; the rest of the proposal (the designer) still applies
+          const { designer } = fields
+          if (designer) propose({ designer })
+          return
         }
       }
       propose(fields)
