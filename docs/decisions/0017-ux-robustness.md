@@ -139,6 +139,22 @@ and Stop could not reach the backend. The console logged nothing about the model
     terminal (CI, Docker) nothing is asked, the suggestion is taken and Ollama is never
     started.
 
+## Decision (block F: one screen, chat on the left, guided fields)
+
+24. After a manual review the user asked for:
+    - **The chat on the left and no page scrolling.** On desktop the page is the viewport
+      height, the chat scrolls inside, and the input stays pinned.
+    - **A compact form** in two columns.
+    - **Guidance before typing:**
+      - a format and an example under every validated field, and placeholders;
+      - `POST /api/validate` returns `suggest` (the number prefix `HL-<DEPT>-<YY>-`, and the
+        next free revision);
+      - the form offers "Next free revision" and "Last used: <designer>".
+
+    A bare number prefix is never validated, stored or sent; SAP still issues numbers.
+    Decision 0018 later removes the prefix pre-fill in new mode, where the number comes only
+    from SAP.
+
 ## Consequences
 
 - One extra thread per model call (pool of 8). Tests with `FakeClient` work as before; the
