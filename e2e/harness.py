@@ -23,6 +23,7 @@ os.environ.update(
     DATA_DIR=str(data_dir),
     DESIGNS_ROOT=str(data_dir / "designs"),
     LLM_PROVIDER="fake",
+    KICAD_OPEN_ENABLED="false",  # never start a desktop program from a test
     SAP_BASE_URL=os.environ.get("SAP_BASE_URL", "http://127.0.0.1:8190"),
 )
 sys.path.insert(0, str(ROOT / "backend"))

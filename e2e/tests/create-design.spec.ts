@@ -13,6 +13,42 @@ async function previewLoaded(page: Page, number: string, rev: string) {
   return dialog
 }
 
+// These two run first: the assistant's card asks for HL-HW-26-0003 rev C, which the next test creates.
+test('Create does not copy the card the assistant opened; Cancel leaves nothing behind', async ({ page, request }) => {
+  await page.goto('/')
+  await page.getByLabel(/describe your design/i).fill('Revision C of the bead sorter vision board')
+  await page.getByRole('button', { name: 'Send' }).click()
+  const cards = page.getByRole('region', { name: 'Create this design?' })
+  await expect(cards).toHaveCount(1)
+  await expect(page.getByText(/A card for these values is waiting in the chat/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Create revision C' }).click()
+
+  await expect(cards).toHaveCount(1)
+  await expect(cards.getByRole('button', { name: 'Confirm' })).toBeFocused() // brought into view
+
+  await cards.getByRole('button', { name: 'Cancel' }).click()
+  await expect(cards).toContainText('Nothing was created or reserved.')
+  expect((await request.get(PREVIEW)).status()).toBe(404)
+})
+
+test('a mode switch cancels the waiting card and leaves it without buttons', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel(/describe your design/i).fill('Revision C of the bead sorter vision board')
+  await page.getByRole('button', { name: 'Send' }).click()
+  const card = page.getByRole('region', { name: 'Create this design?' })
+  await expect(card.getByRole('button', { name: 'Confirm' })).toBeVisible()
+
+  await page.getByRole('radio', { name: 'New design' }).click()
+  await page.getByRole('button', { name: 'Switch', exact: true }).click()
+
+  await expect(card).toHaveAttribute('data-status', 'cancelled')
+  await expect(card.getByRole('button')).toHaveCount(0)
+  await expect(card).toContainText('From an earlier design')
+  await expect(page.getByText('Started over: earlier cards were cancelled')).toBeVisible()
+  await expect(page.getByLabel('Design number')).toHaveValue('')
+})
+
 test('the assistant names an existing design: nothing is created until the click, then the preview dialog', async ({
   page,
   request,
@@ -100,6 +136,56 @@ test('a new design: Get SAP number fills the number at once, then create it', as
   await page.getByRole('region', { name: 'Create this design?' }).getByRole('button', { name: 'Confirm' }).click()
   const number = await page.getByLabel('Design number').inputValue()
   await previewLoaded(page, number, 'A')
+})
+
+test('a new design named Test: Create says why it waits, and a bad designer is caught inline', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Department').selectOption('EMB')
+  await page.getByLabel('Design name').fill('Test')
+  const create = page.getByRole('button', { name: 'Create design' })
+  await expect(create).toBeDisabled()
+  await expect(create).toHaveAccessibleDescription('To create: fill in Designer · get a SAP number')
+
+  await page.getByLabel('Designer').fill('carlos')
+  await expect(page.getByText(/Write the designer as initial, period, space and surname/)).toBeVisible()
+  await expect(create).toHaveAccessibleDescription(/fix the errors above/)
+
+  await page.getByLabel('Designer').fill('C. Velazquez')
+  await expect(create).toHaveAccessibleDescription('To create: get a SAP number')
+  await page.getByRole('button', { name: 'Next: get SAP number' }).click()
+  const card = page.getByRole('region', { name: 'Reserve a new SAP number?' })
+  await expect(card.getByText('EMB – Embedded Boards')).toBeVisible()
+  await card.getByRole('button', { name: 'Cancel' }).click() // no number consumed
+  await expect(card).toHaveAttribute('data-status', 'cancelled')
+})
+
+test('a description goes on the card and the recent list; the project downloads as a zip', async ({ page, request }) => {
+  await page.goto('/')
+  await page.getByRole('radio', { name: 'From existing design' }).click()
+  await page.getByRole('searchbox', { name: 'Search by number or name' }).fill('polisher')
+  await page.getByRole('listbox', { name: 'Designs in SAP' }).getByRole('option', { name: /HL-PWR-26-0011/ }).click()
+  await expect(page.getByLabel('Revision')).toHaveValue('D') // C was created above
+  await page.getByLabel('Designer').fill('C. Velazquez')
+  await page.getByLabel(/Description/).fill('  Second source   for the gate driver ')
+
+  await page.getByRole('button', { name: 'Create revision D' }).click()
+  const card = page.getByRole('region', { name: 'Create this design?' })
+  await expect(card).toContainText('Second source for the gate driver') // as stored
+  await card.getByRole('button', { name: 'Confirm' }).click()
+
+  const dialog = await previewLoaded(page, 'HL-PWR-26-0011', 'D')
+  await expect(dialog.getByText(/HL-PWR-26-0011_D\.kicad_pro$/)).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Copy path' })).toBeVisible()
+  // the e2e backend runs with KICAD_OPEN_ENABLED=false, as Docker does
+  await expect(dialog.getByRole('button', { name: 'Open in KiCad' })).toHaveCount(0)
+  const zip = dialog.getByRole('link', { name: 'Download project (.zip)' })
+  const response = await request.get(`${API}${await zip.getAttribute('href')}`)
+  expect(response.status()).toBe(200)
+  expect((await response.body()).includes(Buffer.from('HL-PWR-26-0011_D/HL-PWR-26-0011_D.kicad_pro'))).toBe(true)
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('button', { name: /Recent designs \(\d+\)/ }).click()
+  await expect(page.getByText('Second source for the gate driver').last()).toBeVisible()
 })
 
 test('switches to Spanish', async ({ page }) => {
