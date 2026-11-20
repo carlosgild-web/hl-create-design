@@ -56,7 +56,7 @@ def test_factory_picks_the_provider():
     cloud = make_client(Settings(_env_file=None, llm_provider="groq", groq_api_key="gsk_x"))
     assert (cloud.provider, cloud.model) == ("groq", "openai/gpt-oss-120b")
     with pytest.raises(LLMError, match="GROQ_API_KEY"):
-        make_client(Settings(_env_file=None, llm_provider="groq"))
+        make_client(Settings(_env_file=None, llm_provider="groq", groq_api_key=None))
 
 
 # --- OllamaClient ------------------------------------------------------------------------
@@ -184,8 +184,11 @@ def test_ollama_not_running_is_a_clear_error():
 # --- GroqClient --------------------------------------------------------------------------
 
 
-def groq(handler) -> GroqClient:
-    return GroqClient("gsk_test", "gpt-test", transport=httpx.MockTransport(handler))
+def groq(handler, sleeps: list[float] | None = None) -> GroqClient:
+    log = sleeps if sleeps is not None else []
+    return GroqClient(
+        "gsk_test", "gpt-test", transport=httpx.MockTransport(handler), sleep=log.append
+    )
 
 
 def completion(message: dict, **usage) -> httpx.Response:
@@ -278,3 +281,45 @@ def test_groq_unreachable_is_an_llm_error():
 
     with pytest.raises(LLMError, match="not reachable"):
         groq(handler).chat([], [])
+
+
+def test_groq_waits_and_retries_a_short_rate_limit():
+    answers = [
+        httpx.Response(429, headers={"retry-after": "4"}, json={"error": {"message": "tpm"}}),
+        httpx.Response(
+            429, json={"error": {"message": "TPM. Please try again in 2.5s."}}
+        ),  # no header: read it from the message
+        completion({"content": "ok"}),
+    ]
+    sleeps: list[float] = []
+
+    turn = groq(lambda r: answers.pop(0), sleeps).chat([], [])
+
+    assert turn.content == "ok"
+    assert sleeps == [4.5, 3.0]
+
+
+def test_groq_does_not_wait_for_a_daily_limit():
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            429, headers={"retry-after": "3600"}, json={"error": {"message": "tokens per day"}}
+        )
+
+    with pytest.raises(LLMError, match="rate limit"):
+        groq(handler, sleeps).chat([], [])
+    assert sleeps == []
+
+
+def test_groq_gives_up_after_a_few_retries():
+    sleeps: list[float] = []
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(429, headers={"retry-after": "1"}, json={"error": {"message": "x"}})
+
+    with pytest.raises(LLMError, match="rate limit"):
+        groq(handler, sleeps).chat([], [])
+    assert len(calls) == 5 and len(sleeps) == 4

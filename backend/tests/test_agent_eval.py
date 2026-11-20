@@ -154,7 +154,8 @@ def test_cli_agent_eval_unknown_scenario(settings, capsys):
 
 
 def test_cli_agent_eval_provider_without_key(settings, capsys):
-    assert cli.main(["agent-eval", "--provider", "groq"], settings) == 1
+    no_key = settings.model_copy(update={"groq_api_key": None})
+    assert cli.main(["agent-eval", "--provider", "groq"], no_key) == 1
     assert "GROQ_API_KEY" in capsys.readouterr().err
 
 
