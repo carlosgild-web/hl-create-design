@@ -7,10 +7,14 @@ from app.llm.base import LLMClient
 from app.llm.fake import FakeClient
 from app.llm.groq import GroqClient
 from app.llm.ollama import OllamaClient
+from app.llm.resolve import resolve_auto
 
 
 def make_client(settings: Settings) -> LLMClient:
-    """`fake` (demo mode), `ollama` (local), `groq` (cloud, decision 0012)."""
+    """`fake` (demo mode), `ollama` (local), `groq` (cloud, decision 0012), or `auto`
+    (the first of groq, ollama, fake that works; decision 0016)."""
+    if settings.llm_provider == "auto":
+        return resolve_auto(settings).client
     if settings.llm_provider == "ollama":
         return OllamaClient(
             settings.ollama_base_url, settings.ollama_model, timeout=settings.ollama_timeout_s

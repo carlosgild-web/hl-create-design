@@ -21,6 +21,7 @@ DEFAULT_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_TIMEOUT_S = 60.0
 # The free tier allows few tokens per minute. A short wait (a per-minute limit) is retried;
 # a long one (a daily limit) is reported at once.
+PROBE_TIMEOUT_S = 8.0
 MAX_RETRIES = 4
 MAX_WAIT_S = 30.0
 _WAIT_IN_MESSAGE_RE = re.compile(r"try again in ([\d.]+)s", re.IGNORECASE)
@@ -102,6 +103,31 @@ class GroqClient(LLMClient):
             self._sleep(wait + 0.5)
         return response  # pragma: no cover
 
+    def probe(self) -> tuple[bool, str]:
+        """Is this provider usable right now? One tiny request (a few tokens), no retries.
+        A daily quota that is used up is "no"; a short per-minute limit is still "yes"."""
+        body = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 4,
+            "temperature": 0,
+        }
+        try:
+            response = self._http.post("/chat/completions", json=body, timeout=PROBE_TIMEOUT_S)
+        except httpx.TimeoutException:
+            return False, "Groq did not answer in time"
+        except httpx.HTTPError as exc:
+            return False, f"Groq is not reachable ({type(exc).__name__})"
+        if response.is_success:
+            return True, "ok"
+        if response.status_code == 429:
+            wait = _retry_wait(response)
+            if wait is not None and wait <= MAX_WAIT_S:
+                return True, "rate-limited for a moment; calls wait and retry"
+            when = f", resets in about {_human(wait)}" if wait else ""
+            return False, f"Groq daily quota used up{when}"
+        return False, self._error_text(response)
+
     def close(self) -> None:
         self._http.close()
 
@@ -121,6 +147,13 @@ class GroqClient(LLMClient):
         if status == 404 or "model" in reason.lower() and status == 400:
             return f"Groq has no usable model '{self.model}'. Check GROQ_MODEL. ({reason})"
         return f"Groq error {status} for {self.model}: {reason}"
+
+
+def _human(seconds: float) -> str:
+    minutes = int(seconds // 60)
+    if minutes < 60:
+        return f"{max(minutes, 1)} min"
+    return f"{minutes // 60} h {minutes % 60} min"
 
 
 def _retry_wait(response: httpx.Response) -> float | None:

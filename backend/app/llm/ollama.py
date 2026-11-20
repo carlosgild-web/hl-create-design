@@ -10,6 +10,7 @@ from __future__ import annotations
 import itertools
 import json
 import re
+import shutil
 from typing import Any
 
 import httpx
@@ -17,6 +18,7 @@ import httpx
 from app.llm.base import ChatTurn, LLMClient, LLMError, Message, ToolCall, ToolSpec
 
 DEFAULT_TIMEOUT_S = 180.0
+PROBE_TIMEOUT_S = 3.0
 NUM_CTX = 8192
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
@@ -90,6 +92,18 @@ class OllamaClient(LLMClient):
             prompt_tokens=int(data.get("prompt_eval_count") or 0),
             completion_tokens=int(data.get("eval_count") or 0),
         )
+
+    def probe(self) -> tuple[bool, str]:
+        """Is Ollama running here, with the configured model pulled?"""
+        try:
+            response = self._http.get("/api/tags", timeout=PROBE_TIMEOUT_S)
+            names = {m.get("name") for m in response.json().get("models") or ()}
+        except (httpx.HTTPError, ValueError, AttributeError):
+            hint = "installed but not running" if shutil.which("ollama") else "not installed"
+            return False, f"Ollama is not reachable at {self._base_url} ({hint})"
+        if self.model in names or f"{self.model}:latest" in names:
+            return True, "ok"
+        return False, f"Ollama has no model '{self.model}' (run `ollama pull {self.model}`)"
 
     def close(self) -> None:
         self._http.close()

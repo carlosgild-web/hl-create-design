@@ -15,13 +15,14 @@ def test_health_reports_ok_and_version():
 
 
 def test_settings_defaults_need_no_external_service(monkeypatch):
+    """`auto` falls back to the scripted model, so a fresh clone needs no key or Ollama."""
     # Ignore the developer's .env and environment: these are the code defaults.
     for name in Settings.model_fields:
         monkeypatch.delenv(name.upper(), raising=False)
 
     settings = Settings(_env_file=None)
 
-    assert settings.llm_provider == "fake"
+    assert settings.llm_provider == "auto"
     assert settings.groq_api_key is None
     assert settings.agent_max_iterations == 6
 

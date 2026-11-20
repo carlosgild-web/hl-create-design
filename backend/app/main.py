@@ -15,6 +15,7 @@ from app.api import actions, chat, designs
 from app.cleanup import cleanup_designs
 from app.core.config import get_settings
 from app.db.session import get_engine
+from app.llm.resolve import current_resolution, resolve_auto
 
 log = logging.getLogger("app.cleanup")
 CLEANUP_EVERY_S = 3600
@@ -40,6 +41,9 @@ async def _cleanup_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    if settings.llm_provider == "auto":  # probe Groq, then Ollama, once, at startup
+        await asyncio.to_thread(resolve_auto, settings)
     task = asyncio.create_task(_cleanup_loop()) if get_settings().designs_ttl_hours > 0 else None
     yield
     if task:
@@ -77,10 +81,13 @@ def mount_frontend(application: FastAPI, directory: Path) -> bool:
 @app.get("/api/health")
 def health() -> dict[str, str]:
     """Liveness probe. Reports the version and which LLM provider is configured."""
+    configured = get_settings().llm_provider
+    resolved = current_resolution() if configured == "auto" else None
     return {
         "status": "ok",
         "version": __version__,
-        "llm_provider": get_settings().llm_provider,
+        "llm_provider": resolved.provider if resolved else configured,
+        **({"llm_note": resolved.describe()} if resolved else {}),
     }
 
 
