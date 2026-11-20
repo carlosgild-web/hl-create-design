@@ -80,14 +80,14 @@ test('a BLOCKED design is listed but cannot be picked, and says why', async ({ p
 
 test('a new design: Get SAP number fills the number at once, then create it', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('button', { name: 'Get SAP number' })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Get SAP number', exact: true })).toBeDisabled()
   await page.getByLabel('Department').selectOption('PWR')
   await page.getByLabel('Design name').fill('test fixture supply')
   await page.getByLabel('Designer').fill('C. Velazquez')
   // inline check from the real validators: the stored name is in title case
   await expect(page.getByText('Will be saved as:')).toContainText('Test Fixture Supply')
 
-  await page.getByRole('button', { name: 'Get SAP number' }).click()
+  await page.getByRole('button', { name: 'Get SAP number', exact: true }).click()
   const card = page.getByRole('region', { name: 'Reserve a new SAP number?' })
   await expect(card.getByText('PWR – Power Electronics')).toBeVisible()
   await card.getByRole('button', { name: 'Confirm' }).click()

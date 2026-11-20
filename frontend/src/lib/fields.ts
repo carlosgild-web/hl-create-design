@@ -1,4 +1,4 @@
-import type { Department, FormField, FormValues } from '@/api/types'
+import type { Department, FormField, FormMode, FormValues } from '@/api/types'
 import type { MessageKey } from '@/i18n'
 
 /** The form field labels, also used on the confirmation cards. */
@@ -48,6 +48,28 @@ export function filledValues(values: FormValues): Partial<FormValues> {
   return Object.fromEntries(
     (Object.keys(values) as FormField[]).filter((f) => isFilled(f, values[f])).map((f) => [f, values[f]]),
   )
+}
+
+export type Blocker =
+  | { key: 'need_field'; field: FormField }
+  | { key: 'need_sap_number' }
+  | { key: 'need_design' }
+  | { key: 'fix_errors' }
+
+/**
+ * Why Create is not available yet, in the order to do things. In a new design the SAP
+ * number needs department, name and designer first; from an existing design, the design
+ * comes first. The backend still decides at confirm; this only explains the button.
+ */
+export function blockers(mode: FormMode, values: FormValues, errorCount: number): Blocker[] {
+  const out: Blocker[] = []
+  const missing = (f: FormField) => !isFilled(f, values[f])
+  if (mode === 'existing' && missing('design_number')) out.push({ key: 'need_design' })
+  const typed: FormField[] = mode === 'new' ? ['department', 'name', 'designer'] : ['designer']
+  for (const f of typed) if (missing(f)) out.push({ key: 'need_field', field: f })
+  if (mode === 'new' && missing('design_number')) out.push({ key: 'need_sap_number' })
+  if (errorCount > 0) out.push({ key: 'fix_errors' })
+  return out
 }
 
 /** While typing a design number: how many digits are still missing, or done. */

@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 
 import { cancelAction, cancelRun, switchProvider } from '@/api/client'
 import { streamChat } from '@/api/sse'
-import type { Action, ChatEvent, FormValues, SapDesign, SwitchTarget } from '@/api/types'
+import { FORM_FIELDS, type Action, type ChatEvent, type FormValues, type SapDesign, type SwitchTarget } from '@/api/types'
 import type { Lang } from '@/i18n'
 
 export type TimelineItem =
@@ -32,13 +32,18 @@ type Options = {
 /** After Stop, wait this long for the backend's `done` before dropping the stream. */
 const STOP_GRACE_MS = 3000
 
-const loose = (value: string | undefined) => (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+// Payload values are not always strings (an assistant card can carry null SAP fields).
+const loose = (value: unknown) =>
+  String(value ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
 
-/** The same request as a card's payload, give or take the formatting the backend adds
- * (`bead sorter` is stored as `Bead Sorter`). */
-export function samePayload(a: Record<string, string>, b: Record<string, string>) {
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)].filter((k) => loose(a[k]) || loose(b[k])))
-  return [...keys].every((k) => loose(a[k]) === loose(b[k]))
+/** The same request as a card's payload: the form's fields, give or take the formatting
+ * the backend adds (`bead sorter` is stored as `Bead Sorter`). What the assistant's card
+ * adds from SAP (material, project) is not something the form asks for. */
+export function samePayload(a: Record<string, unknown>, b: Record<string, unknown>) {
+  return FORM_FIELDS.every((k) => loose(a[k]) === loose(b[k]))
 }
 
 /**

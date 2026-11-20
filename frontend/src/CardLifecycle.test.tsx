@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
 import { samePayload } from './hooks/useChat'
+import { blockers } from './lib/fields'
 import { baseRoutes, jsonResponse, makeAction, renderWithProviders, sseResponse, stubFetch, user } from './test/helpers'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -13,7 +14,8 @@ const assistantOpensCard = (url: string) =>
     ? sseResponse([
         ['conversation', { id: 'c1' }],
         ['form_proposal', { fields: { design_number: 'HL-HW-26-0042', designer: 'C. Velazquez' } }],
-        ['pending_action', { action: makeAction() }],
+        // as the real backend sends it: SAP's material and project ride along
+        ['pending_action', { action: makeAction({ payload: { ...makeAction().payload, sap_material: '000000000040001234', project: 'P-26-0108' } }) }],
         ['done', { status: 'answered' }],
       ])
     : undefined
@@ -55,10 +57,46 @@ describe('confirmation cards: one live card per request', () => {
   })
 })
 
+describe('why Create is not available', () => {
+  it('a new design named Test: says the SAP number is missing and offers it next to Create', async () => {
+    stubFetch(...baseRoutes)
+    renderWithProviders(<App />)
+    await screen.findByRole('option', { name: /^PWR/ })
+    await user.selectOptions(screen.getByLabelText('Department'), 'PWR')
+    await user.type(screen.getByLabelText('Design name'), 'Test')
+
+    const create = screen.getByRole('button', { name: 'Create design' })
+    expect(create).toBeDisabled()
+    expect(create).toHaveAccessibleDescription('To create: fill in Designer · get a SAP number')
+    expect(screen.getByRole('button', { name: 'Next: get SAP number' })).toBeDisabled()
+
+    await user.type(screen.getByLabelText('Designer'), 'C. Velazquez')
+
+    expect(create).toHaveAccessibleDescription('To create: get a SAP number')
+    expect(screen.getByRole('button', { name: 'Next: get SAP number' })).toBeEnabled()
+  })
+
+  it('lists blockers in the order to do things', () => {
+    const empty = { department: '', design_number: '', revision: 'A', name: '', designer: '' }
+    expect(blockers('new', empty, 0).map((b) => b.key)).toEqual([
+      'need_field',
+      'need_field',
+      'need_field',
+      'need_sap_number',
+    ])
+    expect(blockers('existing', { ...empty, revision: '' }, 0).map((b) => b.key)).toEqual(['need_design', 'need_field'])
+    const full = { department: 'HW', design_number: 'HL-HW-26-0042', revision: 'C', name: 'X Board', designer: 'C. V' }
+    expect(blockers('existing', full, 0)).toEqual([])
+    expect(blockers('existing', full, 1)).toEqual([{ key: 'fix_errors' }])
+  })
+})
+
 describe('samePayload', () => {
   it('ignores the formatting the backend adds, not the values', () => {
     expect(samePayload({ name: 'bead  sorter', revision: 'c' }, { name: 'Bead Sorter', revision: 'C' })).toBe(true)
     expect(samePayload({ name: 'Bead Sorter' }, { name: 'Bead Sorter', designer: 'C. Velazquez' })).toBe(false)
     expect(samePayload({ name: 'Bead Sorter', designer: '' }, { name: 'Bead Sorter' })).toBe(true)
+    // an assistant card from the real backend also carries SAP's material and project (or null)
+    expect(samePayload({ name: 'Bead Sorter', sap_material: '000000000040001177', project: null }, { name: 'Bead Sorter' })).toBe(true)
   })
 })

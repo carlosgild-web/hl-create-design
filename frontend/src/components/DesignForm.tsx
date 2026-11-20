@@ -1,4 +1,4 @@
-import { CheckCircle2, Lock } from 'lucide-react'
+import { CheckCircle2, Lock, Sparkles } from 'lucide-react'
 import type * as React from 'react'
 
 import {
@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Created } from '@/hooks/useDesignForm'
 import { useI18n } from '@/i18n'
-import { departmentName, FIELD_LABELS, FIELD_PLACEHOLDERS, isFilled } from '@/lib/fields'
+import { blockers, departmentName, FIELD_LABELS, FIELD_PLACEHOLDERS, isFilled } from '@/lib/fields'
 import { folderPreview } from '@/lib/folder'
 import { cn } from '@/lib/utils'
 
@@ -39,6 +39,9 @@ type Props = {
   busy: boolean
   /** A card for exactly these values is waiting in the chat: Create shows it. */
   cardWaiting?: boolean
+  /** New design without a number: Get SAP number next to Create. */
+  canReserve?: boolean
+  onReserve?: () => void
   onChange: (field: FormField, value: string) => void
   onTakeSuggestion: (field: FormField) => void
   onCreate: () => void
@@ -77,6 +80,8 @@ export function DesignForm({
   lastDesigner,
   busy,
   cardWaiting = false,
+  canReserve = false,
+  onReserve,
   onChange,
   onTakeSuggestion,
   onCreate,
@@ -84,7 +89,14 @@ export function DesignForm({
 }: Props) {
   const { t, lang } = useI18n()
   const folder = folderPreview(values)
-  const canCreate = FORM_FIELDS.every((f) => isFilled(f, values[f])) && !sameAsCreated
+  const todo = blockers(mode, values, validation?.errors.length ?? 0)
+  const canCreate = FORM_FIELDS.every((f) => isFilled(f, values[f])) && !sameAsCreated && todo.length === 0
+  const needsNumber = mode === 'new' && !isFilled('design_number', values.design_number)
+  const todoText = todo
+    .map((b) =>
+      b.key === 'need_field' ? t('block.need_field', { field: t(FIELD_LABELS[b.field]) }) : t(`block.${b.key}`),
+    )
+    .join(' · ')
   const normalizedName = validation?.normalized.name
 
   const departmentLabel = (code: string) => {
@@ -264,13 +276,30 @@ export function DesignForm({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-            <Button type="submit" disabled={!canCreate || busy}>
+            {needsNumber && onReserve && (
+              // The next step where the user is looking: the same reservation card as the Start panel.
+              <Button type="button" variant="secondary" disabled={!canReserve || busy} onClick={onReserve}>
+                <Sparkles aria-hidden className="size-4" />
+                {t('form.next_sap_number')}
+              </Button>
+            )}
+            <Button type="submit" disabled={!canCreate || busy} aria-describedby="create-hint">
               {mode === 'existing' && values.revision
                 ? t('form.create_revision', { rev: values.revision })
                 : t('form.create')}
             </Button>
-            <p className="min-w-48 flex-1 text-xs text-muted-foreground">
-              {sameAsCreated ? t('form.already_created') : cardWaiting ? t('form.card_waiting') : t('form.hint')}
+            <p id="create-hint" className="min-w-48 flex-1 text-xs text-muted-foreground">
+              {sameAsCreated ? (
+                t('form.already_created')
+              ) : cardWaiting ? (
+                t('form.card_waiting')
+              ) : todo.length > 0 ? (
+                <>
+                  <span className="font-medium text-foreground">{t('block.prefix')}</span> {todoText}
+                </>
+              ) : (
+                t('form.hint')
+              )}
             </p>
           </div>
         </form>

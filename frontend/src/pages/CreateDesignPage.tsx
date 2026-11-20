@@ -166,7 +166,8 @@ export default function CreateDesignPage() {
     form.mode === 'existing'
       ? form.selected !== null
       : Boolean(v.department || v.name.trim() || isFilled('design_number', v.design_number))
-  const statusNotes = [...(validation?.errors ?? []), ...(validation?.warnings ?? [])].filter((i) => i.field === 'status')
+  const canReserve = Boolean(v.department.trim() && v.name.trim() && v.designer.trim()) && !v.design_number
+  const statusNotes =[...(validation?.errors ?? []), ...(validation?.warnings ?? [])].filter((i) => i.field === 'status')
 
   const startPanel = (
     <StartPanel
@@ -174,7 +175,7 @@ export default function CreateDesignPage() {
       dirty={dirty}
       onModeChange={changeMode}
       departments={departments.data ?? []}
-      canReserve={Boolean(v.department.trim() && v.name.trim() && v.designer.trim()) && !v.design_number}
+      canReserve={canReserve}
       busy={opening}
       onReserve={() => void openCard('reserve_number')}
       reservation={form.mode === 'new' && v.design_number ? reservation : null}
@@ -218,6 +219,8 @@ export default function CreateDesignPage() {
       cardWaiting={Object.values(chat.actions).some(
         (a) => a.status === 'pending' && a.kind === 'create_design' && samePayload(a.payload, cardPayload('create_design')),
       )}
+      canReserve={canReserve}
+      onReserve={() => void openCard('reserve_number')}
       onNewDesign={() => {
         form.reset()
         chat.retire()
