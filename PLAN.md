@@ -224,6 +224,16 @@ validators fully unit tested (including path traversal like `..\..\Windows`); go
 - "How this demo works" guide with the `portfolio-demo-guide` skill (only the banner exists; Phase 8).
 - Brand palette from luna-hybrid-agent (the UI still uses the default shadcn neutral theme).
 
+**UX and robustness pass (2026-11-20, decision 0017)** after the first real manual test:
+- Turns never stall silently: status events, a turn timeout with a provider switch, and a
+  working Stop.
+- Inline validation through a read-only `POST /api/validate`, and labels for where each
+  value came from (the assistant, SAP, or the user).
+- SAP number auto-fill with Undo, and a Created state on the form.
+- i18n and accessibility fixes, and a tabbed desktop and phone layout.
+- A 10 s timeout on the start question.
+- Screenshots in `docs/showcase/` (`SHOWCASE=1` Playwright spec).
+
 ### Phase 6 — Evaluation and hardening
 - Scenario suite (~25): valid create, wrong format, reused rev, skipped letter `I`, blocked/obsolete
   material, SAP down (503) and slow, folder already exists, path traversal, prompt injection,
