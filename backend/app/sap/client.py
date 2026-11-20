@@ -30,6 +30,9 @@ CSRF_HEADER = "x-csrf-token"
 DEFAULT_TIMEOUT_S = 10.0
 DESIGN_NOT_FOUND = "ZHL_PLM/001"
 MAINTENANCE = "ZHL_GW/003"
+# What `list_designs` may filter on (the gateway's own value sets).
+DEPARTMENT_CODES = frozenset({"HW", "PWR", "EMB", "TFX"})
+DESIGN_STATUSES = frozenset({"IN_WORK", "RELEASED", "BLOCKED", "OBSOLETE"})
 
 _DATE_RE = re.compile(r"^/Date\((-?\d+)(?:[+-]\d+)?\)/$")
 
@@ -152,6 +155,27 @@ class SapClient:
                 return None
             raise
         return _design(data["d"])
+
+    def list_designs(
+        self, department: str | None = None, status: str | None = None, top: int = 100
+    ) -> list[SapDesign]:
+        """The designs SAP knows, with their revisions, ordered by number. Filters are
+        OData `eq` clauses; only known departments and statuses are accepted, so nothing
+        from a request reaches the filter unchecked."""
+        clauses = []
+        if department is not None:
+            if department not in DEPARTMENT_CODES:
+                raise ValueError(f"unknown department {department!r}")
+            clauses.append(f"Department eq {_key(department)}")
+        if status is not None:
+            if status not in DESIGN_STATUSES:
+                raise ValueError(f"unknown status {status!r}")
+            clauses.append(f"Status eq {_key(status)}")
+        params = {"$format": "json", "$expand": "Revisions", "$top": str(max(1, min(top, 500)))}
+        if clauses:
+            params["$filter"] = " and ".join(clauses)
+        data = self._get(f"{SERVICE_ROOT}/DesignSet", params=params)
+        return [_design(row) for row in data["d"]["results"]]
 
     def list_departments(self) -> list[SapDepartment]:
         data = self._get(f"{SERVICE_ROOT}/DepartmentSet", params={"$format": "json"})

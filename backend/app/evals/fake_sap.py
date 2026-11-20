@@ -183,9 +183,31 @@ class FakeSap:
                 return self._error(404, "ZHL_PLM/001", f"Design {number} does not exist")
             expand = request.url.params.get("$expand") == "Revisions"
             return self._ok({"d": self._entity(design, expand)})
+        if rest == "/DesignSet" and request.method == "GET":
+            return self._list(request)
         if rest == "/DesignSet" and request.method == "POST":
             return self._reserve(json.loads(request.content))
         return self._error(404, "ZHL_GW/006", "Resource not found")
+
+    def _list(self, request: httpx.Request) -> httpx.Response:
+        """`GET DesignSet` like the gateway: `$filter` with `<Prop> eq '<v>'` joined by
+        `and` on Department, Status or DesignNumber; `$top`; ordered by number."""
+        wanted: dict[str, str] = {}
+        raw = request.url.params.get("$filter", "")
+        for clause in filter(None, raw.split(" and ")):
+            match = re.fullmatch(r"(Department|Status|DesignNumber) eq '((?:[^']|'')*)'", clause)
+            if not match:
+                return self._error(400, "ZHL_GW/005", f"Unsupported $filter: {clause}")
+            wanted[match.group(1)] = match.group(2).replace("''", "'")
+        rows = [
+            d
+            for _, d in sorted(self.designs.items())
+            if all(d.get(prop) == value for prop, value in wanted.items())
+        ]
+        top = int(request.url.params.get("$top", "0") or 0)
+        rows = rows[:top] if top else rows
+        expand = request.url.params.get("$expand") == "Revisions"
+        return self._ok({"d": {"results": [self._entity(d, expand) for d in rows]}})
 
     def _reserve(self, body: dict) -> httpx.Response:
         dept = body.get("Department", "")
