@@ -234,8 +234,8 @@ validators fully unit tested (including path traversal like `..\..\Windows`); go
 **Done when:** suite passes 100% on Fake; results for both real providers published, including failures.
 
 **Status:** done. Fake 30/30 (CI). Ollama (qwen3 4B, CPU) went from 11/27 to **21/27** after prompt tuning,
-no regressions, invariants held (`docs/eval/`). Open: Groq run (`GroqClient` exists, decision 0012; waits for the
-daily quota). Known small-model gaps, kept visible on purpose: `manual-question` (the model writes the tool call
+no regressions, invariants held (`docs/eval/`). Groq (gpt-oss-120b): **20/27**, invariants held
+(decision 0012). Known small-model gaps, kept visible on purpose: `manual-question` (the model writes the tool call
 as text, `search_design_manual{...}`), `one-sentence-fill` and `wizard-reserve-then-create` (ask for a missing
 field instead of calling the tool), `path-traversal`, and missing citations in `unknown-number` / `sap-timeout`.
 
