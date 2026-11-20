@@ -150,10 +150,26 @@ def check_fields(fields: dict[str, str], designs_root: Path, lookup: SapLookup) 
     if suggest:
         content["suggest"] = suggest
     if sap is not None:
-        content["sap"] = {"status": sap.status, "material": sap.material, "wbs": sap.wbs}
+        content["sap"] = {
+            "status": sap.status,
+            "material": sap.material,
+            "wbs": sap.wbs,
+            "name": sap.name,
+        }
     if sap_note is not None:
         content["sap_unavailable"] = sap_note
     return content
+
+
+def next_free_revision(sap: SapDesign, designs_root: Path) -> str:
+    """The revision a new revision of this SAP design gets: after every revision SAP knows
+    and every revision folder on disk. The same rule `check_design_request` applies, so the
+    Start panel's list and the validation never disagree."""
+    try:
+        on_disk = v.revisions_on_disk(designs_root, sap.department, sap.design_number)
+    except v.UnsafePathError:
+        on_disk = []
+    return v.next_revision(v.revisions_in_use(sap.revisions, on_disk))
 
 
 def number_prefix(department: str, today: date | None = None) -> str:

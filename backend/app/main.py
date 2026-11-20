@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 
 from app import __version__
 from app.agent.service import probe_turn
-from app.api import actions, chat, designs
+from app.api import actions, chat, designs, sap
 from app.cleanup import cleanup_designs
 from app.core.config import get_settings
 from app.db.session import get_engine
@@ -73,6 +73,7 @@ app = FastAPI(title="Create Design", version=__version__, lifespan=lifespan)
 app.include_router(chat.router)
 app.include_router(actions.router)
 app.include_router(designs.router)
+app.include_router(sap.router)
 
 
 def mount_frontend(application: FastAPI, directory: Path) -> bool:

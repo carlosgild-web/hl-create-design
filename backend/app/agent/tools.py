@@ -74,15 +74,21 @@ def _error(code: str, message: str, ref: str | None = None) -> ToolResult:
     return ToolResult(content, ok=False)
 
 
-def _sap_error(exc: SapError) -> ToolResult:
+def sap_error_info(exc: SapError) -> dict[str, str]:
+    """What a SAP failure means for the user, the same for the assistant and the UI."""
     if exc.unavailable:
-        return _error(
-            "sap_unavailable",
-            f"SAP is not available right now ({exc.message}). Nothing was checked in SAP; "
-            "try again later.",
-            "06-sap-statuses#sap-unavailable",
-        )
-    return _error("sap_error", f"SAP answered {exc.code}: {exc.message}")
+        return {
+            "code": "sap_unavailable",
+            "message": f"SAP is not available right now ({exc.message}). Nothing was checked "
+            "in SAP; try again later.",
+            "ref": "06-sap-statuses#sap-unavailable",
+        }
+    return {"code": "sap_error", "message": f"SAP answered {exc.code}: {exc.message}"}
+
+
+def _sap_error(exc: SapError) -> ToolResult:
+    info = sap_error_info(exc)
+    return _error(info["code"], info["message"], info.get("ref"))
 
 
 # --- argument models -----------------------------------------------------------------
