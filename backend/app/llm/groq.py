@@ -24,6 +24,7 @@ DEFAULT_TIMEOUT_S = 60.0
 PROBE_TIMEOUT_S = 8.0
 MAX_RETRIES = 4
 MAX_WAIT_S = 30.0
+DAILY_WAIT_S = 900.0  # a wait this long is a daily quota, not a per-minute limit
 _WAIT_IN_MESSAGE_RE = re.compile(r"try again in ([\d.]+)s", re.IGNORECASE)
 
 
@@ -124,6 +125,8 @@ class GroqClient(LLMClient):
             wait = _retry_wait(response)
             if wait is not None and wait <= MAX_WAIT_S:
                 return True, "rate-limited for a moment; calls wait and retry"
+            if wait is not None and wait <= DAILY_WAIT_S:
+                return False, f"Groq is rate-limited for about {_human(wait)}"
             when = f", resets in about {_human(wait)}" if wait else ""
             return False, f"Groq daily quota used up{when}"
         return False, self._error_text(response)
@@ -139,9 +142,16 @@ class GroqClient(LLMClient):
         reason = reason.strip()
         status = response.status_code
         if status == 429:
-            wait = response.headers.get("retry-after")
-            when = f" Retry in about {wait} s." if wait else " Try again later (daily quota?)."
-            return f"Groq rate limit reached for {self.model}.{when} ({reason})"
+            wait = _retry_wait(response)
+            if wait is not None and wait <= DAILY_WAIT_S:
+                retry = f"Retry in about {wait:g} s."
+                return f"Groq rate limit reached for {self.model}. {retry} ({reason})"
+            when = f" (resets in about {_human(wait)})" if wait else ""
+            return (
+                f"Groq rate limit reached for {self.model}: the daily quota is used up{when}. "
+                "Restart with start.cmd to use Ollama or the demo model, or set "
+                f"LLM_PROVIDER=auto. ({reason})"
+            )
         if status in (401, 403):
             return "Groq rejected the API key. Check GROQ_API_KEY."
         if status == 404 or "model" in reason.lower() and status == 400:

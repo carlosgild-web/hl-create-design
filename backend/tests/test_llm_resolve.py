@@ -151,3 +151,67 @@ def test_resolution_is_cached_and_used_by_the_factory():
 
     assert again is first is current_resolution()
     assert make_client(settings()) is first.client
+
+
+# --- resolve_from (the start scripts' check) and `llm-check` -----------------------------
+
+from app import cli  # noqa: E402
+from app.llm.resolve import resolve_from  # noqa: E402
+
+
+def test_explicit_groq_falls_back_when_the_quota_is_gone():
+    res = resolve_from(
+        settings(groq_api_key="gsk_t"),
+        "groq",
+        groq_transport=groq_says(429, headers={"retry-after": "3600"}, json={}),
+        ollama_transport=ollama_has(MODEL),
+    )
+    assert res.provider == "ollama" and "daily quota" in res.skipped[0]
+
+
+def test_explicit_ollama_never_tries_groq():
+    res = resolve_from(
+        settings(groq_api_key="gsk_t"),
+        "ollama",
+        groq_transport=never_called(),
+        ollama_transport=nothing_listening(),
+    )
+    assert res.provider == "fake"
+    assert [s.split(":")[0] for s in res.skipped] == ["ollama"]
+
+
+def test_explicit_fake_probes_nothing():
+    res = resolve_from(
+        settings(), "fake", groq_transport=never_called(), ollama_transport=never_called()
+    )
+    assert res.provider == "fake" and res.skipped == ()
+
+
+def test_llm_check_prints_only_the_provider_on_stdout(capsys):
+    stub = lambda s: resolve_from(  # noqa: E731
+        s, groq_transport=never_called(), ollama_transport=ollama_has(MODEL)
+    )
+
+    assert cli.run_llm_check(settings(groq_api_key=None), stub) == 0
+
+    out = capsys.readouterr()
+    assert out.out.strip() == "ollama"
+    assert "not available - groq: no GROQ_API_KEY" in out.err
+    assert "Using ollama" in out.err and "instead" in out.err
+
+
+def test_llm_check_explains_the_demo_fallback(capsys):
+    stub = lambda s: resolve_from(  # noqa: E731
+        s, groq_transport=never_called(), ollama_transport=nothing_listening()
+    )
+
+    cli.run_llm_check(settings(groq_api_key=None), stub)
+
+    out = capsys.readouterr()
+    assert out.out.strip() == "fake"
+    assert "scripted demo model" in out.err and "not available - ollama" in out.err
+
+
+def test_llm_check_with_fake_configured_is_instant(capsys):
+    cli.run_llm_check(Settings(_env_file=None, llm_provider="fake"), resolver=None)
+    assert capsys.readouterr().out.strip() == "fake"

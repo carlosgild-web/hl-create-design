@@ -36,10 +36,17 @@ if not exist frontend\dist\index.html (
 rem Without a .env, pin the mock SAP's date so the demo numbers stay in 2026 (decision 0007).
 if not exist .env if not defined SAP_TODAY set "SAP_TODAY=2026-11-17"
 where kicad-cli >nul 2>&1 || findstr /b /c:"KICAD_CLI=" .env >nul 2>&1 || echo Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env.
+rem Which model will answer? Groq if it has tokens, else Ollama if running, else the demo model.
+echo.
+pushd backend
+for /f "delims=" %%p in ('.venv\Scripts\python -m app.cli llm-check') do set "LLM_PROVIDER=%%p"
+popd
+echo.
 echo Starting the mock SAP on http://localhost:8100 ...
 start "SAP mock (Create Design)" /min cmd /c "cd /d sap-mock && .venv\Scripts\python -m uvicorn app.main:app --port 8100"
-timeout /t 3 /nobreak >nul
+ping -n 4 127.0.0.1 >nul
 echo Create Design -^> http://localhost:8000  ^(Ctrl+C to stop^)
+call :openbrowser 8000
 cd backend
 .venv\Scripts\python -m uvicorn app.main:app --port 8000
 cd ..
@@ -57,5 +64,15 @@ set "EXTRA=%EXTRA% %~1"
 shift
 goto collect
 :run
-if "%APP_PORT%"=="" (echo Create Design -^> http://localhost:8000  ^(Ctrl+C to stop^)) else (echo Create Design -^> http://localhost:%APP_PORT%)
+set "PORT=%APP_PORT%"
+if "%PORT%"=="" set "PORT=8000"
+echo Create Design -^> http://localhost:%PORT%  ^(Ctrl+C to stop^)
+call :openbrowser %PORT%
 docker compose%EXTRA% up --build
+exit /b %errorlevel%
+
+rem Open the browser once the app answers (waits up to 90 s). Set NO_BROWSER=1 to skip.
+:openbrowser
+if defined NO_BROWSER exit /b 0
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "for($i=0;$i -lt 90;$i++){try{Invoke-RestMethod http://127.0.0.1:%1/api/health -TimeoutSec 2|Out-Null;Start-Process http://localhost:%1;break}catch{Start-Sleep 1}}"
+exit /b 0

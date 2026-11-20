@@ -50,7 +50,7 @@ def resolve_auto(
     global _cached
     with _lock:
         if _cached is None:
-            _cached = _probe_in_order(settings, groq_transport, ollama_transport)
+            _cached = _probe_in_order(settings, CHAINS["auto"], groq_transport, ollama_transport)
             log.info("LLM provider (auto): %s", _cached.describe())
         return _cached
 
@@ -65,36 +65,61 @@ def reset_auto() -> None:
         _cached = None
 
 
+# What to try, and in which order, for each configured provider.
+CHAINS: dict[str, tuple[str, ...]] = {
+    "auto": ("groq", "ollama", "fake"),
+    "groq": ("groq", "ollama", "fake"),
+    "ollama": ("ollama", "fake"),
+    "fake": ("fake",),
+}
+
+
+def resolve_from(
+    settings: Settings,
+    configured: str | None = None,
+    *,
+    groq_transport: httpx.BaseTransport | None = None,
+    ollama_transport: httpx.BaseTransport | None = None,
+) -> Resolution:
+    """The first provider in the configured chain that works right now (not cached).
+    Used by `app.cli llm-check`, which the start scripts run before launching the app."""
+    order = CHAINS[configured or settings.llm_provider]
+    return _probe_in_order(settings, order, groq_transport, ollama_transport)
+
+
 def _probe_in_order(
     settings: Settings,
+    order: tuple[str, ...],
     groq_transport: httpx.BaseTransport | None,
     ollama_transport: httpx.BaseTransport | None,
 ) -> Resolution:
     skipped: list[str] = []
 
-    key = settings.groq_api_key.get_secret_value() if settings.groq_api_key else ""
-    if key:
-        groq = GroqClient(
-            key, settings.groq_model, base_url=settings.groq_base_url, transport=groq_transport
-        )
-        ok, note = groq.probe()
-        if ok:
-            return Resolution(groq, tuple(skipped))
-        groq.close()
-        skipped.append(f"groq: {note}")
-    else:
-        skipped.append("groq: no GROQ_API_KEY")
+    if "groq" in order:
+        key = settings.groq_api_key.get_secret_value() if settings.groq_api_key else ""
+        if key:
+            groq = GroqClient(
+                key, settings.groq_model, base_url=settings.groq_base_url, transport=groq_transport
+            )
+            ok, note = groq.probe()
+            if ok:
+                return Resolution(groq, tuple(skipped))
+            groq.close()
+            skipped.append(f"groq: {note}")
+        else:
+            skipped.append("groq: no GROQ_API_KEY")
 
-    local = OllamaClient(
-        settings.ollama_base_url,
-        settings.ollama_model,
-        timeout=settings.ollama_timeout_s,
-        transport=ollama_transport,
-    )
-    ok, note = local.probe()
-    if ok:
-        return Resolution(local, tuple(skipped))
-    local.close()
-    skipped.append(f"ollama: {note}")
+    if "ollama" in order:
+        local = OllamaClient(
+            settings.ollama_base_url,
+            settings.ollama_model,
+            timeout=settings.ollama_timeout_s,
+            transport=ollama_transport,
+        )
+        ok, note = local.probe()
+        if ok:
+            return Resolution(local, tuple(skipped))
+        local.close()
+        skipped.append(f"ollama: {note}")
 
     return Resolution(FakeClient(), tuple(skipped))

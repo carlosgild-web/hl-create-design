@@ -27,6 +27,7 @@ from app.kicad.exporter import ExportError
 from app.kicad.renderer import DesignFolderExistsError
 from app.llm.base import LLMClient, LLMError, Message
 from app.llm.factory import make_client
+from app.llm.resolve import resolve_from
 from app.sap.client import SapClient
 from app.standards.manual_search import ManualIndex
 from app.standards.validators import DesignRequest, Issue, UnsafePathError
@@ -76,6 +77,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--older-than", type=float, default=None, metavar="HOURS", help="default: DESIGNS_TTL_HOURS"
     )
 
+    commands.add_parser(
+        "llm-check",
+        help="Check which model will answer (groq, then ollama, then the demo model) and print it",
+    )
+
     ev = commands.add_parser("agent-eval", help="Run the agent scenario suite (PLAN Phase 6)")
     which = ev.add_mutually_exclusive_group(required=True)
     which.add_argument("--fake", action="store_true", help="Scripted model (CI, no LLM needed)")
@@ -87,6 +93,32 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-failures", action="store_true", help="Exit 0 even if scenarios fail (real runs)"
     )
     return parser
+
+
+def run_llm_check(settings: Settings, resolver=resolve_from) -> int:
+    """Human-readable status on stderr; the chosen provider name alone on stdout, so the
+    start scripts can capture it (`LLM_PROVIDER=<name>`)."""
+    configured = settings.llm_provider
+    if configured == "fake":
+        print("Assistant: scripted demo model (LLM_PROVIDER=fake).", file=sys.stderr)
+        print("fake")
+        return 0
+    print(f"Checking the assistant's model (LLM_PROVIDER={configured}) ...", file=sys.stderr)
+    resolution = resolver(settings)
+    for reason in resolution.skipped:
+        print(f"  not available - {reason}", file=sys.stderr)
+    provider = resolution.provider
+    if provider == "fake":
+        print(
+            "  Using the scripted demo model (no real model is available). To use one: "
+            "start Ollama, or set GROQ_API_KEY.",
+            file=sys.stderr,
+        )
+    else:
+        suffix = " instead" if resolution.skipped else ""
+        print(f"  Using {provider} ({resolution.client.model}){suffix}.", file=sys.stderr)
+    print(provider)
+    return 0
 
 
 def _issue_line(kind: str, issue: Issue) -> str:
@@ -152,6 +184,8 @@ def main(argv: Sequence[str] | None = None, settings: Settings | None = None) ->
         return run_cancel(args, settings)
     if args.command == "cleanup":
         return run_cleanup(args, settings)
+    if args.command == "llm-check":
+        return run_llm_check(settings)
     if args.command == "agent-eval":
         return run_agent_eval(args, settings)
     return 2  # pragma: no cover - argparse rejects unknown commands

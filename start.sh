@@ -7,6 +7,21 @@ set -e
 cd "$(dirname "$0")"
 mode="${1:-local}"
 
+# Open the browser once the app answers (waits up to 90 s). Set NO_BROWSER=1 to skip.
+open_browser() {
+  [ -n "${NO_BROWSER:-}" ] && return 0
+  command -v curl >/dev/null 2>&1 || return 0
+  (
+    for _ in $(seq 1 90); do
+      if curl -fs "http://127.0.0.1:$1/api/health" >/dev/null 2>&1; then
+        (xdg-open "http://localhost:$1" || open "http://localhost:$1") >/dev/null 2>&1
+        break
+      fi
+      sleep 1
+    done
+  ) &
+}
+
 case "$mode" in
   local)
     command -v python3 >/dev/null 2>&1 || { echo "Python 3.11+ is required: https://www.python.org/downloads/"; exit 1; }
@@ -29,12 +44,17 @@ case "$mode" in
     [ -f .env ] || export SAP_TODAY="${SAP_TODAY:-2026-11-17}"
     command -v kicad-cli >/dev/null 2>&1 || grep -q '^KICAD_CLI=' .env 2>/dev/null \
       || echo "Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env."
+    # Which model will answer? Groq if it has tokens, else Ollama if running, else the demo model.
+    echo
+    provider="$(cd backend && .venv/bin/python -m app.cli llm-check)" && [ -n "$provider" ] && export LLM_PROVIDER="$provider"
+    echo
     echo "Starting the mock SAP on http://localhost:8100 ..."
     (cd sap-mock && exec .venv/bin/python -m uvicorn app.main:app --port 8100) &
     sap_pid=$!
     trap 'kill "$sap_pid" 2>/dev/null' EXIT INT TERM
     sleep 3
     echo "Create Design -> http://localhost:8000  (Ctrl+C to stop)"
+    open_browser 8000
     cd backend && .venv/bin/python -m uvicorn app.main:app --port 8000
     ;;
   docker)
@@ -42,6 +62,7 @@ case "$mode" in
     command -v docker >/dev/null 2>&1 || { echo "Docker is required: https://docs.docker.com/get-docker/"; exit 1; }
     docker info >/dev/null 2>&1 || { echo "Docker is installed but not running. Start Docker, then run this again."; exit 1; }
     echo "Create Design -> http://localhost:${APP_PORT:-8000}  (Ctrl+C to stop)"
+    open_browser "${APP_PORT:-8000}"
     docker compose "$@" up --build
     ;;
   *)

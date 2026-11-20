@@ -26,6 +26,17 @@ get a working assistant without editing `.env`, and should be told which one the
 4. The probes live on the clients (`probe()`), the order in `app/llm/resolve.py`; provider
    details stay under `backend/app/llm/` (invariant 5). It does not start Ollama for you.
 
+5. **The start scripts check before launching** (`python -m app.cli llm-check`, run by
+   `start.cmd` / `start.sh` in local mode). It starts from the configured provider and walks the
+   chain (`groq` or `auto`: groq, ollama, fake; `ollama`: ollama, fake; `fake`: fake), prints why
+   anything was skipped, and the script runs the app with the provider that works
+   (`LLM_PROVIDER=<name>` for that run only). So even an explicit `LLM_PROVIDER=groq` in `.env`
+   starts on Ollama or the demo model when Groq's quota is gone, with a message saying so.
+   Docker mode relies on the app's own `auto`.
+6. **Both scripts open the browser** once `/api/health` answers (`NO_BROWSER=1` skips it).
+7. A Groq daily-quota error now says so, with the reset time and what to do (restart
+   `start.cmd`, or `LLM_PROVIDER=auto`); only waits over 15 minutes are called a daily quota.
+
 ## Consequences
 
 - The code default changed from `fake` to `auto`. A fresh clone with no key and no Ollama still
