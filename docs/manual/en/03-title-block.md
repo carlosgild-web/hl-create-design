@@ -14,6 +14,7 @@ Design fills in the fields when it creates the project. Don't type them by hand 
 |---|---|---|
 | Logo and company | Hilda & Luna Beadworks | The template |
 | Title | `Bead Drill Controller` | You: the design name |
+| Description (optional) | `Six-axis stepper drive for the bead drill` | You |
 | Design No. | `HL-HW-26-0042` | SAP ([01-design-numbering](01-design-numbering.md)) |
 | Rev | `A` | You, checked against [02-revisions](02-revisions.md) |
 | SAP material | `40001234` | SAP, shown without leading zeros |
@@ -51,6 +52,20 @@ the SAP material, so every revision of a design carries the same title.
   formatting above: title case, single spaces). Create Design fills it in and locks it.
 - To give a design a different name, ask the department lead for a new design number. The
   name of an existing material is never changed from a title block.
+
+## Description
+<a id="description"></a>
+
+An optional line printed in small italics under the title. Use it to say what this design
+or revision is for, when the name alone doesn't: `Six-axis stepper drive for the bead
+drill`, `Rev C: second source for the gate driver`.
+
+- **Optional**, at most **60 characters**, one line.
+- Any language and accents are allowed: unlike the name, it doesn't go to SAP.
+- Spaces at the start and the end are removed, and repeated spaces become one.
+- Not allowed: tabs or other control characters, and `${`, which KiCad would read as a
+  text variable and replace with another field.
+- In KiCad it is the title block's *Comment 1* (`${COMMENT1}`).
 
 ## Designer
 <a id="designer"></a>

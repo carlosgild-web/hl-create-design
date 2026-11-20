@@ -36,6 +36,7 @@ export function RecentDesigns({ onPreview, bare = false }: Props) {
                 {d.design_number} {d.revision}
               </span>{' '}
               <span className="text-muted-foreground">{d.name}</span>
+              {d.description && <span className="block truncate text-xs italic text-muted-foreground">{d.description}</span>}
               <span className="block text-xs text-muted-foreground">{d.designer}</span>
             </span>
             {d.pdf ? (

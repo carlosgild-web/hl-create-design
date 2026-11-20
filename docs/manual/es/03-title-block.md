@@ -15,6 +15,7 @@ este manual.
 |---|---|---|
 | Logo y empresa | Hilda & Luna Beadworks | La plantilla |
 | Título | `Bead Drill Controller` | Tú: el nombre del diseño |
+| Descripción (opcional) | `Accionamiento paso a paso de seis ejes` | Tú |
 | N.º de diseño | `HL-HW-26-0042` | SAP ([01-design-numbering](01-design-numbering.md)) |
 | Rev. | `A` | Tú, comprobada con [02-revisions](02-revisions.md) |
 | Material SAP | `40001234` | SAP, sin ceros a la izquierda |
@@ -53,6 +54,20 @@ breve del material de SAP, así que todas las revisiones de un diseño llevan el
   rellena y lo bloquea.
 - Para dar otro nombre a un diseño, pide al responsable del departamento un número de diseño
   nuevo. El nombre de un material existente nunca se cambia desde un cajetín.
+
+## Descripción
+<a id="description"></a>
+
+Una línea opcional, en cursiva pequeña, debajo del título. Sirve para decir para qué es este
+diseño o esta revisión cuando el nombre no basta: `Accionamiento paso a paso de seis ejes`,
+`Rev C: segunda fuente para el driver de puerta`.
+
+- **Opcional**, como máximo **60 caracteres**, en una línea.
+- Se admite cualquier idioma y las tildes: a diferencia del nombre, no va a SAP.
+- Se quitan los espacios del principio y del final, y los espacios repetidos quedan en uno.
+- No se admiten tabuladores ni otros caracteres de control, ni `${`, que KiCad leería como
+  una variable de texto y sustituiría por otro campo.
+- En KiCad es el *Comentario 1* del cajetín (`${COMMENT1}`).
 
 ## Diseñador
 <a id="designer"></a>

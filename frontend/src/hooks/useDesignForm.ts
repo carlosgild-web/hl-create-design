@@ -11,7 +11,14 @@ import {
 } from '@/api/types'
 import { isFilled } from '@/lib/fields'
 
-export const EMPTY_FORM: FormValues = { department: '', design_number: '', revision: '', name: '', designer: '' }
+export const EMPTY_FORM: FormValues = {
+  department: '',
+  design_number: '',
+  revision: '',
+  name: '',
+  designer: '',
+  description: '',
+}
 
 /** The empty form of a mode: a new design always starts at revision A (decision 0018). */
 export const emptyFor = (mode: FormMode, designer = ''): FormValues => ({
@@ -97,6 +104,7 @@ export function useDesignForm() {
       revision: design.next_free_revision,
       name: design.name,
       designer: state.current.values.designer,
+      description: '', // about this revision: the user's to write
     })
     setSource({ department: 'sap', design_number: 'sap', revision: 'sap', name: 'sap' })
     setSuggestions({})

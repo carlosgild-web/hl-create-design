@@ -90,6 +90,7 @@ def recent_designs(engine: EngineDep, limit: int = 20) -> list[dict[str, Any]]:
                 "design_number": row.design_number,
                 "revision": row.revision,
                 "name": row.details.get("name", ""),
+                "description": row.details.get("description", ""),
                 "department": row.details.get("department", ""),
                 "designer": row.actor,
                 "pdf": bool(row.details.get("pdf")),

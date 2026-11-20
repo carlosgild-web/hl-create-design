@@ -77,7 +77,7 @@ describe('why Create is not available', () => {
   })
 
   it('lists blockers in the order to do things', () => {
-    const empty = { department: '', design_number: '', revision: 'A', name: '', designer: '' }
+    const empty = { department: '', design_number: '', revision: 'A', name: '', designer: '', description: '' }
     expect(blockers('new', empty, 0).map((b) => b.key)).toEqual([
       'need_field',
       'need_field',
@@ -85,9 +85,32 @@ describe('why Create is not available', () => {
       'need_sap_number',
     ])
     expect(blockers('existing', { ...empty, revision: '' }, 0).map((b) => b.key)).toEqual(['need_design', 'need_field'])
-    const full = { department: 'HW', design_number: 'HL-HW-26-0042', revision: 'C', name: 'X Board', designer: 'C. V' }
+    const full = { ...empty, department: 'HW', design_number: 'HL-HW-26-0042', revision: 'C', name: 'X Board', designer: 'C. V' }
     expect(blockers('existing', full, 0)).toEqual([])
     expect(blockers('existing', full, 1)).toEqual([{ key: 'fix_errors' }])
+  })
+})
+
+describe('description (optional)', () => {
+  it('is not needed to create, is sent with the card, and counts its characters', async () => {
+    const calls = stubFetch(
+      (url) => (url === '/api/actions' ? jsonResponse(makeAction({ id: 'd1' }), 201) : undefined),
+      ...baseRoutes,
+    )
+    renderWithProviders(<App />)
+    await user.click(screen.getByRole('radio', { name: 'From existing design' }))
+    await user.click(await screen.findByRole('option', { name: /HL-HW-26-0042/ }))
+    await user.type(screen.getByLabelText('Designer'), 'C. Velazquez')
+    const create = screen.getByRole('button', { name: 'Create revision C' })
+    expect(create).toBeEnabled() // without a description
+
+    await user.type(screen.getByLabelText(/Description/), 'Second source for the driver')
+    expect(screen.getByText('28/60')).toBeInTheDocument()
+    await user.click(create)
+
+    await waitFor(() => expect(calls.some((c) => c.url === '/api/actions')).toBe(true))
+    const sent = JSON.parse(String(calls.find((c) => c.url === '/api/actions')!.init?.body))
+    expect(sent.payload.description).toBe('Second source for the driver')
   })
 })
 

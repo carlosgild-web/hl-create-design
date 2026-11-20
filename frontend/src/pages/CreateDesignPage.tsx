@@ -82,7 +82,9 @@ export default function CreateDesignPage() {
     const v = form.values
     return Object.fromEntries(
       FORM_FIELDS.filter(
-        (f) => isFilled(f, v[f]) && (kind === 'create_design' || (f !== 'design_number' && f !== 'revision')),
+        (f) =>
+          isFilled(f, v[f]) &&
+          (kind === 'create_design' || (f !== 'design_number' && f !== 'revision' && f !== 'description')),
       ).map((f) => [f, v[f].trim()]),
     )
   }

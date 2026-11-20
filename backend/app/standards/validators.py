@@ -403,6 +403,49 @@ def validate_design_name(raw: str) -> FieldCheck:
     return _check(name)
 
 
+# --- description: 03-title-block#description ------------------------------------------
+
+DESCRIPTION_MAX = 60
+
+
+def validate_description(raw: str) -> FieldCheck:
+    """Optional, one line on the title block. Any printable text (accents too), but not
+    `${...}`: KiCad would read it as a text variable and print another field there."""
+    text = collapse_spaces(raw)
+    ref = "03-title-block#description"
+    if any(not c.isprintable() for c in text):
+        return _check(
+            text,
+            Issue(
+                "description",
+                "description_characters",
+                "The description is one line of plain text, without tabs or control characters.",
+                ref,
+            ),
+        )
+    if "${" in text:
+        return _check(
+            text,
+            Issue(
+                "description",
+                "description_variable",
+                "The description can't contain '${': KiCad would read it as a text variable.",
+                ref,
+            ),
+        )
+    if len(text) > DESCRIPTION_MAX:
+        return _check(
+            text,
+            Issue(
+                "description",
+                "description_length",
+                f"The description has at most {DESCRIPTION_MAX} characters; it has {len(text)}.",
+                ref,
+            ),
+        )
+    return _check(text)
+
+
 # --- designer: 03-title-block#designer ------------------------------------------------
 
 DESIGNER_MAX = 40
@@ -534,6 +577,7 @@ class DesignRequest:
     sap_material: str = ""
     project: str = ""
     issue_date: str | date = ""
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -594,6 +638,8 @@ def validate_design_request(
         checks["project"] = validate_project(request.project)
     if request.issue_date:
         checks["issue_date"] = validate_issue_date(request.issue_date)
+    if request.description.strip():
+        checks["description"] = validate_description(request.description)
     if sap_name is not None and request.name.strip():
         checks["name"] = check_name_matches_sap(checks["name"], sap_name)
     if sap_status is not None:
@@ -613,6 +659,7 @@ def validate_design_request(
         sap_material=value("sap_material"),
         project=value("project"),
         issue_date=value("issue_date"),
+        description=value("description"),
     )
     return ValidationReport(
         request=normalized,

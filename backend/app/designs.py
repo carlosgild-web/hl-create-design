@@ -92,6 +92,8 @@ def check_design_request(
 
 
 FORM_FIELDS = ("department", "design_number", "revision", "name", "designer")
+# Checked when given, never listed as missing.
+OPTIONAL_FIELDS = ("description",)
 # Without a design number the revision can only be checked for its format.
 _SEQUENCE_CODES = frozenset({"rev_first_not_a", "rev_jump", "rev_reused"})
 
@@ -113,8 +115,9 @@ def check_fields(fields: dict[str, str], designs_root: Path, lookup: SapLookup) 
     `sap` {status, material, wbs} or `sap_unavailable`. `lookup` is the caller's SAP
     access (through `SapClient`); this module never calls SAP.
     """
-    given = {name: fields[name] for name in FORM_FIELDS if fields.get(name, "").strip()}
-    request = DesignRequest(**{name: given.get(name, "") for name in FORM_FIELDS})
+    names = FORM_FIELDS + OPTIONAL_FIELDS
+    given = {name: fields[name] for name in names if fields.get(name, "").strip()}
+    request = DesignRequest(**{name: given.get(name, "") for name in names})
 
     sap: SapDesign | None = None
     sap_note: dict[str, Any] | None = None
@@ -200,6 +203,7 @@ def normalize_payload(payload: dict[str, str]) -> dict[str, str]:
         "revision": v.validate_revision,
         "name": v.validate_design_name,
         "designer": v.validate_designer,
+        "description": v.validate_description,
     }
     out = dict(payload)
     for name, check in checks.items():
@@ -249,6 +253,7 @@ def create_design(
         department=v.department_label(req.department),
         sap_material=v.material_display(req.sap_material) if req.sap_material else "",
         project=req.project,
+        description=req.description,
     )
 
     project = render_project(folder, stem, block, template_dir)
@@ -271,6 +276,7 @@ def create_design(
             revision=req.revision,
             details={
                 "name": req.name,
+                "description": req.description,
                 "department": req.department,
                 "folder": "/".join(folder.parts[-3:]),
                 "sap_material": req.sap_material,

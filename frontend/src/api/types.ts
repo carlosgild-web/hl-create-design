@@ -1,5 +1,8 @@
-export const FORM_FIELDS = ['department', 'design_number', 'revision', 'name', 'designer'] as const
+export const FORM_FIELDS = ['department', 'design_number', 'revision', 'name', 'designer', 'description'] as const
 export type FormField = (typeof FORM_FIELDS)[number]
+/** What Create needs; the description is optional (decision 0019). */
+export const REQUIRED_FIELDS = FORM_FIELDS.filter((f) => f !== 'description')
+export const DESCRIPTION_MAX = 60
 export type FormValues = Record<FormField, string>
 
 export type Department = { code: string; name: string; name_es?: string }
@@ -74,6 +77,7 @@ export type RecentDesign = {
   design_number: string
   revision: string
   name: string
+  description?: string
   department: string
   designer: string
   pdf: boolean

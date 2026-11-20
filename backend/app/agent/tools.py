@@ -35,6 +35,8 @@ from app.standards.validators import DesignRequest, UnsafePathError
 FREE_TEXT_MAX = 200
 GATED_TOOLS = frozenset({"request_create_design", "request_reserve_number"})
 FORM_FIELDS = ("department", "design_number", "revision", "name", "designer")
+# The form's optional field: checked and passed on when given, never required.
+FIELDS = (*FORM_FIELDS, "description")
 
 
 # --- context and results -------------------------------------------------------------
@@ -115,6 +117,7 @@ class DesignFieldsArgs(_Args):
     revision: str = _text("Revision letter, e.g. A")
     name: str = _text("Design name, e.g. Bead Drill Controller")
     designer: str = _text("Designer as initial and surname, e.g. C. Velazquez")
+    description: str = _text("Optional one-line description for the title block (max 60)")
 
 
 class DesignNumberArgs(_Args):
@@ -143,6 +146,7 @@ class CreateArgs(_Args):
     revision: str = Field(max_length=4, description="Revision letter")
     name: str = Field(max_length=FREE_TEXT_MAX, description="Design name")
     designer: str = Field(max_length=FREE_TEXT_MAX, description="Designer, e.g. C. Velazquez")
+    description: str = _text("Optional one-line description (max 60), only if the user gave one")
 
 
 # --- read tools ----------------------------------------------------------------------
@@ -177,7 +181,7 @@ def sap_lookup_for(sap: SapClient) -> SapLookup:
 def validate_design_request(args: DesignFieldsArgs, ctx: ToolContext) -> ToolResult:
     """Check the fields given so far. Missing fields are listed, not reported as errors.
     The same check as the form's inline validation (`app.designs.check_fields`)."""
-    given = {name: getattr(args, name) for name in FORM_FIELDS if getattr(args, name)}
+    given = {name: getattr(args, name) for name in FIELDS if getattr(args, name)}
     if not given:
         return _error("no_fields", "Pass at least one field to check.")
     content = check_fields(given, ctx.settings.designs_root, sap_lookup_for(ctx.sap))
@@ -238,7 +242,7 @@ def check_design_folder(args: FolderArgs, ctx: ToolContext) -> ToolResult:
 
 
 def propose_form_values(args: DesignFieldsArgs, _: ToolContext) -> ToolResult:
-    fields = {name: getattr(args, name) for name in FORM_FIELDS if getattr(args, name)}
+    fields = {name: getattr(args, name) for name in FIELDS if getattr(args, name)}
     if not fields:
         return _error("no_fields", "Pass at least one field to fill in.")
     return ToolResult(
@@ -304,7 +308,7 @@ def request_reserve_number(args: ReserveArgs, ctx: ToolContext) -> ToolResult:
 def request_create_design(args: CreateArgs, ctx: ToolContext) -> ToolResult:
     if (blocked := _one_card_per_kind("create_design", ctx)) is not None:
         return blocked
-    request = DesignRequest(**{name: getattr(args, name) for name in FORM_FIELDS})
+    request = DesignRequest(**{name: getattr(args, name) for name in FIELDS})
     number_ok = v.validate_design_number(request.design_number, request.department).ok
     sap, failure = _sap_lookup(ctx, request.design_number.strip()) if number_ok else (None, None)
     if failure is not None:
@@ -325,7 +329,9 @@ def request_create_design(args: CreateArgs, ctx: ToolContext) -> ToolResult:
             }
         )
     req = report.request
-    payload = {name: getattr(req, name) for name in FORM_FIELDS}
+    payload = {
+        name: getattr(req, name) for name in FIELDS if name in FORM_FIELDS or getattr(req, name)
+    }
     payload |= {"sap_material": req.sap_material, "project": req.project}
     payload["warnings"] = [_issue(w) for w in report.warnings]
     return _open_card(

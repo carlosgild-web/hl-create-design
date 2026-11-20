@@ -2,7 +2,8 @@ import { CheckCircle2, Lock, Sparkles } from 'lucide-react'
 import type * as React from 'react'
 
 import {
-  FORM_FIELDS,
+  DESCRIPTION_MAX,
+  REQUIRED_FIELDS,
   type Department,
   type FormField,
   type FormMode,
@@ -51,8 +52,9 @@ type Props = {
 const fieldClass =
   'h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive dark:bg-input/30'
 
-/** Two columns: Department | Design number, Revision | Designer, then the name across. */
-const LAYOUT: FormField[] = ['department', 'design_number', 'revision', 'designer', 'name']
+/** Two columns: Department | Design number, Revision | Designer, then name and description across. */
+const LAYOUT: FormField[] = ['department', 'design_number', 'revision', 'designer', 'name', 'description']
+const WIDE: ReadonlySet<FormField> = new Set(['name', 'description'])
 
 const RING: Record<ValueSource, string> = { ai: 'ring-2 ring-hl-amber', sap: 'ring-2 ring-hl-sea' }
 
@@ -90,7 +92,7 @@ export function DesignForm({
   const { t, lang } = useI18n()
   const folder = folderPreview(values)
   const todo = blockers(mode, values, validation?.errors.length ?? 0)
-  const canCreate = FORM_FIELDS.every((f) => isFilled(f, values[f])) && !sameAsCreated && todo.length === 0
+  const canCreate = REQUIRED_FIELDS.every((f) => isFilled(f, values[f])) && !sameAsCreated && todo.length === 0
   const needsNumber = mode === 'new' && !isFilled('design_number', values.design_number)
   const todoText = todo
     .map((b) =>
@@ -124,6 +126,16 @@ export function DesignForm({
         </>
       ) : (
         t('hint.designer')
+      )
+    }
+    if (field === 'description') {
+      return (
+        <>
+          <span className="flex-1">{t('hint.description')}</span>
+          <span aria-hidden className="tabular-nums">
+            {value.length}/{DESCRIPTION_MAX}
+          </span>
+        </>
       )
     }
     if (field === 'name' && !locked('name')) {
@@ -186,8 +198,13 @@ export function DesignForm({
             }
             const lockedClass = 'bg-muted pr-8 text-foreground/80 focus-visible:ring-ring/30'
             return (
-              <div key={field} className={cn('grid content-start gap-1', field === 'name' && 'sm:col-span-2')}>
-                <Label htmlFor={id}>{t(FIELD_LABELS[field])}</Label>
+              <div key={field} className={cn('grid content-start gap-1', WIDE.has(field) && 'sm:col-span-2')}>
+                <Label htmlFor={id}>
+                  {t(FIELD_LABELS[field])}
+                  {field === 'description' && (
+                    <span className="font-normal text-muted-foreground">{t('form.optional')}</span>
+                  )}
+                </Label>
                 {readOnly ? (
                   // Set by SAP in this mode: still focusable for screen readers, not editable.
                   <div className="relative">
@@ -220,6 +237,7 @@ export function DesignForm({
                     {...common}
                     value={values[field]}
                     placeholder={FIELD_PLACEHOLDERS[field]}
+                    maxLength={field === 'description' ? DESCRIPTION_MAX : undefined}
                     autoComplete="off"
                     onChange={(e) => onChange(field, e.target.value)}
                   />

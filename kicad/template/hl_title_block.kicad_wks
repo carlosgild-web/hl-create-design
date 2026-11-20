@@ -136,6 +136,13 @@
 			(size 3.0 3.0) bold
 		)
 	)
+	(tbtext "${COMMENT1}"
+		(name "")
+		(pos 131 27.2)
+		(font
+			(size 1.2 1.2) italic
+		)
+	)
 	(tbtext "Design No."
 		(name "")
 		(pos 41 37.6)

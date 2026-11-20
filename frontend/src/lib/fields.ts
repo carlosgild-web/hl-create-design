@@ -8,6 +8,7 @@ export const FIELD_LABELS: Record<FormField, MessageKey> = {
   revision: 'form.revision',
   name: 'form.name',
   designer: 'form.designer',
+  description: 'form.description',
 }
 
 /** What each field expects, shown before anything is typed. */
@@ -23,6 +24,7 @@ export const FIELD_PLACEHOLDERS: Partial<Record<FormField, string>> = {
   revision: 'A',
   name: 'Bead Drill Controller',
   designer: 'C. Velazquez',
+  description: 'Six-axis stepper drive for the bead drill',
 }
 
 /** The department in the UI language: SAP's Spanish name in ES, else the English one. */

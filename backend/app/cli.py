@@ -54,6 +54,9 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--project", default="", help="WBS element, e.g. P-26-0108 (offline use)")
     create.add_argument("--date", default="", help="Issue date YYYY-MM-DD (default: today)")
     create.add_argument(
+        "--description", default="", help="Optional one line under the title (max 60)"
+    )
+    create.add_argument(
         "--no-export", action="store_true", help="Skip the kicad-cli PDF/SVG export"
     )
 
@@ -240,6 +243,7 @@ def run_create_design(args: argparse.Namespace, settings: Settings) -> int:
         sap_material=args.material,
         project=args.project,
         issue_date=args.date,
+        description=args.description,
     )
     try:
         created = create_design(request, settings=settings, export=not args.no_export)

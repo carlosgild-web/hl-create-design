@@ -163,6 +163,7 @@ def _create(
         revision=p.get("revision", ""),
         name=p.get("name", ""),
         designer=p.get("designer", ""),
+        description=p.get("description", "") or "",
     )
     number = v.validate_design_number(request.design_number, request.department)
     if not number.ok:

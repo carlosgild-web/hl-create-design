@@ -6,8 +6,8 @@ The template (`kicad/template/`) is a complete KiCad 9 project. Rendering it:
   (04-folder-structure#file-names) and copies the drawing sheet `hl_title_block.kicad_wks`;
 - writes the company fields as project text variables (`${HL_DESIGN_NUMBER}`, ...) in the
   `.kicad_pro`, which the drawing sheet shows;
-- writes the built-in fields (`${TITLE}`, `${REVISION}`, `${ISSUE_DATE}`, `${COMPANY}`) in
-  the schematic's `(title_block ...)`.
+- writes the built-in fields (`${TITLE}`, `${REVISION}`, `${ISSUE_DATE}`, `${COMPANY}`, and
+  the optional description as `${COMMENT1}`) in the schematic's `(title_block ...)`.
 
 The values arrive already validated and normalized (`standards/validators.py`); this module
 only escapes them. It never overwrites: the revision folder must not exist (invariant 3 and
@@ -46,6 +46,7 @@ class TitleBlock:
     department: str  # "HW – Hardware Design"
     sap_material: str = ""  # without leading zeros, "" if unknown
     project: str = ""  # WBS element, "" if unknown
+    description: str = ""  # optional one line under the title, KiCad's ${COMMENT1}
     company: str = COMPANY
 
     def text_variables(self) -> dict[str, str]:
@@ -94,7 +95,8 @@ def title_block_sexpr(block: TitleBlock, indent: str = "\t") -> str:
         f"{inner}(date {sexpr_string(block.issue_date)})\n"
         f"{inner}(rev {sexpr_string(block.revision)})\n"
         f"{inner}(company {sexpr_string(block.company)})\n"
-        f"{indent})"
+        + (f"{inner}(comment 1 {sexpr_string(block.description)})\n" if block.description else "")
+        + f"{indent})"
     )
 
 
