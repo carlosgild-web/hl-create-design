@@ -105,11 +105,61 @@ def test_tampered_payload_cant_escape_the_designs_root(settings, engine, sap, co
 
 
 def test_blocked_design_cant_be_created(settings, engine, sap, conversation):
-    payload = CREATE | {"design_number": "HL-HW-24-0003"}
+    payload = CREATE | {"design_number": "HL-HW-24-0003", "name": "Old Led Panel"}
     outcome = confirm(
         open_action(engine, conversation, "create_design", **payload).id, settings, engine, sap
     )
     assert [e["code"] for e in outcome.action.result["errors"]] == ["status_blocked"]
+
+
+# --- new revision of an existing design (decision 0018) ---------------------------------
+
+
+def test_a_name_other_than_sap_is_refused_at_confirm(settings, engine, sap, conversation):
+    payload = CREATE | {"name": "Other Name"}
+    outcome = confirm(
+        open_action(engine, conversation, "create_design", **payload).id, settings, engine, sap
+    )
+    [error] = outcome.action.result["errors"]
+    assert error["code"] == "name_differs_from_sap"
+    assert (
+        error["ref"] == "03-title-block#name-from-sap"
+        and "Bead Drill Controller" in error["message"]
+    )
+    assert not (settings.designs_root / "HW" / "HL-HW-26-0042" / "C").exists()
+
+
+def test_an_obsolete_design_is_refused_even_if_the_ui_is_bypassed(
+    settings, engine, sap, conversation
+):
+    payload = CREATE | {
+        "department": "EMB",
+        "design_number": "HL-EMB-23-0002",
+        "name": "Sensor Hub",
+        "revision": "B",
+    }
+    outcome = confirm(
+        open_action(engine, conversation, "create_design", **payload).id, settings, engine, sap
+    )
+    assert "status_obsolete" in [e["code"] for e in outcome.action.result["errors"]]
+    assert not (settings.designs_root / "EMB").exists()
+
+
+def test_new_revision_of_an_existing_design_uses_sap_name_and_is_audited(
+    settings, engine, sap, conversation
+):
+    payload = CREATE | {"name": "bead  drill controller"}  # same name, other formatting
+    outcome = confirm(
+        open_action(engine, conversation, "create_design", **payload).id, settings, engine, sap
+    )
+    assert outcome.ok, outcome.action.result
+    folder = settings.designs_root / "HW" / "HL-HW-26-0042" / "C"
+    assert folder.is_dir()
+    schematic = "".join(p.read_text(encoding="utf-8") for p in folder.rglob("*.kicad_sch"))
+    assert '(title "Bead Drill Controller")' in schematic
+    [row] = [r for r in audit_rows(engine) if r.action == "design_created"]
+    assert (row.design_number, row.revision) == ("HL-HW-26-0042", "C")
+    assert row.details["name"] == "Bead Drill Controller"
 
 
 def test_sap_down_does_nothing(settings, engine, sap, fake_sap, conversation):

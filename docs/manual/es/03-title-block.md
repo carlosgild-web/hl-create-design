@@ -42,6 +42,18 @@ El nombre del diseño es el título de todas las hojas y el texto breve del mate
   palabras como `new`, `final` o `copy`. `Kiln Thermocouple Interface` es un buen nombre;
   `HL-HW-26-0042 Rev A` y `New Board Final` no lo son.
 
+## Nombre de un diseño existente
+<a id="name-from-sap"></a>
+
+Una revisión nueva conserva el nombre que el diseño ya tiene en SAP. El nombre es el texto
+breve del material de SAP, así que todas las revisiones de un diseño llevan el mismo título.
+
+- Si el número de diseño existe en SAP, el nombre del diseño **debe ser el de SAP** (con el
+  formato de arriba: mayúscula inicial en cada palabra, espacios simples). Create Design lo
+  rellena y lo bloquea.
+- Para dar otro nombre a un diseño, pide al responsable del departamento un número de diseño
+  nuevo. El nombre de un material existente nunca se cambia desde un cajetín.
+
 ## Diseñador
 <a id="designer"></a>
 

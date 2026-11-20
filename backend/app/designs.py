@@ -87,6 +87,7 @@ def check_design_request(
         sap_status=sap.status,
         block_reason=sap.block_reason or None,
         successor=sap.successor or None,
+        sap_name=sap.name,
     )
 
 
@@ -234,6 +235,8 @@ def create_design(
     if not report.ok:
         raise DesignValidationError(report)
     req = report.request
+    if sap is not None:  # the title block carries SAP's name (equal after the check above)
+        req = replace(req, name=v.title_case(v.collapse_spaces(sap.name)))
 
     folder = v.design_folder(settings.designs_root, req.department, req.design_number, req.revision)
     stem = v.design_file_stem(req.design_number, req.revision)

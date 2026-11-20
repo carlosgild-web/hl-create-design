@@ -449,3 +449,32 @@ def test_revisions_on_disk(tmp_path):
         (base / name).mkdir(parents=True)
     assert v.revisions_on_disk(tmp_path, "HW", "HL-HW-26-0042") == ["A", "B", "J"]
     assert v.revisions_on_disk(tmp_path, "HW", "HL-HW-26-0043") == []
+
+
+# --- an existing design keeps SAP's name (decision 0018) ----------------------------------
+
+
+def _existing(name: str):
+    from app.standards.validators import DesignRequest, validate_design_request
+
+    request = DesignRequest(
+        department="HW",
+        design_number="HL-HW-26-0003",
+        revision="C",
+        name=name,
+        designer="C. Velazquez",
+    )
+    return validate_design_request(
+        request, existing_revisions=["A", "B"], sap_name="Bead Sorter Vision Board"
+    )
+
+
+def test_a_name_other_than_sap_is_an_error():
+    report = _existing("Other Name")
+    [issue] = [e for e in report.errors if e.code == "name_differs_from_sap"]
+    assert issue.field == "name" and issue.ref == "03-title-block#name-from-sap"
+    assert "Bead Sorter Vision Board" in issue.message
+
+
+def test_sap_name_in_other_formatting_is_fine():
+    assert _existing("bead  sorter vision board").ok

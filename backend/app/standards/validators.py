@@ -553,6 +553,22 @@ class ValidationReport:
         return [e for e in self.errors if e.field == name]
 
 
+def check_name_matches_sap(name: FieldCheck, sap_name: str) -> FieldCheck:
+    """An existing design keeps SAP's name: a new revision can't rename the material
+    (03-title-block#name-from-sap). Compared after the usual formatting."""
+    expected = title_case(collapse_spaces(sap_name))
+    if not name.value or name.value == expected:
+        return name
+    issue = Issue(
+        "name",
+        "name_differs_from_sap",
+        f"This design is called '{expected}' in SAP, and a new revision keeps that name. "
+        "For a different name, ask for a new design number.",
+        "03-title-block#name-from-sap",
+    )
+    return FieldCheck(name.value, (*name.errors, issue), name.warnings)
+
+
 def validate_design_request(
     request: DesignRequest,
     *,
@@ -560,8 +576,10 @@ def validate_design_request(
     sap_status: str | None = None,
     block_reason: str | None = None,
     successor: str | None = None,
+    sap_name: str | None = None,
 ) -> ValidationReport:
-    """Check every field. Optional SAP fields are checked only when they are given."""
+    """Check every field. Optional SAP fields are checked only when they are given;
+    `sap_name` is the name of the design in SAP when the number exists there."""
     existing = list(existing_revisions)
     checks: dict[str, FieldCheck] = {
         "department": validate_department(request.department),
@@ -576,6 +594,8 @@ def validate_design_request(
         checks["project"] = validate_project(request.project)
     if request.issue_date:
         checks["issue_date"] = validate_issue_date(request.issue_date)
+    if sap_name is not None and request.name.strip():
+        checks["name"] = check_name_matches_sap(checks["name"], sap_name)
     if sap_status is not None:
         checks["status"] = check_status_allows_revision(
             sap_status, block_reason=block_reason, successor=successor

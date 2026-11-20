@@ -41,6 +41,17 @@ The design name is the title on every sheet and the short text of the material i
   `new`, `final` or `copy` in the name. `Kiln Thermocouple Interface` is a good name;
   `HL-HW-26-0042 Rev A` and `New Board Final` are not.
 
+## Name of an existing design
+<a id="name-from-sap"></a>
+
+A new revision keeps the name the design already has in SAP. The name is the short text of
+the SAP material, so every revision of a design carries the same title.
+
+- When the design number exists in SAP, the design name **must be SAP's name** (after the
+  formatting above: title case, single spaces). Create Design fills it in and locks it.
+- To give a design a different name, ask the department lead for a new design number. The
+  name of an existing material is never changed from a title block.
+
 ## Designer
 <a id="designer"></a>
 
