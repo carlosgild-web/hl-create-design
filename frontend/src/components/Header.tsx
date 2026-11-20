@@ -10,7 +10,7 @@ export function Header() {
   return (
     <header>
       {bannerOpen && (
-        <div className="flex items-center justify-between gap-3 bg-primary px-4 py-2 text-xs text-primary-foreground">
+        <div className="flex items-center justify-between gap-3 bg-hl-night px-4 py-2 text-xs text-hl-moon">
           <p>{t('demo.banner')}</p>
           <button type="button" className="shrink-0 underline" onClick={() => setBannerOpen(false)}>
             {t('demo.dismiss')}

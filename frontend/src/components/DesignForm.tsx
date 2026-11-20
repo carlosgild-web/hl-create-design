@@ -69,7 +69,7 @@ export function DesignForm({
                 {field === 'department' ? (
                   <select
                     id={id}
-                    className={cn(fieldClass, suggested && 'ring-2 ring-amber-400')}
+                    className={cn(fieldClass, suggested && 'ring-2 ring-hl-amber')}
                     value={values.department}
                     aria-invalid={fieldErrors.length > 0}
                     aria-describedby={suggested ? `${id}-suggested` : undefined}
@@ -86,7 +86,7 @@ export function DesignForm({
                   <Input
                     id={id}
                     value={values[field]}
-                    className={cn(suggested && 'ring-2 ring-amber-400')}
+                    className={cn(suggested && 'ring-2 ring-hl-amber')}
                     aria-invalid={fieldErrors.length > 0}
                     aria-describedby={suggested ? `${id}-suggested` : undefined}
                     autoComplete="off"
@@ -94,7 +94,7 @@ export function DesignForm({
                   />
                 )}
                 {suggested && (
-                  <p id={`${id}-suggested`} className="text-xs text-amber-700 dark:text-amber-400">
+                  <p id={`${id}-suggested`} className="text-xs text-hl-amber-ink dark:text-hl-amber">
                     {t('form.suggested')}
                   </p>
                 )}

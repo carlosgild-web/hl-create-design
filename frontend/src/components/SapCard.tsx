@@ -3,10 +3,10 @@ import { Badge } from '@/components/ui/badge'
 import { useI18n, type MessageKey } from '@/i18n'
 
 const STATUS_STYLE: Record<string, string> = {
-  IN_WORK: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100',
-  RELEASED: 'bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100',
-  BLOCKED: 'bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-100',
-  OBSOLETE: 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-100',
+  IN_WORK: 'bg-hl-sea/25 text-hl-sea-ink dark:text-hl-sea',
+  RELEASED: 'bg-hl-cobalt-soft text-hl-cobalt dark:bg-hl-cobalt/30 dark:text-hl-moon',
+  BLOCKED: 'bg-destructive/10 text-destructive',
+  OBSOLETE: 'bg-muted text-muted-foreground',
 }
 
 /** Material numbers are shown without leading zeros (03-title-block). */

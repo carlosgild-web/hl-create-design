@@ -45,7 +45,7 @@ export function ActionCard({ action, onChange, onUseNumber, onShowPreview }: Pro
   return (
     <section
       aria-label={t(action.kind === 'create_design' ? 'action.create_design' : 'action.reserve_number')}
-      className="rounded-lg border-2 border-amber-300 bg-card p-3 text-sm dark:border-amber-500/60"
+      className="rounded-lg border-2 border-hl-amber bg-card p-3 text-sm"
       data-status={status}
     >
       <p className="font-medium">
@@ -79,7 +79,7 @@ export function ActionCard({ action, onChange, onUseNumber, onShowPreview }: Pro
 
       {status === 'confirmed' && (
         <div className="mt-3 space-y-2">
-          <p className="font-medium text-emerald-700 dark:text-emerald-300">
+          <p className="font-medium text-hl-sea-ink dark:text-hl-sea">
             {action.kind === 'reserve_number'
               ? t('action.reserved', { number: result.design_number ?? '' })
               : t('action.created', { number: result.design_number ?? '', rev: result.revision ?? '' })}
@@ -90,7 +90,7 @@ export function ActionCard({ action, onChange, onUseNumber, onShowPreview }: Pro
             </p>
           )}
           {result.warnings?.map((w) => (
-            <p key={w.code} className="text-xs text-amber-700 dark:text-amber-300">
+            <p key={w.code} className="text-xs text-hl-amber-ink dark:text-hl-amber">
               {w.message} [{w.ref}]
             </p>
           ))}
