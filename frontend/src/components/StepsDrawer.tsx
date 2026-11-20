@@ -4,17 +4,27 @@ import { getRun } from '@/api/client'
 import type { Step } from '@/hooks/useChat'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { useI18n } from '@/i18n'
+import { useI18n, type MessageKey } from '@/i18n'
 
 /** Shows what the agent called and what it got back (invariant 6: nothing is hidden). */
+const STATUS_KEYS: Record<string, MessageKey> = {
+  running: 'run.status.running',
+  answered: 'run.status.answered',
+  limit: 'run.status.limit',
+  error: 'run.status.error',
+  cancelled: 'run.status.cancelled',
+  timeout: 'run.status.timeout',
+}
+
 export function StepsDrawer({ steps, runId }: { steps: Step[]; runId: number | null }) {
-  const { t } = useI18n()
+  const { t, tn } = useI18n()
   const run = useQuery({
     queryKey: ['run', runId],
     queryFn: () => getRun(runId as number),
     enabled: runId != null,
     retry: false,
   })
+  const answeredWithoutTools = steps.length === 0 && run.data != null && run.data.model_calls > 0
 
   return (
     <Sheet>
@@ -24,8 +34,8 @@ export function StepsDrawer({ steps, runId }: { steps: Step[]; runId: number | n
           {steps.length > 0 && ` (${steps.length})`}
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
+      <SheetContent className="w-full overflow-y-auto sm:max-w-lg" closeLabel={t('steps.close')}>
+        <SheetHeader className="pr-12">
           <SheetTitle>{t('steps.title')}</SheetTitle>
           <SheetDescription>
             {run.data
@@ -33,14 +43,16 @@ export function StepsDrawer({ steps, runId }: { steps: Step[]; runId: number | n
                   id: run.data.id,
                   provider: run.data.provider,
                   model: run.data.model,
-                  calls: run.data.model_calls,
-                  status: run.data.status,
+                  calls: tn('steps.calls', run.data.model_calls),
+                  status: STATUS_KEYS[run.data.status] ? t(STATUS_KEYS[run.data.status]) : run.data.status,
                 })
               : ''}
           </SheetDescription>
         </SheetHeader>
         <ol className="space-y-3 px-4 pb-4 text-sm">
-          {steps.length === 0 && <li className="text-muted-foreground">{t('steps.empty')}</li>}
+          {steps.length === 0 && (
+            <li className="text-muted-foreground">{t(answeredWithoutTools ? 'steps.no_tools' : 'steps.empty')}</li>
+          )}
           {steps.map((step) => (
             <li key={step.id} className="rounded-lg border p-2">
               <p className="font-mono font-medium">

@@ -79,6 +79,24 @@ and Stop could not reach the backend. The console logged nothing about the model
       now returns `name_es`.
     - A `success` color token, a green distinct from sea, which marks SAP values.
 
+## Decision (block C: i18n and accessibility)
+
+13. **`<html lang>` follows the language** (an effect in `i18n/provider.tsx`), so screen
+    readers and hyphenation use the right one.
+14. **Plurals** come from a small `Intl.PluralRules` helper (`tn(base, count)` with
+    `<base>.one` and `<base>.other` keys), so the text reads "1 llamada al modelo", not
+    "1 llamadas". There is no i18n library.
+15. **Steps drawer**:
+    - A run that answered without tools says so, instead of "No steps yet".
+    - Run statuses are translated, including `cancelled` and `timeout`.
+    - The sheet's ✕ has a translated label (`closeLabel` on `SheetContent`).
+16. **Demo guide panel**: the header leaves room for the ✕ (`pr-12`), so it no longer
+    covers the title.
+17. **The "unlabeled button" next to Recent designs** could not be reproduced. A Playwright
+    probe found no button without an accessible name at 1440 or 375 px, with the guide open
+    or as a pill. The floating demo-guide pill (bottom left) did overlap that card, so the
+    page now has bottom padding to keep content clear of it.
+
 ## Consequences
 
 - One extra thread per model call (pool of 8). Tests with `FakeClient` work as before; the

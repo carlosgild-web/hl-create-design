@@ -88,7 +88,8 @@ export default function CreateDesignPage() {
   return (
     <div className="min-h-svh bg-background">
       <Header />
-      <main className="mx-auto grid max-w-7xl gap-4 px-4 pb-8 lg:grid-cols-2">
+      {/* pb-20: the floating demo-guide pill (bottom left) never covers the last card */}
+      <main className="mx-auto grid max-w-7xl gap-4 px-4 pb-20 lg:grid-cols-2">
         <div className="space-y-4">
           <DesignForm
             values={form.values}

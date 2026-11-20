@@ -96,7 +96,17 @@ const en = {
   'steps.title': 'What the assistant did',
   'steps.empty': 'No steps yet. Send a message first.',
   'steps.result': 'Result',
-  'steps.run': 'Run {id}: {provider} / {model}, {calls} model calls, {status}',
+  'steps.run': 'Run {id}: {provider} / {model}, {calls}, {status}',
+  'steps.calls.one': '{count} model call',
+  'steps.calls.other': '{count} model calls',
+  'steps.no_tools': 'This answer used no tools: the model replied directly.',
+  'steps.close': 'Close',
+  'run.status.running': 'running',
+  'run.status.answered': 'answered',
+  'run.status.limit': 'stopped at the step limit',
+  'run.status.error': 'error',
+  'run.status.cancelled': 'stopped by you',
+  'run.status.timeout': 'timed out',
 } as const
 
 export type MessageKey = keyof typeof en
@@ -197,7 +207,17 @@ const es: Record<MessageKey, string> = {
   'steps.title': 'Lo que hizo el asistente',
   'steps.empty': 'Aún no hay pasos. Envía un mensaje primero.',
   'steps.result': 'Resultado',
-  'steps.run': 'Ejecución {id}: {provider} / {model}, {calls} llamadas al modelo, {status}',
+  'steps.run': 'Ejecución {id}: {provider} / {model}, {calls}, {status}',
+  'steps.calls.one': '{count} llamada al modelo',
+  'steps.calls.other': '{count} llamadas al modelo',
+  'steps.no_tools': 'Esta respuesta no usó herramientas: el modelo respondió directamente.',
+  'steps.close': 'Cerrar',
+  'run.status.running': 'en curso',
+  'run.status.answered': 'respondida',
+  'run.status.limit': 'detenida en el límite de pasos',
+  'run.status.error': 'error',
+  'run.status.cancelled': 'detenida por ti',
+  'run.status.timeout': 'sin respuesta a tiempo',
 }
 
 export const messages: Record<Lang, Record<MessageKey, string>> = { en, es }

@@ -113,8 +113,13 @@ export function DemoGuide({ config = defaultGuide }: { config?: GuideConfig }) {
       )}
 
       <Sheet open={panelOpen} onOpenChange={setPanelOpen}>
-        <SheetContent side="right" className="overflow-y-auto font-sans sm:max-w-md">
-          <SheetHeader>
+        <SheetContent
+          side="right"
+          className="overflow-y-auto font-sans sm:max-w-md"
+          closeLabel={lang === 'es' ? 'Cerrar' : 'Close'}
+        >
+          {/* room on the right for the sheet's ✕, so it never covers the tag or the title */}
+          <SheetHeader className="pr-12">
             <p className="font-mono text-[0.65rem] tracking-[0.12em] text-muted-foreground uppercase">
               {text(config.tag)}
             </p>
