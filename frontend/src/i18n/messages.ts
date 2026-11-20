@@ -5,9 +5,6 @@ const en = {
   'app.title': 'Create Design',
   'app.tagline': 'Start a KiCad design with the company title block already filled in.',
   'lang.label': 'Language',
-  'demo.banner':
-    'Demo: a fictional company, a mock SAP and a small local model. The assistant guides; the rules and your click decide.',
-  'demo.dismiss': 'Hide',
   'form.title': 'New design',
   'form.department': 'Department',
   'form.department.placeholder': 'Choose…',
@@ -81,9 +78,6 @@ const es: Record<MessageKey, string> = {
   'app.title': 'Crear diseño',
   'app.tagline': 'Inicia un diseño de KiCad con el cajetín de la empresa ya relleno.',
   'lang.label': 'Idioma',
-  'demo.banner':
-    'Demo: una empresa ficticia, un SAP simulado y un modelo local pequeño. El asistente guía; las reglas y tu clic deciden.',
-  'demo.dismiss': 'Ocultar',
   'form.title': 'Nuevo diseño',
   'form.department': 'Departamento',
   'form.department.placeholder': 'Elige…',
