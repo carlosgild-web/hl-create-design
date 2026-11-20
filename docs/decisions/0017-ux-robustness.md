@@ -131,6 +131,14 @@ and Stop could not reach the backend. The console logged nothing about the model
       Without a terminal (CI, Docker) nothing is asked and Ollama is never started, as
       before.
 
+## Decision (block E, revised: the start question waits for the person)
+
+23. Item 22 is reverted at the user's request: an unattended timeout picked a model (and
+    could start Ollama) without anyone choosing. `llm-check` again **waits for Enter** with
+    no time limit, as in decision 0016. Enter alone still takes the suggestion; without a
+    terminal (CI, Docker) nothing is asked, the suggestion is taken and Ollama is never
+    started.
+
 ## Consequences
 
 - One extra thread per model call (pool of 8). Tests with `FakeClient` work as before; the

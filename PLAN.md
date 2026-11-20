@@ -231,7 +231,7 @@ validators fully unit tested (including path traversal like `..\..\Windows`); go
   value came from (the assistant, SAP, or the user).
 - SAP number auto-fill with Undo, and a Created state on the form.
 - i18n and accessibility fixes, and a tabbed desktop and phone layout.
-- A 10 s timeout on the start question.
+- The start question waits for the user (a 10 s timeout was tried and reverted, 0017 item 23).
 - Screenshots in `docs/showcase/` (`SHOWCASE=1` Playwright spec).
 
 ### Phase 6 — Evaluation and hardening
