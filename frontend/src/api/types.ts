@@ -80,7 +80,19 @@ export type RecentDesign = {
   created_at: string
 }
 
-export type PreviewTarget = { department: string; design_number: string; revision: string }
+export type PreviewTarget = {
+  department: string
+  design_number: string
+  revision: string
+  name?: string
+  folder?: string
+}
+
+/** A design in SAP as the Start panel lists it (`GET /api/sap/designs`). */
+export type SapListDesign = SapDesign & { next_free_revision: string; selectable: boolean }
+
+/** How the form is used (decision 0018): a new design, or a new revision of one in SAP. */
+export type FormMode = 'new' | 'existing'
 
 /** A provider the user can move to after a stuck turn (`POST /api/llm/switch`). */
 export type SwitchTarget = 'ollama' | 'fake'

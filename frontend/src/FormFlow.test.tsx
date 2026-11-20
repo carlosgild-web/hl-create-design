@@ -21,22 +21,22 @@ function proposal(fields: Record<string, string>) {
 }
 
 describe('form: inline validation (decision 0017, block B)', () => {
-  it('shows a skipped revision letter right away, with its manual reference', async () => {
+  it('shows a rule error right away, with its manual reference', async () => {
     const calls = stubFetch(
       (url, init) => {
         if (url !== '/api/validate') return undefined
         const { fields } = JSON.parse(String(init?.body))
         return jsonResponse(
-          fields.revision === 'I'
+          fields.name === 'Bead Ünit'
             ? {
                 ok: false,
-                normalized: { revision: 'I' },
+                normalized: { name: 'Bead Ünit' },
                 errors: [
                   {
-                    field: 'revision',
-                    code: 'rev_skipped_letter',
-                    message: 'I is never used as a revision letter.',
-                    ref: '02-revisions#skipped-letters',
+                    field: 'name',
+                    code: 'name_characters',
+                    message: 'The design name may contain only letters A-Z, digits, spaces and - _ .',
+                    ref: '03-title-block#design-name',
                   },
                 ],
                 warnings: [],
@@ -48,14 +48,14 @@ describe('form: inline validation (decision 0017, block B)', () => {
     )
     renderWithProviders(<App />)
 
-    await user.type(screen.getByLabelText('Revision'), 'I')
+    await user.type(screen.getByLabelText('Design name'), 'Bead Ünit')
 
-    const alert = await screen.findByText(/I is never used as a revision letter/, undefined, { timeout: 2000 })
-    expect(alert).toHaveTextContent('[02-revisions#skipped-letters]')
-    expect(screen.getByLabelText('Revision')).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText('Revision')).toHaveValue('I') // never replaced
+    const alert = await screen.findByText(/may contain only letters/, undefined, { timeout: 2000 })
+    expect(alert).toHaveTextContent('[03-title-block#design-name]')
+    expect(screen.getByLabelText('Design name')).toHaveAttribute('aria-invalid', 'true')
     const sent = calls.filter((c) => c.url === '/api/validate').map((c) => JSON.parse(String(c.init?.body)))
-    expect(sent.at(-1)).toEqual({ fields: { revision: 'I' } })
+    // a new design starts at revision A; the name is what the user typed
+    expect(sent.at(-1)).toEqual({ fields: { revision: 'A', name: 'Bead Ünit' } })
   })
 
   it('shows the name as it will be stored', async () => {
@@ -76,27 +76,28 @@ describe('form: inline validation (decision 0017, block B)', () => {
 })
 
 describe('form: where each value came from', () => {
-  it('labels only what the assistant changed, and never overwrites what the user typed', async () => {
-    stubFetch(proposal({ department: 'HW', name: 'Bead Counter', revision: 'A' }), ...baseRoutes)
+  it('labels only what the assistant changed, never overwrites the user, never touches locked fields', async () => {
+    stubFetch(proposal({ department: 'HW', name: 'Bead Counter', revision: 'B', design_number: 'HL-HW-26-0777' }), ...baseRoutes)
     renderWithProviders(<App />)
-    await screen.findByRole('option', { name: /^HW/ })
-    await user.selectOptions(screen.getByLabelText('Department'), 'HW')
-    await user.type(screen.getByLabelText('Revision'), 'B')
+    await user.type(screen.getByLabelText('Design name'), 'My Board')
 
     await user.click(screen.getByRole('button', { name: 'Try an example' }))
 
-    await waitFor(() => expect(screen.getByLabelText('Design name')).toHaveValue('Bead Counter'))
-    expect(screen.getAllByText('Suggested by the assistant')).toHaveLength(1) // only the name
-    expect(screen.getByLabelText('Revision')).toHaveValue('B')
-    expect(screen.getByText('The assistant suggests: A')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('Department')).toHaveValue('HW'))
+    expect(screen.getAllByText('Suggested by the assistant')).toHaveLength(1) // only the department
+    expect(screen.getByLabelText('Design name')).toHaveValue('My Board')
+    expect(screen.getByText('The assistant suggests: Bead Counter')).toBeInTheDocument()
+    // a new design: the number comes only from SAP, the revision is A
+    expect(screen.getByLabelText('Design number')).toHaveValue('')
+    expect(screen.getByLabelText('Revision')).toHaveValue('A')
 
     await user.click(screen.getByRole('button', { name: 'Use it' }))
 
-    expect(screen.getByLabelText('Revision')).toHaveValue('A')
+    expect(screen.getByLabelText('Design name')).toHaveValue('Bead Counter')
     expect(screen.getAllByText('Suggested by the assistant')).toHaveLength(2)
   })
 
-  it('fills a reserved number from SAP at once, and Undo puts the form back', async () => {
+  it('Get SAP number fills the number from SAP, and Undo puts the form back', async () => {
     const pending = makeAction({
       id: 'r1',
       kind: 'reserve_number',
@@ -105,32 +106,36 @@ describe('form: where each value came from', () => {
     const confirmed: Action = {
       ...pending,
       status: 'confirmed',
-      result: { ok: true, design_number: 'HL-PWR-26-0101', department: 'PWR', revision: 'A' },
+      result: { ok: true, design_number: 'HL-PWR-26-0101', department: 'PWR', revision: 'A', sap_material: '000000000040009001', project: 'P-26-0112' },
     }
-    stubFetch(
+    const calls = stubFetch(
       (url) => (url === '/api/actions' ? jsonResponse(pending, 201) : undefined),
       (url) => (url === '/api/actions/r1/confirm' ? jsonResponse(confirmed) : undefined),
       ...baseRoutes,
     )
     renderWithProviders(<App />)
+    const get = screen.getByRole('button', { name: 'Get SAP number' })
+    expect(get).toBeDisabled()
+    expect(screen.getByText('Fill in Department, Design name and Designer first.')).toBeInTheDocument()
     await screen.findByRole('option', { name: /^PWR/ })
     await user.selectOptions(screen.getByLabelText('Department'), 'PWR')
     await user.type(screen.getByLabelText('Design name'), 'Gate Driver')
     await user.type(screen.getByLabelText('Designer'), 'C. Velazquez')
-    await user.click(screen.getByRole('button', { name: 'Reserve a new number' }))
+    await user.click(screen.getByRole('button', { name: 'Get SAP number' }))
 
     await user.click(await screen.findByRole('button', { name: 'Confirm' }))
 
     await waitFor(() => expect(screen.getByLabelText('Design number')).toHaveValue('HL-PWR-26-0101'))
     expect(screen.getByLabelText('Revision')).toHaveValue('A')
-    expect(screen.getAllByText('From SAP')).toHaveLength(2) // number and revision, not the department
-    expect(screen.queryByText('Suggested by the assistant')).not.toBeInTheDocument()
+    expect(screen.getAllByText('From SAP')).toHaveLength(1) // the number (A was already there)
+    const summary = screen.getByText('Reserved HL-PWR-26-0101 · rev A').closest('[role="status"]') as HTMLElement
+    expect(within(summary).getByText('40009001 · P-26-0112')).toBeInTheDocument()
+    expect(JSON.parse(String(calls.find((c) => c.url === '/api/actions')!.init?.body)).kind).toBe('reserve_number')
 
-    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    await user.click(within(summary).getByRole('button', { name: 'Undo' }))
 
     expect(screen.getByLabelText('Design number')).toHaveValue('')
     expect(screen.queryByText('From SAP')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Use this number' })).toBeInTheDocument()
   })
 })
 

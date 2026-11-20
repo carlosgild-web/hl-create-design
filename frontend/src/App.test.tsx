@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
@@ -26,6 +26,15 @@ const SAP = {
 }
 
 afterEach(() => vi.unstubAllGlobals())
+
+/** In the Start panel: "From existing design", pick the design, type the designer. */
+async function pickExisting(number: string, designer = 'C. Velazquez') {
+  await user.click(screen.getByRole('radio', { name: 'From existing design' }))
+  const option = await screen.findByRole('option', { name: new RegExp(number) })
+  await user.click(option)
+  await waitFor(() => expect(screen.getByLabelText('Design number')).toHaveValue(number))
+  await user.type(screen.getByLabelText('Designer'), designer)
+}
 
 describe('Create Design', () => {
   it('chat → filled form → SAP card → confirm → preview', async () => {
@@ -59,13 +68,16 @@ describe('Create Design', () => {
     await user.type(screen.getByLabelText(/describe your design/i), 'revision C of HL-HW-26-0042')
     await user.click(screen.getByRole('button', { name: 'Send' }))
 
-    // the assistant filled the form and the fields are marked as suggestions
+    // the assistant named a number SAP knows: the form switches to that existing design, visibly
     await waitFor(() => expect(screen.getByLabelText('Design number')).toHaveValue('HL-HW-26-0042'))
-    expect(screen.getByLabelText('Revision')).toHaveValue('C')
-    expect(screen.getAllByText('Suggested by the assistant')).toHaveLength(3)
+    expect(screen.getByText('The assistant selected HL-HW-26-0042.')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'From existing design' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByLabelText('Revision')).toHaveValue('C') // next free, from SAP
+    expect(screen.getByLabelText('Design number')).toHaveAttribute('aria-readonly', 'true')
     expect(screen.getByLabelText('Design folder')).toHaveValue('HW/HL-HW-26-0042/C')
     // SAP card: material without leading zeros
-    const sap = await screen.findByRole('region', { name: 'SAP record' })
+    // one in the chat, one for the selected design in the Start panel
+    const [sap] = await screen.findAllByRole('region', { name: 'SAP record' })
     expect(within(sap).getByText('40001234')).toBeInTheDocument()
     expect(within(sap).getByText('In work')).toBeInTheDocument()
     // nothing was confirmed by the stream itself
@@ -75,10 +87,15 @@ describe('Create Design', () => {
 
     // the card and the form both say so; the form offers a new design and won't create it twice
     expect(await screen.findAllByText('Created HL-HW-26-0042 rev C')).toHaveLength(2)
-    expect(screen.getByRole('button', { name: 'New design' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Create design' })).toBeDisabled()
-    const preview = await screen.findByRole('img', { name: /Title block of HL-HW-26-0042 rev C/ })
+    // the preview opens in a dialog
+    const dialog = await screen.findByRole('dialog', { name: /HL-HW-26-0042 · rev C/ })
+    const preview = within(dialog).getByRole('img', { name: /Title block of HL-HW-26-0042 rev C/ })
     expect(preview).toHaveAttribute('src', '/api/designs/HW/HL-HW-26-0042/C/preview.svg')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    // the form offers a new design and won't create the same revision twice
+    expect(screen.getByRole('button', { name: 'New design' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create revision C' })).toBeDisabled()
     // the chat request carried the language and the current form
     const chat = calls.find((c) => c.url === '/api/chat')!
     expect(JSON.parse(String(chat.init?.body))).toMatchObject({ language: 'en', conversation_id: null })
@@ -113,22 +130,16 @@ describe('Create Design', () => {
       ...baseRoutes,
     )
     renderWithProviders(<App />)
+    expect(screen.getByRole('button', { name: 'Create design' })).toBeDisabled()
 
-    const create = screen.getByRole('button', { name: 'Create design' })
-    expect(create).toBeDisabled()
-    await screen.findByRole('option', { name: 'HW – Hardware Design' })
-    await user.selectOptions(screen.getByLabelText('Department'), 'HW')
-    await user.type(screen.getByLabelText('Design number'), 'HL-HW-26-0042')
-    await user.type(screen.getByLabelText('Revision'), 'C')
-    await user.type(screen.getByLabelText('Design name'), 'Bead Drill Controller')
-    await user.type(screen.getByLabelText('Designer'), 'C. Velazquez')
-    await user.click(create)
+    await pickExisting('HL-HW-26-0042')
+    await user.click(screen.getByRole('button', { name: 'Create revision C' }))
 
     expect(await screen.findByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     const post = calls.find((c) => c.url === '/api/actions')!
     expect(JSON.parse(String(post.init?.body))).toMatchObject({
       kind: 'create_design',
-      payload: { department: 'HW', design_number: 'HL-HW-26-0042', revision: 'C' },
+      payload: { department: 'HW', design_number: 'HL-HW-26-0042', revision: 'C', name: 'Bead Drill Controller' },
     })
     expect(calls.some((c) => c.url.includes('/confirm'))).toBe(false)
   })
@@ -151,17 +162,8 @@ describe('Create Design', () => {
       ...baseRoutes,
     )
     renderWithProviders(<App />)
-    await screen.findByRole('option', { name: 'HW – Hardware Design' })
-    await user.selectOptions(screen.getByLabelText('Department'), 'HW')
-    for (const [label, text] of [
-      ['Design number', 'HL-HW-26-0042'],
-      ['Revision', 'C'],
-      ['Design name', 'Bead Drill Controller'],
-      ['Designer', 'C. Velazquez'],
-    ] as const) {
-      await user.type(screen.getByLabelText(label), text)
-    }
-    await user.click(screen.getByRole('button', { name: 'Create design' }))
+    await pickExisting('HL-HW-26-0042')
+    await user.click(screen.getByRole('button', { name: 'Create revision C' }))
     await user.click(await screen.findByRole('button', { name: 'Confirm' }))
 
     expect(await screen.findByText('Not done')).toBeInTheDocument()
@@ -177,17 +179,8 @@ describe('Create Design', () => {
       ...baseRoutes,
     )
     renderWithProviders(<App />)
-    await screen.findByRole('option', { name: 'HW – Hardware Design' })
-    await user.selectOptions(screen.getByLabelText('Department'), 'HW')
-    for (const [label, text] of [
-      ['Design number', 'HL-HW-26-0042'],
-      ['Revision', 'C'],
-      ['Design name', 'Bead Drill Controller'],
-      ['Designer', 'C. Velazquez'],
-    ] as const) {
-      await user.type(screen.getByLabelText(label), text)
-    }
-    await user.click(screen.getByRole('button', { name: 'Create design' }))
+    await pickExisting('HL-HW-26-0042')
+    await user.click(screen.getByRole('button', { name: 'Create revision C' }))
     await user.click(await screen.findByRole('button', { name: 'Confirm' }))
 
     expect(await screen.findByText('This card expired. Ask again.')).toBeInTheDocument()

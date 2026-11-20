@@ -24,7 +24,7 @@ export type Activity =
 
 type Options = {
   language: Lang
-  getForm: () => Partial<FormValues>
+  getForm: () => Record<string, string> // form values plus `mode`, sent as data
   onFormProposal: (fields: Partial<FormValues>) => void
 }
 
@@ -155,7 +155,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
       abort.current = controller
       try {
         for await (const event of streamChat(
-          { message, conversation_id: conversation.current, language, form: getForm() as Record<string, string> },
+          { message, conversation_id: conversation.current, language, form: getForm() },
           controller.signal,
         )) {
           handle(event)

@@ -31,50 +31,51 @@ const cardStream = (url: string) =>
       ])
     : undefined
 
-describe('layout (decision 0017, block D)', () => {
-  it('on a phone: tabs, the chat opens when you send, and a badge counts waiting cards', async () => {
+const RECENT = (url: string) =>
+  url === '/api/designs'
+    ? jsonResponse([
+        {
+          design_number: 'HL-HW-26-0042',
+          revision: 'C',
+          name: 'Bead Drill Controller',
+          department: 'HW',
+          designer: 'C. Velazquez',
+          pdf: true,
+          created_at: '2026-11-17T10:00:00Z',
+        },
+      ])
+    : undefined
+
+describe('layout (decisions 0017 D and 0018)', () => {
+  it('on a phone: Design | Assistant | Recent, the chat opens when you send, a badge counts cards', async () => {
     phone()
     stubFetch(cardStream, ...baseRoutes)
     renderWithProviders(<App />)
 
     const tabs = screen.getByRole('tablist', { name: 'Sections' })
-    expect(within(tabs).getByRole('tab', { name: 'Form' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(tabs).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Design', 'Assistant', 'Recent designs'])
+    expect(within(tabs).getByRole('tab', { name: 'Design' })).toHaveAttribute('aria-selected', 'true')
+    // the Design tab: the Start panel's choice, then the form
+    expect(screen.getByRole('radiogroup', { name: 'What do you want to create?' })).toBeInTheDocument()
 
     pick(within(tabs).getByRole('tab', { name: /Assistant/ }))
     await user.click(screen.getByRole('button', { name: 'Guide me step by step' }))
     expect(await screen.findByText('Please confirm.')).toBeInTheDocument()
 
-    // back to the form: the Assistant tab shows that a card waits
-    pick(within(tabs).getByRole('tab', { name: 'Form' }))
+    pick(within(tabs).getByRole('tab', { name: 'Design' }))
     expect(within(tabs).getByRole('tab', { name: /Assistant/ })).toHaveAttribute('aria-selected', 'false')
     expect(within(tabs).getByLabelText('1 card(s) waiting for you')).toBeInTheDocument()
   })
 
-  it('on a desktop: preview and recent designs share tabs next to the form', async () => {
-    stubFetch(
-      (url) =>
-        url === '/api/designs'
-          ? jsonResponse([
-              {
-                design_number: 'HL-HW-26-0042',
-                revision: 'C',
-                name: 'Bead Drill Controller',
-                department: 'HW',
-                designer: 'C. Velazquez',
-                pdf: true,
-                created_at: '2026-11-17T10:00:00Z',
-              },
-            ])
-          : undefined,
-      ...baseRoutes,
-    )
+  it('on a desktop: Start panel with the recent designs, which open the preview dialog', async () => {
+    stubFetch(RECENT, ...baseRoutes)
     renderWithProviders(<App />)
-    const tabs = screen.getByRole('tablist', { name: 'Preview or recent designs' })
-    expect(within(tabs).getByRole('tab', { name: 'Recent designs' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
 
-    await user.click(await screen.findByRole('button', { name: /HL-HW-26-0042 C/ }))
+    await user.click(await screen.findByRole('button', { name: 'Recent designs (1)' }))
+    await user.click(await screen.findByRole('button', { name: 'Preview HL-HW-26-0042 rev C' }))
 
-    expect(within(tabs).getByRole('tab', { name: 'Preview' })).toHaveAttribute('aria-selected', 'true')
-    expect(await screen.findByRole('img', { name: /Title block of HL-HW-26-0042 rev C/ })).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', { name: /HL-HW-26-0042 · rev C · Bead Drill Controller/ })
+    expect(within(dialog).getByRole('img', { name: /Title block of HL-HW-26-0042 rev C/ })).toBeInTheDocument()
   })
 })

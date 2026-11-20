@@ -86,7 +86,26 @@ export function stubFetch(...routes: Route[]) {
   return calls
 }
 
+const sapDesign = (over: Record<string, unknown>) => ({
+  department: 'HW',
+  material: '000000000040001234',
+  wbs: 'P-26-0108',
+  block_reason: '',
+  successor: '',
+  selectable: true,
+  ...over,
+})
+
+/** `GET /api/sap/designs` like the backend with the fake SAP of the backend tests. */
+export const SAP_DESIGNS = [
+  sapDesign({ design_number: 'HL-EMB-23-0002', department: 'EMB', name: 'Sensor Hub', status: 'OBSOLETE', revisions: ['A'], current_revision: 'A', next_free_revision: 'B', successor: 'HL-EMB-25-0011', selectable: false }),
+  sapDesign({ design_number: 'HL-EMB-25-0011', department: 'EMB', name: 'Sensor Hub II', status: 'RELEASED', revisions: ['A'], current_revision: 'A', next_free_revision: 'B' }),
+  sapDesign({ design_number: 'HL-HW-24-0003', name: 'Old Led Panel', status: 'BLOCKED', revisions: ['A', 'B'], current_revision: 'B', next_free_revision: 'C', block_reason: 'Supplier part discontinued', selectable: false }),
+  sapDesign({ design_number: 'HL-HW-26-0042', name: 'Bead Drill Controller', status: 'IN_WORK', revisions: ['A', 'B'], current_revision: 'B', next_free_revision: 'C' }),
+]
+
 export const baseRoutes: Route[] = [
+  (url) => (url === '/api/sap/designs' ? jsonResponse(SAP_DESIGNS) : undefined),
   (url) =>
     url === '/api/departments'
       ? jsonResponse([

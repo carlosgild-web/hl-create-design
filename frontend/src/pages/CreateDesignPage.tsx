@@ -1,18 +1,19 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { getDepartments, getRecentDesigns, proposeAction } from '@/api/client'
-import { FORM_FIELDS, type Action, type PreviewTarget } from '@/api/types'
+import { getDepartments, getRecentDesigns, listSapDesigns, proposeAction } from '@/api/client'
+import { FORM_FIELDS, type Action, type FormMode, type FormValues, type PreviewTarget } from '@/api/types'
 import { AssistantPanel } from '@/components/AssistantPanel'
 import { DesignForm } from '@/components/DesignForm'
 import { Header } from '@/components/Header'
-import { PreviewPane } from '@/components/PreviewPane'
+import { PreviewDialog } from '@/components/PreviewDialog'
 import { RecentDesigns } from '@/components/RecentDesigns'
+import { StartPanel } from '@/components/StartPanel'
 import { StepsDrawer } from '@/components/StepsDrawer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useChat } from '@/hooks/useChat'
 import { useDesignForm } from '@/hooks/useDesignForm'
-import { DESKTOP, useMediaQuery } from '@/hooks/useMediaQuery'
+import { DESKTOP, WIDE, useMediaQuery } from '@/hooks/useMediaQuery'
 import { useValidation } from '@/hooks/useValidation'
 import { useI18n } from '@/i18n'
 import { filledValues, isFilled } from '@/lib/fields'
@@ -21,34 +22,56 @@ export default function CreateDesignPage() {
   const { lang, t } = useI18n()
   const queryClient = useQueryClient()
   const departments = useQuery({ queryKey: ['departments'], queryFn: getDepartments, retry: false })
+  const recentDesigns = useQuery({ queryKey: ['recent-designs'], queryFn: getRecentDesigns, retry: false })
+  const sapDesigns = useQuery({ queryKey: ['sap-designs'], queryFn: listSapDesigns, retry: false })
 
   const form = useDesignForm()
   const validation = useValidation(form.values)
-  const recentDesigns = useQuery({ queryKey: ['recent-designs'], queryFn: getRecentDesigns, retry: false })
   const lastDesigner = recentDesigns.data?.[0]?.designer
-
-  // Picking a department pre-fills its number prefix (HL-HW-26-), from the backend's rules.
-  const prefix = validation?.suggest?.design_number_prefix
-  const prefillNumber = form.prefillNumber
-  useEffect(() => {
-    if (prefix && form.values.department && prefix.includes(`-${form.values.department}-`)) prefillNumber(prefix)
-  }, [prefix, form.values.department, prefillNumber])
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const [opening, setOpening] = useState(false)
-  const previewRef = useRef<HTMLDivElement>(null)
+  const [reservation, setReservation] = useState<Action | null>(null)
+  const [aiSelected, setAiSelected] = useState<string | null>(null)
   const desktop = useMediaQuery(DESKTOP)
-  const [sideTab, setSideTab] = useState<SideTab>('recent')
-  const [mobileTab, setMobileTab] = useState<MobileTab>('form')
+  const wide = useMediaQuery(WIDE)
+  const [mobileTab, setMobileTab] = useState<MobileTab>('design')
 
-  const valuesRef = useRef(form.values)
+  const formRef = useRef({ values: form.values, mode: form.mode })
   useEffect(() => {
-    valuesRef.current = form.values
-  }, [form.values])
+    formRef.current = { values: form.values, mode: form.mode }
+  }, [form.values, form.mode])
+
+  // The assistant names a number SAP knows: show it as that existing design, never silently.
+  const sapRef = useRef(sapDesigns.data)
+  useEffect(() => {
+    sapRef.current = sapDesigns.data
+  }, [sapDesigns.data])
+  const { propose, selectExisting } = form
+  const onFormProposal = useCallback(
+    async (fields: Partial<FormValues>) => {
+      if (fields.design_number) {
+        // the list may still be loading when the assistant answers fast
+        const list =
+          sapRef.current ??
+          (await queryClient
+            .fetchQuery({ queryKey: ['sap-designs'], queryFn: listSapDesigns })
+            .catch(() => undefined))
+        const known = list?.find((d) => d.design_number === fields.design_number)
+        if (known && known.selectable && formRef.current.values.design_number !== known.design_number) {
+          selectExisting(known)
+          setAiSelected(known.design_number)
+        }
+      }
+      propose(fields)
+    },
+    [propose, queryClient, selectExisting],
+  )
 
   const chat = useChat({
     language: lang,
-    getForm: () => filledValues(valuesRef.current) as Record<string, string>,
-    onFormProposal: form.propose,
+    // the assistant sees the mode with the values (decision 0018), as data (invariant 7)
+    getForm: () => ({ ...(filledValues(formRef.current.values) as Record<string, string>), mode: formRef.current.mode }),
+    onFormProposal,
   })
 
   async function openCard(kind: 'create_design' | 'reserve_number') {
@@ -56,11 +79,12 @@ export default function CreateDesignPage() {
     try {
       const v = form.values
       const payload = Object.fromEntries(
-        FORM_FIELDS.filter((f) => isFilled(f, v[f]) && (kind === 'create_design' || (f !== 'design_number' && f !== 'revision'))).map(
-          (f) => [f, v[f].trim()],
-        ),
+        FORM_FIELDS.filter(
+          (f) => isFilled(f, v[f]) && (kind === 'create_design' || (f !== 'design_number' && f !== 'revision')),
+        ).map((f) => [f, v[f].trim()]),
       )
       chat.addAction(await proposeAction(kind, payload, chat.conversationId))
+      setMobileTab('assistant') // the card is in the chat
     } finally {
       setOpening(false)
     }
@@ -74,35 +98,83 @@ export default function CreateDesignPage() {
     void queryClient.invalidateQueries({ queryKey: ['recent-designs'] })
     const { design_number, revision } = action.result
     if (action.kind === 'reserve_number' && design_number) {
-      // The number comes from SAP: fill it at once (the card offers Undo).
-      form.fillFromSap(action.id, { design_number, revision: revision ?? 'A', department: action.result.department ?? action.payload.department })
+      // The number comes from SAP: fill it at once (the card and the panel offer Undo).
+      form.fillFromSap(action.id, {
+        design_number,
+        revision: revision ?? 'A',
+        department: action.result.department ?? action.payload.department,
+      })
+      setReservation(action)
+      void queryClient.invalidateQueries({ queryKey: ['sap-designs'] })
     }
     if (action.kind === 'create_design') {
       if (design_number && revision) form.markCreated(design_number, revision)
       showPreview(action)
+      void queryClient.invalidateQueries({ queryKey: ['sap-designs'] }) // next free revision moved on
     }
   }
 
-  function show(target: PreviewTarget) {
-    setPreview(target)
-    setSideTab('preview')
-    setMobileTab('preview')
-    requestAnimationFrame(() => previewRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }))
-  }
-
   function showPreview(action: Action) {
-    const { design_number, revision } = action.result
+    const { design_number, revision, folder, name } = action.result
     const department = action.payload.department
-    if (design_number && revision && department) show({ department, design_number, revision })
+    if (design_number && revision && department) {
+      setPreview({ department, design_number, revision, folder, name: name ?? action.payload.name })
+    }
   }
 
   function useNumber(action: Action) {
     const { design_number, revision, department } = action.result
     form.fillFromSap(action.id, { design_number, revision: revision ?? 'A', department: department ?? action.payload.department })
+    setReservation(action)
   }
 
+  function changeMode(mode: FormMode) {
+    form.startOver(mode)
+    setReservation(null)
+    setAiSelected(null)
+  }
+
+  const v = form.values
+  const dirty =
+    form.mode === 'existing'
+      ? form.selected !== null
+      : Boolean(v.department || v.name.trim() || isFilled('design_number', v.design_number))
+  const statusNotes = [...(validation?.errors ?? []), ...(validation?.warnings ?? [])].filter((i) => i.field === 'status')
+
+  const startPanel = (
+    <StartPanel
+      mode={form.mode}
+      dirty={dirty}
+      onModeChange={changeMode}
+      departments={departments.data ?? []}
+      canReserve={Boolean(v.department.trim() && v.name.trim() && v.designer.trim()) && !v.design_number}
+      busy={opening}
+      onReserve={() => void openCard('reserve_number')}
+      reservation={form.mode === 'new' && v.design_number ? reservation : null}
+      canUndoReservation={reservation ? form.canUndo(reservation.id) : false}
+      onUndoReservation={() => {
+        if (reservation) form.undoFill(reservation.id)
+        setReservation(null)
+      }}
+      designs={sapDesigns}
+      selected={form.selected}
+      onSelect={(design) => {
+        form.selectExisting(design)
+        setAiSelected(null)
+      }}
+      onChangeDesign={() => changeMode('existing')}
+      statusNotes={statusNotes}
+      aiSelected={aiSelected}
+      showRecent={desktop}
+      recentCount={recentDesigns.data?.length}
+      onPreview={setPreview}
+      compact={desktop && !wide}
+    />
+  )
   const designForm = (
     <DesignForm
+      mode={form.mode}
+      locked={form.locked}
       values={form.values}
       source={form.source}
       suggestions={form.suggestions}
@@ -115,9 +187,12 @@ export default function CreateDesignPage() {
       busy={opening}
       onChange={form.edit}
       onTakeSuggestion={form.takeSuggestion}
-      onReserve={() => void openCard('reserve_number')}
       onCreate={() => void openCard('create_design')}
-      onNewDesign={form.reset}
+      onNewDesign={() => {
+        form.reset()
+        setReservation(null)
+        setAiSelected(null)
+      }}
     />
   )
   const assistant = (
@@ -142,38 +217,30 @@ export default function CreateDesignPage() {
       stepsButton={<StepsDrawer steps={chat.steps} runId={chat.runId} />}
     />
   )
-  const previewPane = (
-    <div ref={previewRef}>
-      <PreviewPane target={preview} />
-    </div>
-  )
-  const recent = <RecentDesigns selected={preview} onSelect={show} />
+  const dialog = <PreviewDialog target={preview} onClose={() => setPreview(null)} />
   const waitingCards = Object.values(chat.actions).filter((a) => a.status === 'pending').length
 
   if (desktop) {
-    // One screen, no page scroll: the chat (left) and the side tabs scroll inside.
+    // One screen, no page scroll: each column scrolls inside (decision 0018).
     return (
       <div className="flex h-svh min-h-[40rem] flex-col overflow-hidden bg-background">
         <Header />
-        <main className="mx-auto grid min-h-0 w-full max-w-[100rem] flex-1 grid-cols-[minmax(22rem,2fr)_3fr] gap-4 px-4 pb-4">
-          <div className="min-h-0">{assistant}</div>
-          <div className="flex min-h-0 flex-col gap-3">
-            <div className="shrink-0">{designForm}</div>
-            <Tabs value={sideTab} onValueChange={(v) => setSideTab(v as SideTab)} className="min-h-0 flex-1 gap-2">
-              <TabsList aria-label={t('layout.side')} className="shrink-0">
-                <TabsTrigger value="preview">{t('preview.title')}</TabsTrigger>
-                <TabsTrigger value="recent">{t('recent.title')}</TabsTrigger>
-              </TabsList>
-              {/* pb-14: room for the demo-guide pill, which floats bottom right here */}
-              <TabsContent value="preview" className="min-h-0 flex-1 overflow-y-auto pb-14">
-                {previewPane}
-              </TabsContent>
-              <TabsContent value="recent" className="min-h-0 flex-1 overflow-y-auto pb-14">
-                {recent}
-              </TabsContent>
-            </Tabs>
-          </div>
-        </main>
+        {wide ? (
+          <main className="mx-auto grid min-h-0 w-full max-w-[110rem] flex-1 grid-cols-[minmax(20rem,1.6fr)_minmax(17rem,1fr)_minmax(28rem,2.2fr)] gap-4 px-4 pb-4">
+            <div className="min-h-0">{assistant}</div>
+            <div className="min-h-0">{startPanel}</div>
+            <div className="min-h-0 overflow-y-auto pb-14">{designForm}</div>
+          </main>
+        ) : (
+          <main className="mx-auto grid min-h-0 w-full flex-1 grid-cols-[minmax(20rem,2fr)_3fr] gap-4 px-4 pb-4">
+            <div className="min-h-0">{assistant}</div>
+            <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pb-14">
+              <div className="shrink-0">{startPanel}</div>
+              <div className="shrink-0">{designForm}</div>
+            </div>
+          </main>
+        )}
+        {dialog}
       </div>
     )
   }
@@ -182,40 +249,42 @@ export default function CreateDesignPage() {
     <div className="min-h-svh bg-background">
       <Header />
       {/* pb-20: the floating demo-guide pill (bottom left) never covers the last card */}
-      {(
-        <main className="mx-auto max-w-7xl px-4 pb-20">
-          <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as MobileTab)}>
-            <TabsList aria-label={t('layout.sections')} className="sticky top-0 z-10">
-              <TabsTrigger value="form">{t('layout.form')}</TabsTrigger>
-              <TabsTrigger value="assistant">
-                {t('chat.title')}
-                {waitingCards > 0 && mobileTab !== 'assistant' && (
-                  <span
-                    aria-label={t('layout.waiting', { count: waitingCards })}
-                    className="grid size-4 place-items-center rounded-full bg-primary text-[0.6rem] text-primary-foreground"
-                  >
-                    {waitingCards}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="preview">{t('preview.title')}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="form" forceMount className="data-[state=inactive]:hidden">
-              {designForm}
-            </TabsContent>
-            <TabsContent value="assistant" forceMount className="h-[calc(100svh-9rem)] min-h-96 data-[state=inactive]:hidden">
-              {assistant}
-            </TabsContent>
-            <TabsContent value="preview" className="space-y-4">
-              {previewPane}
-              {recent}
-            </TabsContent>
-          </Tabs>
-        </main>
-      )}
+      <main className="mx-auto max-w-7xl px-4 pb-20">
+        <Tabs value={mobileTab} onValueChange={(value) => setMobileTab(value as MobileTab)}>
+          <TabsList aria-label={t('layout.sections')} className="sticky top-0 z-10">
+            <TabsTrigger value="design">{t('layout.design')}</TabsTrigger>
+            <TabsTrigger value="assistant">
+              {t('chat.title')}
+              {waitingCards > 0 && mobileTab !== 'assistant' && (
+                <span
+                  aria-label={t('layout.waiting', { count: waitingCards })}
+                  className="grid size-4 place-items-center rounded-full bg-primary text-[0.6rem] text-primary-foreground"
+                >
+                  {waitingCards}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="recent">{t('recent.title')}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="design" forceMount className="space-y-4 data-[state=inactive]:hidden">
+            {startPanel}
+            {designForm}
+          </TabsContent>
+          <TabsContent
+            value="assistant"
+            forceMount
+            className="h-[calc(100svh-9rem)] min-h-96 data-[state=inactive]:hidden"
+          >
+            {assistant}
+          </TabsContent>
+          <TabsContent value="recent">
+            <RecentDesigns onPreview={setPreview} />
+          </TabsContent>
+        </Tabs>
+      </main>
+      {dialog}
     </div>
   )
 }
 
-type SideTab = 'preview' | 'recent'
-type MobileTab = 'form' | 'assistant' | 'preview'
+type MobileTab = 'design' | 'assistant' | 'recent'

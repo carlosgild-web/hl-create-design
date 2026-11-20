@@ -1,10 +1,11 @@
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Lock } from 'lucide-react'
 import type * as React from 'react'
 
 import {
   FORM_FIELDS,
   type Department,
   type FormField,
+  type FormMode,
   type FormValues,
   type Issue,
   type Validation,
@@ -17,11 +18,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { Created } from '@/hooks/useDesignForm'
 import { useI18n } from '@/i18n'
-import { departmentName, FIELD_LABELS, FIELD_PLACEHOLDERS, isFilled, isPrefixOnly, numberProgress } from '@/lib/fields'
+import { departmentName, FIELD_LABELS, FIELD_PLACEHOLDERS, isFilled } from '@/lib/fields'
 import { folderPreview } from '@/lib/folder'
 import { cn } from '@/lib/utils'
 
 type Props = {
+  mode: FormMode
+  /** Fields SAP sets in this mode: shown read-only (decision 0018). */
+  locked: (field: FormField) => boolean
   values: FormValues
   source: Partial<Record<FormField, ValueSource>>
   suggestions: Partial<Record<FormField, string>>
@@ -35,7 +39,6 @@ type Props = {
   busy: boolean
   onChange: (field: FormField, value: string) => void
   onTakeSuggestion: (field: FormField) => void
-  onReserve: () => void
   onCreate: () => void
   onNewDesign: () => void
 }
@@ -59,6 +62,8 @@ function issuesFor(field: FormField, errors: Issue[], validation?: Validation) {
 }
 
 export function DesignForm({
+  mode,
+  locked,
   values,
   source,
   suggestions,
@@ -71,16 +76,18 @@ export function DesignForm({
   busy,
   onChange,
   onTakeSuggestion,
-  onReserve,
   onCreate,
   onNewDesign,
 }: Props) {
-  const { t, tn, lang } = useI18n()
+  const { t, lang } = useI18n()
   const folder = folderPreview(values)
-  const canReserve = Boolean(values.department.trim() && values.name.trim() && values.designer.trim())
   const canCreate = FORM_FIELDS.every((f) => isFilled(f, values[f])) && !sameAsCreated
   const normalizedName = validation?.normalized.name
-  const nextRevision = validation?.suggest?.revision
+
+  const departmentLabel = (code: string) => {
+    const d = departments.find((x) => x.code === code)
+    return d ? `${code} – ${departmentName(d, lang)}` : code
+  }
 
   const takeButton = (field: FormField, value: string) => (
     <Button type="button" size="xs" variant="outline" onClick={() => onChange(field, value)}>
@@ -93,23 +100,8 @@ export function DesignForm({
   function guidance(field: FormField): React.ReactNode {
     const value = values[field]
     const filled = isFilled(field, value)
-    if (field === 'design_number') {
-      const progress = numberProgress(value)
-      if (!value.trim()) return t('hint.design_number')
-      if (isPrefixOnly(value)) return t('hint.number_digits', { prefix: value.trim() })
-      if (progress && 'missing' in progress) return tn('hint.number_missing', progress.missing)
-      if (progress && 'complete' in progress && !source.design_number) return `✓ ${t('hint.number_ok')}`
-      return null
-    }
-    if (field === 'revision' && !filled) {
-      return nextRevision ? (
-        <>
-          {t('form.next_free', { rev: nextRevision })} {takeButton('revision', nextRevision)}
-        </>
-      ) : (
-        t('hint.revision')
-      )
-    }
+    if (field === 'design_number') return mode === 'new' && !filled ? t('hint.number_new') : null
+    if (field === 'revision') return mode === 'new' ? t('hint.revision_new') : null
     if (field === 'designer' && !filled) {
       return lastDesigner ? (
         <>
@@ -119,7 +111,7 @@ export function DesignForm({
         t('hint.designer')
       )
     }
-    if (field === 'name') {
+    if (field === 'name' && !locked('name')) {
       if (!filled) return t('hint.name')
       if (normalizedName && normalizedName !== value.trim()) {
         return (
@@ -136,7 +128,7 @@ export function DesignForm({
     <Card>
       <CardHeader className="gap-3">
         <CardTitle className="font-heading text-lg">{t('form.title')}</CardTitle>
-        <FormStepper values={values} validation={validation} created={sameAsCreated} />
+        <FormStepper mode={mode} values={values} validation={validation} created={sameAsCreated} />
       </CardHeader>
       <CardContent>
         {created && (
@@ -162,7 +154,7 @@ export function DesignForm({
             const from = source[field]
             const suggestion = suggestions[field]
             const id = `field-${field}`
-            const empty = !isFilled(field, values[field])
+            const readOnly = locked(field)
             const hint = guidance(field)
             const notes = [
               from && `${id}-source`,
@@ -175,28 +167,26 @@ export function DesignForm({
               id,
               'aria-invalid': errorList.length > 0,
               'aria-describedby': notes || undefined,
-              className: cn(from && RING[from]),
+              className: cn(from && !readOnly && RING[from]),
             }
+            const lockedClass = 'bg-muted pr-8 text-foreground/80 focus-visible:ring-ring/30'
             return (
               <div key={field} className={cn('grid content-start gap-1', field === 'name' && 'sm:col-span-2')}>
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor={id}>{t(FIELD_LABELS[field])}</Label>
-                  {field === 'design_number' && empty && (
-                    // A new design gets its number from SAP: right where the number goes.
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="link"
-                      className="h-auto p-0"
-                      disabled={!canReserve || busy}
-                      title={canReserve ? undefined : t('form.reserve_needs')}
-                      onClick={onReserve}
-                    >
-                      {t('form.reserve_short')}
-                    </Button>
-                  )}
-                </div>
-                {field === 'department' ? (
+                <Label htmlFor={id}>{t(FIELD_LABELS[field])}</Label>
+                {readOnly ? (
+                  // Set by SAP in this mode: still focusable for screen readers, not editable.
+                  <div className="relative">
+                    <Input
+                      {...common}
+                      readOnly
+                      aria-readonly
+                      className={cn(common.className, lockedClass)}
+                      value={field === 'department' ? departmentLabel(values.department) : values[field]}
+                      placeholder={field === 'design_number' ? t('form.from_sap_pending') : undefined}
+                    />
+                    <Lock aria-hidden className="absolute top-1/2 right-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  </div>
+                ) : field === 'department' ? (
                   <select
                     {...common}
                     className={cn(fieldClass, common.className)}
@@ -227,6 +217,7 @@ export function DesignForm({
                 {from && (
                   <p
                     id={`${id}-source`}
+                    title={readOnly ? t('form.locked') : undefined}
                     className={cn('text-xs', from === 'ai' ? 'text-hl-amber-ink dark:text-hl-amber' : 'text-hl-sea-ink dark:text-hl-sea')}
                   >
                     {t(from === 'ai' ? 'form.suggested' : 'form.from_sap')}
@@ -272,11 +263,10 @@ export function DesignForm({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
-            <Button type="button" variant="outline" disabled={!canReserve || busy} onClick={onReserve}>
-              {t('form.reserve')}
-            </Button>
             <Button type="submit" disabled={!canCreate || busy}>
-              {t('form.create')}
+              {mode === 'existing' && values.revision
+                ? t('form.create_revision', { rev: values.revision })
+                : t('form.create')}
             </Button>
             <p className="min-w-48 flex-1 text-xs text-muted-foreground">
               {sameAsCreated ? t('form.already_created') : t('form.hint')}

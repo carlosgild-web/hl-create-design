@@ -5,6 +5,7 @@ import type {
   RecentDesign,
   RunTrace,
   PreviewTarget,
+  SapListDesign,
   SwitchTarget,
   Validation,
 } from './types'
@@ -19,6 +20,16 @@ export const getDepartments = () => fetch('/api/departments').then((r) => json<D
 export const getRecentDesigns = () => fetch('/api/designs').then((r) => json<RecentDesign[]>(r))
 
 export const getRun = (id: number) => fetch(`/api/runs/${id}`).then((r) => json<RunTrace>(r))
+
+/** The designs SAP knows (read-only, for the Start panel). SAP down: the error says so. */
+export async function listSapDesigns(): Promise<SapListDesign[]> {
+  const response = await fetch('/api/sap/designs')
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { message?: string } | null
+    throw new Error(body?.message ?? `HTTP ${response.status}`)
+  }
+  return response.json() as Promise<SapListDesign[]>
+}
 
 /** The form's inline check (read-only; the validators decide, invariant 1). */
 export const validateFields = (fields: Record<string, string>, signal?: AbortSignal) =>

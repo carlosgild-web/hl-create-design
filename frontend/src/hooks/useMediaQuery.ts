@@ -15,3 +15,6 @@ export function useMediaQuery(query: string, fallback = true): boolean {
 
 /** Tailwind's `lg` breakpoint: two columns from here, tabs below. */
 export const DESKTOP = '(min-width: 1024px)'
+
+/** Three columns (Assistant | Start | Form) from here (decision 0018). */
+export const WIDE = '(min-width: 1280px)'
