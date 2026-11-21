@@ -188,6 +188,13 @@ unchanged.
 
 ## 9c — Revision bookkeeping and the card/state UX
 
+**Status: done (2026-11-21, decision 0023).** Option A: `POST RevisionSet` in the mock SAP +
+`SapClient.add_revision`, written at confirm before the folder (Q4). Any export failure keeps
+the project with a `pdf_not_exported` warning (Q8, finding 18). Card warnings before Confirm
+(also the reserve card), name and department locked after reservation (designer stays
+editable), no Undo or second reservation after Create, notice wording, queued Create click,
+wrapping preview description. e2e: "latest D → rev E" and no second reservation.
+
 1. **Revisions created here count forever (finding 4).** Two options; ask Carlos (Q3):
    - **A (recommended):** add a revision write to the mock SAP (`POST
      /sap/opu/odata/sap/ZHL_PLM_DESIGN_SRV/RevisionSet`, CSRF, like the reserve call) and
@@ -320,8 +327,8 @@ for questions, never opens a card, and is traced; prompt-injection scenarios unc
 |---|---|---|---|
 | Q1 | 9b | Which designer formats are valid? | **Answered (2026-11-21): yes** — one or two initials; surname with lowercase particles (de, del, de la, van, von, y) |
 | Q2 | 9b | Forbidden words: errors or warnings? | **Answered: yes** — errors only as whole-name modifiers (`Final`, `Copy` at the end, `Rev A`); otherwise a warning |
-| Q3 | 9c | Write revisions to the mock SAP (A) or count `audit_log` (B)? | A: closer to a real PLM, fixes the "latest" label |
-| Q4 | 9c | If SAP fails after the folder is written, roll back the folder or mark the action as partly done? | Write SAP first, then the folder; roll back nothing on disk |
+| Q3 | 9c | Write revisions to the mock SAP (A) or count `audit_log` (B)? | **Answered (2026-11-21): A** — closer to a real PLM, fixes the "latest" label |
+| Q4 | 9c | If SAP fails after the folder is written, roll back the folder or mark the action as partly done? | **Answered: yes** — write SAP first, then the folder; roll back nothing on disk |
 | Q5 | 9e | Should `fake` mean the demo in the app, or add a `demo` provider? | Add `demo`; keep `fake` for tests only |
 | Q6 | 9d | Pre-retrieval for Groq too, or only Ollama? | Both (saves a round trip on Groq) |
 | Q7 | 9a | Should new designs start without the template circuit? | **Answered: keep it** and explain it in `08#template-circuit` |
