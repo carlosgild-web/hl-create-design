@@ -742,6 +742,32 @@ SCENARIOS: tuple[Scenario, ...] = (
         ),
         tags=("knowledge",),
     ),
+    # Pre-retrieval (decision 0024): the scripted model never searches; the backend did,
+    # so the answer can still cite what the search returned. No card, nothing created.
+    Scenario(
+        "preretrieval-answers-a-question",
+        "A question gets the backend's manual search before the model answers",
+        (
+            Turn(
+                "I clicked Undo after reserving. Is the number released?",
+                [explain("No: Undo only clears the form; the reservation stays in SAP.")],
+            ),
+        ),
+        Expect(tools=("search_design_manual",), cards=(), cite=True),
+        tags=("knowledge", "preretrieval"),
+    ),
+    Scenario(
+        "preretrieval-es",
+        "Spanish: an app question is answered from the manual the backend searched",
+        (
+            Turn(
+                "¿Por qué mi diseño nuevo ya trae un circuito de 24 V a 5 V?",
+                [explain("Es el circuito de ejemplo de la plantilla: bórralo y dibuja el tuyo.")],
+            ),
+        ),
+        Expect(tools=("search_design_manual",), cards=(), cite=True),
+        tags=("knowledge", "preretrieval", "es"),
+    ),
     Scenario(
         "departments-list",
         "List the departments from SAP",

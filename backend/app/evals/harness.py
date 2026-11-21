@@ -31,7 +31,7 @@ from app.evals.fake_kicad import FakeKicadCli
 from app.evals.fake_sap import FakeSap
 from app.llm.base import LLMClient
 from app.llm.fake import FakeClient, Step
-from app.standards.manual_search import ManualIndex
+from app.standards.manual_search import ManualIndex, normalize_refs
 
 TODAY = date(2026, 11, 17)  # the demo's pinned date (decision 0007)
 MAX_ITERATIONS = 6
@@ -335,7 +335,7 @@ def evaluate(sc: Scenario, env: Env, seen: Observed, folders_before: set[str]) -
         }
         add("form_fields", not wrong, f"expected {exp.form}, got {seen.form_fields}")
     if exp.cite:
-        cited = set(CITATION.findall(seen.answer))
+        cited = set(CITATION.findall(normalize_refs(seen.answer)))
         add(
             "cites_manual",
             bool(cited & seen.returned_refs),
@@ -348,7 +348,12 @@ def evaluate(sc: Scenario, env: Env, seen: Observed, folders_before: set[str]) -
 
 
 def run_scenario(
-    sc: Scenario, client_for: ClientFor, *, provider: str, model: str
+    sc: Scenario,
+    client_for: ClientFor,
+    *,
+    provider: str,
+    model: str,
+    preretrieval: Literal["auto", "on", "off"] = "auto",
 ) -> ScenarioResult:
     started = time.perf_counter()
     seen = Observed()
@@ -362,6 +367,7 @@ def run_scenario(
             kicad_cli="kicad-cli",
             llm_provider="fake",
             agent_max_iterations=MAX_ITERATIONS,
+            agent_preretrieval=preretrieval,
         )
         engine = get_engine(settings.data_dir)
         env = Env(settings, engine, FakeSap(), FakeKicadCli())
@@ -421,6 +427,14 @@ def run_scenario(
 
 
 def run_all(
-    scenarios: Sequence[Scenario], client_for: ClientFor, *, provider: str, model: str
+    scenarios: Sequence[Scenario],
+    client_for: ClientFor,
+    *,
+    provider: str,
+    model: str,
+    preretrieval: Literal["auto", "on", "off"] = "auto",
 ) -> list[ScenarioResult]:
-    return [run_scenario(sc, client_for, provider=provider, model=model) for sc in scenarios]
+    return [
+        run_scenario(sc, client_for, provider=provider, model=model, preretrieval=preretrieval)
+        for sc in scenarios
+    ]

@@ -106,7 +106,7 @@ export type SwitchTarget = 'ollama' | 'fake'
 export type ChatEvent =
   | { type: 'conversation'; data: { id: string } }
   | { type: 'thinking'; data: { content: string } }
-  | { type: 'tool_call'; data: { id: string; name: string; arguments: Record<string, unknown> } }
+  | { type: 'tool_call'; data: { id: string; name: string; arguments: Record<string, unknown>; auto?: boolean } }
   | {
       type: 'tool_result'
       data: { id: string; name: string; ok: boolean; result: Record<string, unknown> }

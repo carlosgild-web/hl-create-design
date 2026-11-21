@@ -29,7 +29,7 @@ from app.designs import SapLookup, SapNames, check_design_request, check_fields,
 from app.llm.base import ToolCall, ToolSpec
 from app.sap.client import SapClient, SapDesign, SapError
 from app.standards import validators as v
-from app.standards.manual_search import ManualIndex
+from app.standards.manual_search import MAX_TEXT_CHARS, ManualIndex
 from app.standards.validators import DesignRequest, UnsafePathError
 
 FREE_TEXT_MAX = 200
@@ -52,6 +52,10 @@ class ToolContext:
     run_id: int | None = None
     language: str = "en"
     opened_actions: dict[str, str] = field(default_factory=dict)  # kind -> action id
+    # Manual search results: how many passages and how long (shorter for a small local
+    # model, decision 0024).
+    search_limit: int = 4
+    passage_chars: int = MAX_TEXT_CHARS
 
 
 @dataclass(frozen=True)
@@ -153,10 +157,12 @@ class CreateArgs(_Args):
 
 
 def search_design_manual(args: SearchManualArgs, ctx: ToolContext) -> ToolResult:
-    passages = ctx.manual.search(args.query, lang=args.language or ctx.language)
+    passages = ctx.manual.search(
+        args.query, lang=args.language or ctx.language, limit=ctx.search_limit
+    )
     if not passages:
         return ToolResult({"passages": [], "note": "No passage matched; try other keywords."})
-    return ToolResult({"passages": [p.to_dict() for p in passages]})
+    return ToolResult({"passages": [p.to_dict(ctx.passage_chars) for p in passages]})
 
 
 def _sap_lookup(ctx: ToolContext, number: str) -> tuple[SapDesign | None, ToolResult | None]:

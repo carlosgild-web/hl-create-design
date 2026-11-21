@@ -57,6 +57,7 @@ export function StepsDrawer({ steps, runId }: { steps: Step[]; runId: number | n
             <li key={step.id} className="rounded-lg border p-2">
               <p className="tabular-nums font-medium">
                 {step.name}
+                {step.auto && <span className="ml-2 text-xs font-normal text-muted-foreground">{t('steps.auto')}</span>}
                 {step.ok === false && <span className="ml-2 text-destructive">✕</span>}
               </p>
               <pre className="mt-1 overflow-x-auto text-xs text-muted-foreground">

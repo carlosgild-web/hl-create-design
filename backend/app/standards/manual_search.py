@@ -94,6 +94,19 @@ def parse_manual_file(path: Path, lang: str) -> list[Passage]:
     return passages
 
 
+# Dashes a model may write inside a citation instead of "-" (Groq's gpt-oss writes U+2011).
+_DASHES = dict.fromkeys(map(ord, "‐‑‒–—−﹣－"), "-")
+_SPACED_REF_RE = re.compile(r"\[\s*([\w-]+)\s*#\s*([\w-]+)\s*\]")
+
+
+def normalize_refs(text: str) -> str:
+    """Citations as the manual writes them: NFKC, every dash as "-", no spaces inside the
+    brackets. `[02‑revisions#skipped‑letters]` -> `[02-revisions#skipped-letters]`. Used by
+    the eval checker; the chat renderer gets the same rule (decision 0024)."""
+    text = unicodedata.normalize("NFKC", text).translate(_DASHES)
+    return _SPACED_REF_RE.sub(r"[\1#\2]", text)
+
+
 def _plain(word: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", word) if not unicodedata.combining(c))
 

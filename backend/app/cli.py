@@ -98,6 +98,12 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument(
         "--allow-failures", action="store_true", help="Exit 0 even if scenarios fail (real runs)"
     )
+    ev.add_argument(
+        "--preretrieval",
+        choices=("auto", "on", "off"),
+        default="auto",
+        help="The backend's own manual search before the first model call (decision 0024)",
+    )
     return parser
 
 
@@ -442,7 +448,9 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
             return 1
         client_for, provider, model = harness.real(client), client.provider, client.model
         print(f"{provider}: {model}; {len(scenarios)} scenarios (fake-only ones skipped)")
-    results = harness.run_all(scenarios, client_for, provider=provider, model=model)
+    results = harness.run_all(
+        scenarios, client_for, provider=provider, model=model, preretrieval=args.preretrieval
+    )
     print(report.console(results))
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)

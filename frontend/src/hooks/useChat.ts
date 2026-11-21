@@ -15,7 +15,8 @@ export type TimelineItem =
   | { id: number; kind: 'action'; actionId: string; epoch: number }
   | { id: number; kind: 'divider'; cancelled: boolean }
 
-export type Step = { id: string; name: string; arguments?: Record<string, unknown>; ok?: boolean; result?: unknown }
+/** One tool call in Agent steps. `auto`: Create Design searched the manual itself (decision 0024). */
+export type Step = { id: string; name: string; arguments?: Record<string, unknown>; ok?: boolean; result?: unknown; auto?: boolean }
 
 /** What the assistant is doing right now, shown instead of a bare "Thinking…". */
 export type Activity =
@@ -157,7 +158,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
           break
         case 'tool_call':
           setActivity({ kind: 'tool', name: event.data.name })
-          setSteps((s) => [...s, { id: event.data.id, name: event.data.name, arguments: event.data.arguments }])
+          setSteps((s) => [...s, { id: event.data.id, name: event.data.name, arguments: event.data.arguments, auto: event.data.auto }])
           break
         case 'tool_result': {
           setActivity({ kind: 'thinking' })

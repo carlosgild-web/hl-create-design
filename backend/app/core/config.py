@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     agent_max_iterations: int = Field(default=6, ge=1, le=20)
     # One whole answer (all model calls and rate-limit waits); then the turn ends with a message.
     agent_turn_timeout_s: float = Field(default=120.0, gt=0, le=3600)
+    # The backend searches the manual itself before the first model call (decision 0024):
+    # auto = for questions about the rules or the app, on = for every message, off = never.
+    agent_preretrieval: Literal["auto", "on", "off"] = "auto"
 
     # The built frontend (`npm run build`); served at `/` when the folder exists (Docker image).
     frontend_dir: Path = Path("./frontend/dist")

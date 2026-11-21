@@ -28,7 +28,7 @@ from typing import Any
 
 from app.agent.tools import ToolContext, ToolRegistry
 from app.agent.trace import AgentTrace
-from app.llm.base import ChatTurn, LLMClient, LLMError, Message, ToolSpec, call_with
+from app.llm.base import ChatTurn, LLMClient, LLMError, Message, ToolCall, ToolSpec, call_with
 
 LIMIT_FALLBACK = (
     "I couldn't finish within the steps allowed for one answer. Please tell me what you "
@@ -124,13 +124,27 @@ def run_agent(
     outcome: RunOutcome,
     cancel: threading.Event | None = None,
     timeout_s: float | None = None,
+    preretrieve: dict[str, Any] | None = None,
 ) -> Iterator[AgentEvent]:
     """`messages` = system prompt + history + the new user message. `cancel` stops the run
-    (Stop button); `timeout_s` caps the whole turn (`AGENT_TURN_TIMEOUT_S`)."""
+    (Stop button); `timeout_s` caps the whole turn (`AGENT_TURN_TIMEOUT_S`). With
+    `preretrieve` (the arguments of a `search_design_manual` call), the backend runs that
+    search before the first model call and adds it to the conversation as if the model
+    had made it (decision 0024): traced with `auto`, shown in Agent steps, and not a model
+    call, so it doesn't count against `max_iterations`."""
     deadline = time.monotonic() + timeout_s if timeout_s else None
     try:
         yield from _run(
-            client, registry, ctx, messages, max_iterations, trace, outcome, cancel, deadline
+            client,
+            registry,
+            ctx,
+            messages,
+            max_iterations,
+            trace,
+            outcome,
+            cancel,
+            deadline,
+            preretrieve,
         )
     except RunStopped as stopped:
         outcome.status = trace.status = stopped.status
@@ -158,10 +172,14 @@ def _run(
     outcome: RunOutcome,
     cancel: threading.Event | None,
     deadline: float | None,
+    preretrieve: dict[str, Any] | None = None,
 ) -> Iterator[AgentEvent]:
     conversation = list(messages)
     trace.record_input(conversation)
     specs = registry.specs
+    if preretrieve is not None:
+        call = ToolCall(f"auto_{ctx.run_id or 1}", "search_design_manual", preretrieve)
+        yield from _execute(call, registry, ctx, trace, outcome, conversation, 0, auto=True)
 
     for iteration in range(1, max_iterations + 1):
         last_call = iteration == max_iterations
@@ -204,27 +222,50 @@ def _run(
         for call in turn.tool_calls:
             if cancel is not None and cancel.is_set():  # no card opens after Stop
                 raise RunStopped("cancelled")
-            yield AgentEvent(
-                "tool_call", {"id": call.id, "name": call.name, "arguments": call.arguments}
-            )
-            started = time.perf_counter()
-            result = registry.execute(call, ctx)
-            text = result.for_model()
-            trace.record_tool_call(
-                iteration,
-                call.name,
-                call.arguments,
-                text,
-                result.ok,
-                (time.perf_counter() - started) * 1000,
-            )
-            yield AgentEvent(
-                "tool_result",
-                {"id": call.id, "name": call.name, "ok": result.ok, "result": result.content},
-            )
-            if result.event is not None:
-                event = dict(result.event)
-                yield AgentEvent(event.pop("type"), event)
-            tool_message = Message("tool", text, tool_call_id=call.id, name=call.name)
-            conversation.append(tool_message)
-            outcome.new_messages.append(tool_message)
+            yield from _execute(call, registry, ctx, trace, outcome, conversation, iteration)
+
+
+def _execute(
+    call: ToolCall,
+    registry: ToolRegistry,
+    ctx: ToolContext,
+    trace: AgentTrace,
+    outcome: RunOutcome,
+    conversation: list[Message],
+    iteration: int,
+    *,
+    auto: bool = False,
+) -> Iterator[AgentEvent]:
+    """Run one tool call through the registry; record it, show it, and add its result to
+    the conversation. The backend's own search (`auto`) also adds the assistant message
+    that asks for it, so the model sees a normal call and result."""
+    flag = {"auto": True} if auto else {}
+    yield AgentEvent(
+        "tool_call", {"id": call.id, "name": call.name, "arguments": call.arguments, **flag}
+    )
+    started = time.perf_counter()
+    result = registry.execute(call, ctx)
+    text = result.for_model()
+    trace.record_tool_call(
+        iteration,
+        call.name,
+        call.arguments,
+        text,
+        result.ok,
+        (time.perf_counter() - started) * 1000,
+        auto=auto,
+    )
+    yield AgentEvent(
+        "tool_result",
+        {"id": call.id, "name": call.name, "ok": result.ok, "result": result.content, **flag},
+    )
+    if result.event is not None:
+        event = dict(result.event)
+        yield AgentEvent(event.pop("type"), event)
+    if auto:
+        request = Message("assistant", "", tool_calls=(call,))
+        conversation.append(request)
+        outcome.new_messages.append(request)
+    tool_message = Message("tool", text, tool_call_id=call.id, name=call.name)
+    conversation.append(tool_message)
+    outcome.new_messages.append(tool_message)

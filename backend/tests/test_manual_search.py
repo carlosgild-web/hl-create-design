@@ -79,3 +79,16 @@ def test_every_section_reaches_the_model_whole_and_has_keywords(manual):
     for passage in manual.passages:
         assert len(passage.text) <= MAX_TEXT_CHARS, (passage.source, passage.lang)
         assert passage.keywords, (passage.source, passage.lang)
+
+
+def test_citations_with_unicode_dashes_or_spaces_are_normalized():
+    from app.evals.harness import CITATION
+    from app.standards.manual_search import normalize_refs
+
+    groq = "No [02‑revisions#skipped‑letters] and [ 07-faq # assistant ]."
+    assert CITATION.findall(groq) == []  # the old false negative
+    assert CITATION.findall(normalize_refs(groq)) == [
+        "02-revisions#skipped-letters",
+        "07-faq#assistant",
+    ]
+    assert normalize_refs("plain text - with a dash") == "plain text - with a dash"

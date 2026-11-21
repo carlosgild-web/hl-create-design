@@ -13,9 +13,10 @@ from typing import Any
 from sqlalchemy import Engine
 
 from app.agent import runs
+from app.agent.intent import classify
 from app.agent.loop import AgentEvent, RunOutcome, run_agent
 from app.agent.prompts import system_prompt, user_message
-from app.agent.tools import ToolContext, ToolRegistry
+from app.agent.tools import FREE_TEXT_MAX, ToolContext, ToolRegistry
 from app.agent.trace import AgentTrace
 from app.core.config import Settings
 from app.db import store
@@ -61,6 +62,23 @@ def probe_turn(language: str = "en") -> tuple[list[Message], list[ToolSpec]]:
     return messages, ToolRegistry().specs
 
 
+# A small local model gets fewer, shorter passages, so the prompt plus the search fit its
+# context and stay quick on CPU (decision 0024).
+OLLAMA_SEARCH_LIMIT = 3
+OLLAMA_PASSAGE_CHARS = 500
+
+
+def preretrieval_for(settings: Settings, text: str, language: str) -> dict[str, Any] | None:
+    """The arguments of the backend's own manual search for this message, or None.
+    `AGENT_PRERETRIEVAL`: auto = questions about the rules or the app, on = always."""
+    mode = settings.agent_preretrieval
+    if mode == "off" or not text.strip():
+        return None
+    if mode == "auto" and classify(text) != "rule_question":
+        return None
+    return {"query": text.strip()[:FREE_TEXT_MAX], "language": language}
+
+
 def chat_turn(
     deps: AgentDeps,
     *,
@@ -100,6 +118,8 @@ def chat_turn(
         run_id=run_id,
         language=language,
     )
+    if client.provider == "ollama":
+        ctx.search_limit, ctx.passage_chars = OLLAMA_SEARCH_LIMIT, OLLAMA_PASSAGE_CHARS
     trace = AgentTrace(client.provider, client.model, deps.settings.agent_max_iterations)
     outcome = RunOutcome()
     cancel = runs.register(run_id)
@@ -115,6 +135,7 @@ def chat_turn(
             outcome=outcome,
             cancel=cancel,
             timeout_s=deps.settings.agent_turn_timeout_s,
+            preretrieve=preretrieval_for(deps.settings, text, language),
         ):
             if event.data.get("code") == "turn_timeout":
                 event = AgentEvent("error", {**event.data, "can_switch_to": deps.switch_options()})

@@ -19,6 +19,8 @@ def settings(tmp_path) -> Settings:
         kicad_cli="kicad-cli",
         llm_provider="fake",
         agent_max_iterations=6,
+        # The loop's mechanics tests script every call; pre-retrieval has its own tests.
+        agent_preretrieval="off",
     )
 
 
