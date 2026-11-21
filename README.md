@@ -131,8 +131,8 @@ the tool calls, that nothing happens without a click, and that the answer cites 
 
 | Model | Passed | Notes |
 |---|---|---|
-| Scripted (CI) | **36/36** | Required in CI. Includes 3 scenarios that script a *misbehaving* model to probe the guards. |
-| Demo assistant (rules, no AI) | **31/33** | Deterministic. Fails the multi-turn wizard and the folder-check route by design. |
+| Scripted (CI) | **52/52** | Required in CI. Includes 16 FAQ questions (EN/ES) and 3 scenarios that script a *misbehaving* model to probe the guards. |
+| Demo assistant (rules, no AI) | **47/49** | Deterministic. Fails the multi-turn wizard and the folder-check route by design. [Report](docs/eval/demo-phase9.md) |
 | Ollama `qwen3:4b-instruct` on CPU | 11/27 → **21/27** | After prompt tuning (v1 → v3). [Report](docs/eval/ollama-qwen3-4b-full.md) |
 | Groq `openai/gpt-oss-120b` | **20/27** | One is a false negative (non-breaking hyphens in a citation). [Report](docs/eval/groq-gpt-oss-120b.md) |
 

@@ -40,6 +40,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   treats free text as data. `POST /api/chat` streams SSE; `POST /api/actions/{id}/confirm`
   is the only side-effect path (confirm once, expiry, re-validation, audit).
   CLI: `chat`, `confirm`, `cancel`. Decision 0009: the Anthropic client waits for Phase 7.
+- Phase 9 (review fixes and FAQ knowledge, decisions 0021-0026):
+  - The user FAQ is manual content: chapter 08 "Using Create Design", user-worded 07-faq
+    sections, a `Keywords:` column, EN/ES stopwords, and a retrieval test (top-3 >= 95%).
+  - Rule messages render in the UI language from `code` + `params`. The designer accepts
+    two initials and particles, title case keeps `LEDs`/`Burn-In`, version words are
+    errors only as whole-name modifiers, and new warnings flag Spanish names and names
+    already in SAP.
+  - New revisions are recorded in SAP (`POST RevisionSet`) before the folder is written.
+    A failed PDF export keeps the project with a warning (KiCad optional). Cards show
+    their warnings before Confirm. The name locks after Get SAP number, and there is no
+    second reservation after Create.
+  - The backend searches the manual itself for questions (`AGENT_PRERETRIEVAL`). Ollama
+    gets 3 short passages. Citations with Unicode dashes are normalized.
+  - `LLM_PROVIDER=demo`: a rule-based demo assistant. It answers FAQ questions with a
+    citation, fills the form from a sentence and opens the card when valid.
+  - Manual references open their passage (`GET /api/manual/{lang}/{document}/{anchor}`).
+  - 16 FAQ eval scenarios (EN and ES; `cite_any`, `language`), `agent-eval --provider
+    demo`, `--preretrieval` and `--few-shot`.
+  - `start.cmd` and `start.sh` offer to stop a process that holds port 8000 or 8100.
 
 ### Changed
 

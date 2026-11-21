@@ -310,6 +310,14 @@ header badge, README/manual/Q&A updated, `agent-eval --provider demo`.
 
 ## 9f — Evals, real-model runs and polish
 
+**Status: done except the real-model runs (2026-11-21, decision 0026).** 16 FAQ scenarios
+(EN/ES, `cite_any`, `language`); reports `fake-phase9` 52/52 and `demo-phase9` 47/49, demo in
+CI; `AGENT_FEW_SHOT` / `--few-shot` for the Ollama A/B; `[ref]` opens the passage
+(`GET /api/manual/...`); "fill in first" hint in form order; `start.sh` port check; CHANGELOG
+Phase 9 entry. **Pending:** Ollama runs off / auto / auto+few-shot (user), Groq run and token
+measurement after the quota reset (commands in `docs/eval/README.md`); the user's `.env`
+duplicate `LLM_PROVIDER`; README screenshots not regenerated.
+
 1. **FAQ scenarios** in `evals/scenarios.py`: about 15 grouped scenarios (numbers, revisions,
    statuses, name/designer, files/KiCad, cards/app), each in EN and ES, from
    `faq_questions.json`. Expectations: a manual search happened (by the model or pre-retrieval),
