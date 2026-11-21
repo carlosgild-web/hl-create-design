@@ -2,8 +2,9 @@
 
 Draft source material for the Create Design assistant. Each answer is grounded in the Design
 Manual (`docs/manual/en/`) or in the current code. The `Ref:` line is the manual anchor the
-assistant should cite. **Code:** means the answer comes from the app's behavior, not the
-manual, so a manual section may be needed before the assistant can cite it.
+assistant should cite. App-usage answers cite chapter 08 (`08-using-create-design`). The search test
+`backend/tests/test_faq_retrieval.py` checks that each question finds its section
+(questions and paraphrases in `backend/app/evals/faq_questions.json`).
 
 ---
 
@@ -26,7 +27,7 @@ Ref: 01-design-numbering#new-number-or-revision
 Department, a design name in English, and your name as designer (`C. Velazquez`). SAP gives
 the number, material and project when you click **Get SAP number**. The description is
 optional.
-Code: Start panel, `start.new_help`
+Ref: 08-using-create-design#start-panel
 
 ### What do I need for a new revision?
 Pick the design from the SAP list in the Start panel. Department, number, name and the next
@@ -37,11 +38,11 @@ Ref: 03-title-block#name-from-sap
 Yes. Describe the design in one sentence ("revision C of the bead sorter vision board" or
 "new controller board for the drilling machine, Hardware") and it proposes the values. You
 still review them and click **Confirm**.
-Code: `propose_form_values`
+Ref: 08-using-create-design#assistant-fills-form
 
 ### Can it guide me one field at a time?
 Yes: click **Guide me step by step**. It asks one short question per reply.
-Code: wizard mode in the system prompt
+Ref: 08-using-create-design#step-by-step
 
 ### Does the assistant create anything on its own?
 No. It explains rules, looks things up in SAP and proposes values. A number is reserved, or
@@ -90,7 +91,7 @@ Ref: 07-faq#wrong-reservation
 
 ### I clicked **Undo** after reserving. Is the number released?
 No. **Undo** only removes the number from the form. The reservation stays in SAP.
-Code: `ActionCard` undo, `action.number_filled`
+Ref: 08-using-create-design#undo-number
 
 ---
 
@@ -120,7 +121,7 @@ Ref: 02-revisions#never-reuse
 ### The SAP list says "latest B → rev E". Why not C?
 Revisions C and D were already created in Create Design. The next free letter counts both
 the revisions SAP knows and the revision folders that exist, and a letter is never reused.
-Ref: 02-revisions#never-reuse
+Ref: 08-using-create-design#next-free-revision, 02-revisions#never-reuse
 
 ### The revision folder already exists. What now?
 Create Design never overwrites files. Someone already created that revision; create the next
@@ -179,7 +180,7 @@ Ref: 07-faq#name-language
 Create Design doesn't stop it: the design number is what identifies a design. Before you
 reserve a new number, search the SAP list in **From existing design**. If the board can
 replace the old one, you want a new revision, not a new number.
-Ref: 01-design-numbering#new-number-or-revision
+Ref: 07-faq#same-name
 
 ### Why is the name locked in a new revision?
 A new revision keeps the name SAP has. For a different name, ask your lead for a new number.
@@ -193,7 +194,7 @@ Ref: 03-title-block#description
 ### How do I write the designer?
 Initial, period, space, surname, as in the company directory: `C. Velazquez`. Accents are
 allowed; maximum 40 characters.
-Ref: 03-title-block#designer
+Ref: 03-title-block#designer, 07-faq#designer-format
 
 ### Why does the material number have so many zeros?
 SAP stores 18 characters; the title block shows it without leading zeros:
@@ -232,7 +233,7 @@ Ref: 05-departments#choosing, 07-faq#wrong-reservation
 That's the template's example circuit; it shows that the sheet and the title block work.
 Delete it and draw your own circuit. For a new revision, copy the circuit from the previous
 revision in KiCad.
-Code: `kicad/template/hl_template.kicad_sch` (needs a section in the manual, see the plan, block 9a)
+Ref: 08-using-create-design#template-circuit
 
 ### Where are my files saved?
 `<designs root>/<DEPT>/<DesignNumber>/<Rev>/`, with files named `<DesignNumber>_<Rev>`. The PDF
@@ -251,12 +252,13 @@ Ref: 04-folder-structure#revision-folders
 ### **Open in KiCad** didn't work.
 Open the project file shown under the preview in KiCad 9 (*File › Open Project…*). You can also
 download the project as a zip.
-Code: `preview.open_failed`, `preview.how_to_open`
+Ref: 08-using-create-design#open-in-kicad
 
 ### There's no PDF or preview.
-The PDF needs `kicad-cli` (KiCad 9). Without it the project is still created. Tell your
-administrator, who sets `KICAD_CLI` if KiCad isn't on the PATH.
-Code: README "Try it"
+The PDF needs `kicad-cli` (KiCad 9). Without it the design is not created: nothing is kept,
+and a reserved number stays reserved. Tell your administrator, who installs KiCad 9 or sets
+`KICAD_CLI` if KiCad isn't on the PATH.
+Ref: 08-using-create-design#no-pdf
 
 ### Can I edit the title block in KiCad's Page Settings?
 No. The values come from SAP and the manual. To change the number or revision, create a new
@@ -270,26 +272,26 @@ Ref: 03-title-block#dont
 ### What is the card in the chat?
 A confirmation card. Nothing happens until you click **Confirm**; **Cancel** leaves everything
 unchanged.
-Code: `action.*`
+Ref: 08-using-create-design#confirmation-cards
 
 ### My card says "expired".
 Cards expire after 30 minutes. Ask again, or use the form button to get a new card.
-Code: `ACTION_TTL` in `db/store.py`
+Ref: 08-using-create-design#card-expired
 
 ### What is "Agent steps"?
 A log of what the assistant did: model calls, tools used and their results. Use it to see why
 it answered the way it did.
-Code: `StepsDrawer`
+Ref: 08-using-create-design#agent-steps
 
 ### The assistant only answers "Demo mode: no language model is configured".
 No AI model is connected, so the assistant can't answer or fill the form. Everything else
 works: fill in the form yourself, and the checks, SAP and the confirmation cards work as usual.
-Code: `DEMO_NOTICE` in `llm/fake.py`
+Ref: 08-using-create-design#demo-mode
 
 ### The assistant is slow or says it timed out.
 The local model (Ollama) can be slow on CPU. Wait, press **Stop**, or fill in the form
 directly: the form works without the assistant.
-Code: `chat.timeout`
+Ref: 08-using-create-design#slow-assistant
 
 ### The assistant and the form disagree. Which one is right?
 The form's checks. The assistant only explains their results and can be wrong.

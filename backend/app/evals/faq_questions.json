@@ -1,0 +1,1366 @@
+[
+  {
+    "id": "en-01",
+    "lang": "en",
+    "question": "What does Create Design do?",
+    "accepted_refs": [
+      "03-title-block#fields",
+      "08-using-create-design#what-it-does"
+    ],
+    "paraphrases": [
+      "what is this app for",
+      "what does create desing make for me"
+    ]
+  },
+  {
+    "id": "es-01",
+    "lang": "es",
+    "question": "¿Qué hace Create Design?",
+    "accepted_refs": [
+      "03-title-block#fields",
+      "08-using-create-design#what-it-does"
+    ],
+    "paraphrases": [
+      "¿para qué sirve esta app?",
+      "¿qué me genera Create Design?"
+    ]
+  },
+  {
+    "id": "en-02",
+    "lang": "en",
+    "question": "New design or new revision: which one do I pick?",
+    "accepted_refs": [
+      "01-design-numbering#new-number-or-revision",
+      "08-using-create-design#new-or-existing"
+    ],
+    "paraphrases": [
+      "should I make a new number or just a new revision",
+      "when do I need a new number instead of a revison"
+    ]
+  },
+  {
+    "id": "es-02",
+    "lang": "es",
+    "question": "¿Diseño nuevo o revisión nueva? ¿Cuál elijo?",
+    "accepted_refs": [
+      "01-design-numbering#new-number-or-revision",
+      "08-using-create-design#new-or-existing"
+    ],
+    "paraphrases": [
+      "¿cuándo pido número nuevo y cuándo hago otra revisión?",
+      "¿le saco número nuevo o nomás una revisión?"
+    ]
+  },
+  {
+    "id": "en-03",
+    "lang": "en",
+    "question": "What do I need before I start a new design?",
+    "accepted_refs": [
+      "08-using-create-design#start-panel",
+      "08-using-create-design#new-or-existing"
+    ],
+    "paraphrases": [
+      "which fields do I fill in before getting the SAP number",
+      "what info do I need to start a new board"
+    ]
+  },
+  {
+    "id": "es-03",
+    "lang": "es",
+    "question": "¿Qué necesito para empezar un diseño nuevo?",
+    "accepted_refs": [
+      "08-using-create-design#start-panel",
+      "08-using-create-design#new-or-existing"
+    ],
+    "paraphrases": [
+      "¿qué campos lleno antes de pedir el número SAP?",
+      "¿qué datos ocupo para arrancar un diseño nuevo?"
+    ]
+  },
+  {
+    "id": "en-04",
+    "lang": "en",
+    "question": "What do I need for a new revision?",
+    "accepted_refs": [
+      "03-title-block#name-from-sap",
+      "08-using-create-design#new-or-existing",
+      "08-using-create-design#start-panel"
+    ],
+    "paraphrases": [
+      "how do I make the next revision of an existing design",
+      "what do I fill in for a new rev of a board in SAP"
+    ]
+  },
+  {
+    "id": "es-04",
+    "lang": "es",
+    "question": "¿Qué necesito para una revisión nueva?",
+    "accepted_refs": [
+      "03-title-block#name-from-sap",
+      "08-using-create-design#new-or-existing",
+      "08-using-create-design#start-panel"
+    ],
+    "paraphrases": [
+      "¿cómo le hago para sacar la siguiente revisión de un diseño?",
+      "¿qué lleno para una revisión de un diseño que ya existe?"
+    ]
+  },
+  {
+    "id": "en-05",
+    "lang": "en",
+    "question": "Can the assistant fill the form for me?",
+    "accepted_refs": [
+      "08-using-create-design#assistant-fills-form"
+    ],
+    "paraphrases": [
+      "can the AI fill in the fields from a sentence",
+      "can I just describe the board and let the assistant complete the form"
+    ]
+  },
+  {
+    "id": "es-05",
+    "lang": "es",
+    "question": "¿El asistente puede rellenar el formulario por mí?",
+    "accepted_refs": [
+      "08-using-create-design#assistant-fills-form"
+    ],
+    "paraphrases": [
+      "¿la IA me puede llenar los campos?",
+      "¿puedo describir la placa y que el asistente llene el formulario?"
+    ]
+  },
+  {
+    "id": "en-06",
+    "lang": "en",
+    "question": "Can it guide me one field at a time?",
+    "accepted_refs": [
+      "08-using-create-design#step-by-step"
+    ],
+    "paraphrases": [
+      "is there a step by step guide mode",
+      "can the assistant ask me the fields one by one"
+    ]
+  },
+  {
+    "id": "es-06",
+    "lang": "es",
+    "question": "¿Me puede guiar campo por campo?",
+    "accepted_refs": [
+      "08-using-create-design#step-by-step"
+    ],
+    "paraphrases": [
+      "¿hay un modo guiado paso a paso?",
+      "¿el asistente me puede ir preguntando los campos uno por uno?"
+    ]
+  },
+  {
+    "id": "en-07",
+    "lang": "en",
+    "question": "Does the assistant create anything on its own?",
+    "accepted_refs": [
+      "07-faq#assistant",
+      "08-using-create-design#confirmation-cards"
+    ],
+    "paraphrases": [
+      "can the AI reserve a number without me clicking",
+      "will the assistant make files by itself"
+    ]
+  },
+  {
+    "id": "es-07",
+    "lang": "es",
+    "question": "¿El asistente crea algo por su cuenta?",
+    "accepted_refs": [
+      "07-faq#assistant",
+      "08-using-create-design#confirmation-cards"
+    ],
+    "paraphrases": [
+      "¿la IA puede reservar un número sin que yo le dé clic?",
+      "¿el asistente crea archivos solo?"
+    ]
+  },
+  {
+    "id": "en-08",
+    "lang": "en",
+    "question": "Can I choose my own design number?",
+    "accepted_refs": [
+      "01-design-numbering#issued-by-sap",
+      "07-faq#own-number"
+    ],
+    "paraphrases": [
+      "can I pick the number myself",
+      "can I make up a design numbr"
+    ]
+  },
+  {
+    "id": "es-08",
+    "lang": "es",
+    "question": "¿Puedo elegir mi propio número de diseño?",
+    "accepted_refs": [
+      "01-design-numbering#issued-by-sap",
+      "07-faq#own-number"
+    ],
+    "paraphrases": [
+      "¿puedo ponerle yo el número?",
+      "¿me puedo inventar el número de diseño?"
+    ]
+  },
+  {
+    "id": "en-09",
+    "lang": "en",
+    "question": "What is the format of a design number?",
+    "accepted_refs": [
+      "01-design-numbering#format",
+      "01-design-numbering#quick-check"
+    ],
+    "paraphrases": [
+      "how is a design number written",
+      "what does a design number look like"
+    ]
+  },
+  {
+    "id": "es-09",
+    "lang": "es",
+    "question": "¿Qué formato tiene un número de diseño?",
+    "accepted_refs": [
+      "01-design-numbering#format",
+      "01-design-numbering#quick-check"
+    ],
+    "paraphrases": [
+      "¿cómo se escribe un número de diseño?",
+      "¿cómo es el formato del número de diseño?"
+    ]
+  },
+  {
+    "id": "en-10",
+    "lang": "en",
+    "question": "Why is HL-HW-26-42 (or hl-hw-26-0042, HL-HW-2026-0042) wrong?",
+    "accepted_refs": [
+      "01-design-numbering#quick-check",
+      "01-design-numbering#format"
+    ],
+    "paraphrases": [
+      "why is my number HL-HW-26-42 not valid",
+      "is lowercase or a four digit year ok in the number"
+    ]
+  },
+  {
+    "id": "es-10",
+    "lang": "es",
+    "question": "¿Por qué HL-HW-26-42 (o hl-hw-26-0042, HL-HW-2026-0042) está mal?",
+    "accepted_refs": [
+      "01-design-numbering#quick-check",
+      "01-design-numbering#format"
+    ],
+    "paraphrases": [
+      "¿por qué no vale el número HL-HW-26-42?",
+      "¿se puede escribir el número en minúsculas o con el año de cuatro dígitos?"
+    ]
+  },
+  {
+    "id": "en-11",
+    "lang": "en",
+    "question": "Why does it say my number \"doesn't exist in SAP\"?",
+    "accepted_refs": [
+      "01-design-numbering#issued-by-sap",
+      "07-faq#own-number"
+    ],
+    "paraphrases": [
+      "the number is not found in SAP, why",
+      "error number does not exist in sap"
+    ]
+  },
+  {
+    "id": "es-11",
+    "lang": "es",
+    "question": "¿Por qué dice que mi número «no existe en SAP»?",
+    "accepted_refs": [
+      "01-design-numbering#issued-by-sap",
+      "07-faq#own-number"
+    ],
+    "paraphrases": [
+      "me sale que el número no existe en SAP",
+      "¿por qué SAP no encuentra mi número?"
+    ]
+  },
+  {
+    "id": "en-12",
+    "lang": "en",
+    "question": "Why does it say the number \"belongs to department HW, not PWR\"?",
+    "accepted_refs": [
+      "01-design-numbering#format",
+      "05-departments#choosing"
+    ],
+    "paraphrases": [
+      "can I use an HW number for a PWR design",
+      "the number belongs to another department, why"
+    ]
+  },
+  {
+    "id": "es-12",
+    "lang": "es",
+    "question": "¿Por qué dice que el número «pertenece al departamento HW, no a PWR»?",
+    "accepted_refs": [
+      "01-design-numbering#format",
+      "05-departments#choosing"
+    ],
+    "paraphrases": [
+      "¿puedo usar un número de HW en un diseño de PWR?",
+      "me dice que el número es de otro departamento"
+    ]
+  },
+  {
+    "id": "en-13",
+    "lang": "en",
+    "question": "Which year goes in the number? The work continues next year.",
+    "accepted_refs": [
+      "01-design-numbering#year",
+      "07-faq#year-end"
+    ],
+    "paraphrases": [
+      "does the year in the number change next year",
+      "what year do I use if the project goes into january"
+    ]
+  },
+  {
+    "id": "es-13",
+    "lang": "es",
+    "question": "¿Qué año lleva el número? El trabajo sigue el año que viene.",
+    "accepted_refs": [
+      "01-design-numbering#year",
+      "07-faq#year-end"
+    ],
+    "paraphrases": [
+      "¿el año del número cambia el año que entra?",
+      "¿qué año le pongo si el proyecto sigue en enero?"
+    ]
+  },
+  {
+    "id": "en-14",
+    "lang": "en",
+    "question": "I see gaps in the numbers (0041, then 0044). Is something wrong?",
+    "accepted_refs": [
+      "01-design-numbering#sequence",
+      "07-faq#wrong-reservation"
+    ],
+    "paraphrases": [
+      "why are some numbers missing in the sequence",
+      "numbers skip from 0041 to 0044"
+    ]
+  },
+  {
+    "id": "es-14",
+    "lang": "es",
+    "question": "Veo huecos en los números (0041 y luego 0044). ¿Pasa algo?",
+    "accepted_refs": [
+      "01-design-numbering#sequence",
+      "07-faq#wrong-reservation"
+    ],
+    "paraphrases": [
+      "¿por qué faltan números en la secuencia?",
+      "los números se brincan del 0041 al 0044"
+    ]
+  },
+  {
+    "id": "en-15",
+    "lang": "en",
+    "question": "I reserved a number by mistake. Can I give it back?",
+    "accepted_refs": [
+      "07-faq#wrong-reservation",
+      "01-design-numbering#sequence"
+    ],
+    "paraphrases": [
+      "can I cancel a reserved number",
+      "how do I return a number I reserved wrong"
+    ]
+  },
+  {
+    "id": "es-15",
+    "lang": "es",
+    "question": "Reservé un número por error. ¿Puedo devolverlo?",
+    "accepted_refs": [
+      "07-faq#wrong-reservation",
+      "01-design-numbering#sequence"
+    ],
+    "paraphrases": [
+      "¿puedo cancelar un número que ya reservé?",
+      "reservé un número que no era, ¿cómo lo regreso?"
+    ]
+  },
+  {
+    "id": "en-16",
+    "lang": "en",
+    "question": "I clicked Undo after reserving. Is the number released?",
+    "accepted_refs": [
+      "08-using-create-design#undo-number",
+      "07-faq#wrong-reservation"
+    ],
+    "paraphrases": [
+      "does undo free the reserved number",
+      "after undo is the SAP reservation gone"
+    ]
+  },
+  {
+    "id": "es-16",
+    "lang": "es",
+    "question": "Pulsé Deshacer después de reservar. ¿Se liberó el número?",
+    "accepted_refs": [
+      "08-using-create-design#undo-number",
+      "07-faq#wrong-reservation"
+    ],
+    "paraphrases": [
+      "¿deshacer libera el número reservado?",
+      "le di deshacer, ¿ya se canceló la reserva en SAP?"
+    ]
+  },
+  {
+    "id": "en-17",
+    "lang": "en",
+    "question": "Why was revision I (or O, Q, S, X, Z) rejected?",
+    "accepted_refs": [
+      "02-revisions#skipped-letters",
+      "07-faq#revision-i"
+    ],
+    "paraphrases": [
+      "why can't I use revision O",
+      "letter I is not allowed as a revison"
+    ]
+  },
+  {
+    "id": "es-17",
+    "lang": "es",
+    "question": "¿Por qué se rechazó la revisión I (u O, Q, S, X, Z)?",
+    "accepted_refs": [
+      "02-revisions#skipped-letters",
+      "07-faq#revision-i"
+    ],
+    "paraphrases": [
+      "¿por qué no puedo usar la revisión O?",
+      "no me deja poner la letra I en la revisión"
+    ]
+  },
+  {
+    "id": "en-18",
+    "lang": "en",
+    "question": "What is the full revision sequence?",
+    "accepted_refs": [
+      "02-revisions#sequence",
+      "02-revisions#skipped-letters"
+    ],
+    "paraphrases": [
+      "which letters are used for revisions and in what order",
+      "what comes after revision Y"
+    ]
+  },
+  {
+    "id": "es-18",
+    "lang": "es",
+    "question": "¿Cuál es la secuencia completa de revisiones?",
+    "accepted_refs": [
+      "02-revisions#sequence",
+      "02-revisions#skipped-letters"
+    ],
+    "paraphrases": [
+      "¿qué letras se usan en las revisiones y en qué orden?",
+      "¿qué sigue después de la revisión Y?"
+    ]
+  },
+  {
+    "id": "en-19",
+    "lang": "en",
+    "question": "Can I start at revision 0, 01, P1 or -?",
+    "accepted_refs": [
+      "02-revisions#first-revision"
+    ],
+    "paraphrases": [
+      "can a prototype start at revision 0",
+      "is A1 a valid first revision"
+    ]
+  },
+  {
+    "id": "es-19",
+    "lang": "es",
+    "question": "¿Puedo empezar en la revisión 0, 01, P1 o -?",
+    "accepted_refs": [
+      "02-revisions#first-revision"
+    ],
+    "paraphrases": [
+      "¿un prototipo puede empezar en la revisión 0?",
+      "¿la primera revisión puede ser A1?"
+    ]
+  },
+  {
+    "id": "en-20",
+    "lang": "en",
+    "question": "The change is big. Can I jump from C to F?",
+    "accepted_refs": [
+      "02-revisions#next-revision"
+    ],
+    "paraphrases": [
+      "can I skip revision letters for a big change",
+      "can I go from rev C straight to rev F"
+    ]
+  },
+  {
+    "id": "es-20",
+    "lang": "es",
+    "question": "El cambio es grande. ¿Puedo saltar de C a F?",
+    "accepted_refs": [
+      "02-revisions#next-revision"
+    ],
+    "paraphrases": [
+      "¿me puedo saltar letras de revisión si el cambio es grande?",
+      "¿puedo pasar de la rev C directo a la F?"
+    ]
+  },
+  {
+    "id": "en-21",
+    "lang": "en",
+    "question": "Revision C was abandoned and its folder deleted. Can I reuse C?",
+    "accepted_refs": [
+      "02-revisions#never-reuse"
+    ],
+    "paraphrases": [
+      "can I use a revision letter again after deleting it",
+      "the rev C folder was deleted, can I create C again"
+    ]
+  },
+  {
+    "id": "es-21",
+    "lang": "es",
+    "question": "La revisión C se abandonó y se borró su carpeta. ¿Puedo reutilizar la C?",
+    "accepted_refs": [
+      "02-revisions#never-reuse"
+    ],
+    "paraphrases": [
+      "¿puedo volver a usar una letra de revisión que se borró?",
+      "borraron la carpeta de la rev C, ¿la puedo crear otra vez?"
+    ]
+  },
+  {
+    "id": "en-22",
+    "lang": "en",
+    "question": "The SAP list says \"latest B → rev E\". Why not C?",
+    "accepted_refs": [
+      "08-using-create-design#next-free-revision",
+      "02-revisions#never-reuse"
+    ],
+    "paraphrases": [
+      "why does the next revision skip C and D",
+      "the list shows latest B but offers rev E"
+    ]
+  },
+  {
+    "id": "es-22",
+    "lang": "es",
+    "question": "La lista de SAP dice «última B → rev E». ¿Por qué no C?",
+    "accepted_refs": [
+      "08-using-create-design#next-free-revision",
+      "02-revisions#never-reuse"
+    ],
+    "paraphrases": [
+      "¿por qué la siguiente revisión se salta la C y la D?",
+      "la lista dice última B pero me ofrece la rev E"
+    ]
+  },
+  {
+    "id": "en-23",
+    "lang": "en",
+    "question": "The revision folder already exists. What now?",
+    "accepted_refs": [
+      "04-folder-structure#revision-folders",
+      "07-faq#folder-exists"
+    ],
+    "paraphrases": [
+      "error the folder already exists",
+      "can Create Design overwrite an existing revision folder"
+    ]
+  },
+  {
+    "id": "es-23",
+    "lang": "es",
+    "question": "La carpeta de la revisión ya existe. ¿Qué hago?",
+    "accepted_refs": [
+      "04-folder-structure#revision-folders",
+      "07-faq#folder-exists"
+    ],
+    "paraphrases": [
+      "me sale que la carpeta ya existe",
+      "¿Create Design puede sobrescribir una carpeta de revisión?"
+    ]
+  },
+  {
+    "id": "en-24",
+    "lang": "en",
+    "question": "The design is RELEASED. Can I make a new revision?",
+    "accepted_refs": [
+      "06-sap-statuses#released",
+      "07-faq#released-revision",
+      "02-revisions#revisions-and-status"
+    ],
+    "paraphrases": [
+      "can I revise a released design",
+      "do I need an ECO for a new revision of a released board"
+    ]
+  },
+  {
+    "id": "es-24",
+    "lang": "es",
+    "question": "El diseño está RELEASED (Liberado). ¿Puedo hacer una revisión nueva?",
+    "accepted_refs": [
+      "06-sap-statuses#released",
+      "07-faq#released-revision",
+      "02-revisions#revisions-and-status"
+    ],
+    "paraphrases": [
+      "¿puedo sacar revisión de un diseño liberado?",
+      "¿necesito un ECO para revisar un diseño liberado?"
+    ]
+  },
+  {
+    "id": "en-25",
+    "lang": "en",
+    "question": "The design is BLOCKED. What do I do?",
+    "accepted_refs": [
+      "06-sap-statuses#blocked",
+      "07-faq#blocked-obsolete"
+    ],
+    "paraphrases": [
+      "my design is blocked in SAP",
+      "why can't I create a revision of a blocked design"
+    ]
+  },
+  {
+    "id": "es-25",
+    "lang": "es",
+    "question": "El diseño está BLOCKED (Bloqueado). ¿Qué hago?",
+    "accepted_refs": [
+      "06-sap-statuses#blocked",
+      "07-faq#blocked-obsolete"
+    ],
+    "paraphrases": [
+      "mi diseño está bloqueado en SAP",
+      "¿por qué no puedo crear revisión de un diseño bloqueado?"
+    ]
+  },
+  {
+    "id": "en-26",
+    "lang": "en",
+    "question": "The design is OBSOLETE. What do I do?",
+    "accepted_refs": [
+      "06-sap-statuses#obsolete",
+      "07-faq#blocked-obsolete"
+    ],
+    "paraphrases": [
+      "my design is obsolete, what now",
+      "what is the successor of an obsolete design"
+    ]
+  },
+  {
+    "id": "es-26",
+    "lang": "es",
+    "question": "El diseño está OBSOLETE (Obsoleto). ¿Qué hago?",
+    "accepted_refs": [
+      "06-sap-statuses#obsolete",
+      "07-faq#blocked-obsolete"
+    ],
+    "paraphrases": [
+      "mi diseño está obsoleto, ¿ahora qué?",
+      "¿qué es el sucesor de un diseño obsoleto?"
+    ]
+  },
+  {
+    "id": "en-27",
+    "lang": "en",
+    "question": "Can I change the status of a design here?",
+    "accepted_refs": [
+      "06-sap-statuses#who-changes"
+    ],
+    "paraphrases": [
+      "how do I release a design",
+      "who can change the SAP status"
+    ]
+  },
+  {
+    "id": "es-27",
+    "lang": "es",
+    "question": "¿Puedo cambiar aquí el estado de un diseño?",
+    "accepted_refs": [
+      "06-sap-statuses#who-changes"
+    ],
+    "paraphrases": [
+      "¿cómo libero un diseño?",
+      "¿quién puede cambiar el estado en SAP?"
+    ]
+  },
+  {
+    "id": "en-28",
+    "lang": "en",
+    "question": "SAP is not answering (503, timeout). What happens?",
+    "accepted_refs": [
+      "06-sap-statuses#sap-unavailable",
+      "07-faq#sap-down"
+    ],
+    "paraphrases": [
+      "sap is down",
+      "what if SAP gives a timeout while reserving"
+    ]
+  },
+  {
+    "id": "es-28",
+    "lang": "es",
+    "question": "SAP no responde (503, tiempo de espera agotado). ¿Qué pasa?",
+    "accepted_refs": [
+      "06-sap-statuses#sap-unavailable",
+      "07-faq#sap-down"
+    ],
+    "paraphrases": [
+      "SAP no contesta",
+      "¿qué pasa si SAP se cae mientras reservo?"
+    ]
+  },
+  {
+    "id": "en-29",
+    "lang": "en",
+    "question": "What are the rules for the design name?",
+    "accepted_refs": [
+      "03-title-block#design-name"
+    ],
+    "paraphrases": [
+      "how long can the design name be",
+      "which characters are allowed in the name"
+    ]
+  },
+  {
+    "id": "es-29",
+    "lang": "es",
+    "question": "¿Qué reglas tiene el nombre del diseño?",
+    "accepted_refs": [
+      "03-title-block#design-name"
+    ],
+    "paraphrases": [
+      "¿qué tan largo puede ser el nombre del diseño?",
+      "¿qué caracteres se permiten en el nombre?"
+    ]
+  },
+  {
+    "id": "en-30",
+    "lang": "en",
+    "question": "Why did my name change from bead drill controller to Bead Drill Controller?",
+    "accepted_refs": [
+      "03-title-block#design-name"
+    ],
+    "paraphrases": [
+      "why are the words of the name capitalized",
+      "the name was changed to title case"
+    ]
+  },
+  {
+    "id": "es-30",
+    "lang": "es",
+    "question": "¿Por qué mi nombre pasó de bead drill controller a Bead Drill Controller?",
+    "accepted_refs": [
+      "03-title-block#design-name"
+    ],
+    "paraphrases": [
+      "¿por qué el nombre se puso con mayúsculas?",
+      "me cambió el nombre a mayúscula inicial"
+    ]
+  },
+  {
+    "id": "en-31",
+    "lang": "en",
+    "question": "Why can't I use New, Final or Copy in the name?",
+    "accepted_refs": [
+      "03-title-block#design-name"
+    ],
+    "paraphrases": [
+      "is the word final allowed in the design name",
+      "why is copy rejected in my name"
+    ]
+  },
+  {
+    "id": "es-31",
+    "lang": "es",
+    "question": "¿Por qué no puedo usar New, Final o Copy en el nombre?",
+    "accepted_refs": [
+      "03-title-block#design-name"
+    ],
+    "paraphrases": [
+      "¿se permite la palabra final en el nombre?",
+      "¿por qué me rechaza copy en el nombre?"
+    ]
+  },
+  {
+    "id": "en-32",
+    "lang": "en",
+    "question": "Can I write the name in Spanish or with accents?",
+    "accepted_refs": [
+      "07-faq#name-language",
+      "03-title-block#design-name"
+    ],
+    "paraphrases": [
+      "can the design name have accents",
+      "is a spanish design name ok"
+    ]
+  },
+  {
+    "id": "es-32",
+    "lang": "es",
+    "question": "¿Puedo escribir el nombre en español o con acentos?",
+    "accepted_refs": [
+      "07-faq#name-language",
+      "03-title-block#design-name"
+    ],
+    "paraphrases": [
+      "¿el nombre del diseño puede llevar acentos?",
+      "¿puedo ponerle el nombre en español?"
+    ]
+  },
+  {
+    "id": "en-33",
+    "lang": "en",
+    "question": "Can two designs have the same name?",
+    "accepted_refs": [
+      "07-faq#same-name",
+      "01-design-numbering#new-number-or-revision"
+    ],
+    "paraphrases": [
+      "is a duplicate design name allowed",
+      "another design already has this name"
+    ]
+  },
+  {
+    "id": "es-33",
+    "lang": "es",
+    "question": "¿Pueden dos diseños tener el mismo nombre?",
+    "accepted_refs": [
+      "07-faq#same-name",
+      "01-design-numbering#new-number-or-revision"
+    ],
+    "paraphrases": [
+      "¿se puede repetir el nombre de un diseño?",
+      "ya hay otro diseño con el mismo nombre"
+    ]
+  },
+  {
+    "id": "en-34",
+    "lang": "en",
+    "question": "Why is the name locked in a new revision?",
+    "accepted_refs": [
+      "03-title-block#name-from-sap"
+    ],
+    "paraphrases": [
+      "can I rename a design in a new revision",
+      "the name field is locked for a revision"
+    ]
+  },
+  {
+    "id": "es-34",
+    "lang": "es",
+    "question": "¿Por qué el nombre está bloqueado en una revisión nueva?",
+    "accepted_refs": [
+      "03-title-block#name-from-sap"
+    ],
+    "paraphrases": [
+      "¿puedo cambiarle el nombre en una revisión nueva?",
+      "no me deja editar el nombre en la revisión"
+    ]
+  },
+  {
+    "id": "en-35",
+    "lang": "en",
+    "question": "What is the description for?",
+    "accepted_refs": [
+      "03-title-block#description"
+    ],
+    "paraphrases": [
+      "how long can the description be",
+      "can the description be in spanish"
+    ]
+  },
+  {
+    "id": "es-35",
+    "lang": "es",
+    "question": "¿Para qué sirve la descripción?",
+    "accepted_refs": [
+      "03-title-block#description"
+    ],
+    "paraphrases": [
+      "¿qué tan larga puede ser la descripción?",
+      "¿la descripción puede ir en español?"
+    ]
+  },
+  {
+    "id": "en-36",
+    "lang": "en",
+    "question": "How do I write the designer?",
+    "accepted_refs": [
+      "03-title-block#designer",
+      "07-faq#designer-format"
+    ],
+    "paraphrases": [
+      "what is the format of the designer name",
+      "designer field rejected my name"
+    ]
+  },
+  {
+    "id": "es-36",
+    "lang": "es",
+    "question": "¿Cómo escribo el diseñador?",
+    "accepted_refs": [
+      "03-title-block#designer",
+      "07-faq#designer-format"
+    ],
+    "paraphrases": [
+      "¿qué formato lleva el nombre del diseñador?",
+      "no me acepta mi nombre en diseñador"
+    ]
+  },
+  {
+    "id": "en-37",
+    "lang": "en",
+    "question": "Why does the material number have so many zeros?",
+    "accepted_refs": [
+      "01-design-numbering#sap-material",
+      "07-faq#material-zeros"
+    ],
+    "paraphrases": [
+      "what are the leading zeros in the SAP material",
+      "the material shows 000000000040001234"
+    ]
+  },
+  {
+    "id": "es-37",
+    "lang": "es",
+    "question": "¿Por qué el número de material tiene tantos ceros?",
+    "accepted_refs": [
+      "01-design-numbering#sap-material",
+      "07-faq#material-zeros"
+    ],
+    "paraphrases": [
+      "¿qué son los ceros a la izquierda del material SAP?",
+      "el material sale como 000000000040001234"
+    ]
+  },
+  {
+    "id": "en-38",
+    "lang": "en",
+    "question": "Where does the project (P-26-0108) come from?",
+    "accepted_refs": [
+      "05-departments#default-projects",
+      "01-design-numbering#wbs"
+    ],
+    "paraphrases": [
+      "who assigns the project number",
+      "can I choose the project of my design"
+    ]
+  },
+  {
+    "id": "es-38",
+    "lang": "es",
+    "question": "¿De dónde sale el proyecto (P-26-0108)?",
+    "accepted_refs": [
+      "05-departments#default-projects",
+      "01-design-numbering#wbs"
+    ],
+    "paraphrases": [
+      "¿quién asigna el número de proyecto?",
+      "¿puedo escoger el proyecto de mi diseño?"
+    ]
+  },
+  {
+    "id": "en-39",
+    "lang": "en",
+    "question": "Which department do I pick?",
+    "accepted_refs": [
+      "05-departments#choosing"
+    ],
+    "paraphrases": [
+      "is a test fixture HW or TFX",
+      "which department for a power supply board"
+    ]
+  },
+  {
+    "id": "es-39",
+    "lang": "es",
+    "question": "¿Qué departamento elijo?",
+    "accepted_refs": [
+      "05-departments#choosing"
+    ],
+    "paraphrases": [
+      "¿un utillaje de prueba es HW o TFX?",
+      "¿qué departamento le toca a una placa de fuente?"
+    ]
+  },
+  {
+    "id": "en-40",
+    "lang": "en",
+    "question": "Who are the department leads?",
+    "accepted_refs": [
+      "05-departments#list",
+      "07-faq#department-leads"
+    ],
+    "paraphrases": [
+      "who is the lead of PWR",
+      "who do I ask in the EMB department"
+    ]
+  },
+  {
+    "id": "es-40",
+    "lang": "es",
+    "question": "¿Quiénes son los responsables de cada departamento?",
+    "accepted_refs": [
+      "05-departments#list",
+      "07-faq#department-leads"
+    ],
+    "paraphrases": [
+      "¿quién es el responsable de PWR?",
+      "¿a quién le pregunto en el departamento EMB?"
+    ]
+  },
+  {
+    "id": "en-41",
+    "lang": "en",
+    "question": "I picked the wrong department after reserving. Can I change it?",
+    "accepted_refs": [
+      "05-departments#choosing",
+      "07-faq#wrong-reservation"
+    ],
+    "paraphrases": [
+      "can I move a reserved number to another department",
+      "wrong department on my reserved number"
+    ]
+  },
+  {
+    "id": "es-41",
+    "lang": "es",
+    "question": "Elegí mal el departamento después de reservar. ¿Puedo cambiarlo?",
+    "accepted_refs": [
+      "05-departments#choosing",
+      "07-faq#wrong-reservation"
+    ],
+    "paraphrases": [
+      "¿puedo pasar un número reservado a otro departamento?",
+      "me equivoqué de departamento al reservar"
+    ]
+  },
+  {
+    "id": "en-42",
+    "lang": "en",
+    "question": "Why does my new design already have a 24 V to 5 V circuit?",
+    "accepted_refs": [
+      "08-using-create-design#template-circuit"
+    ],
+    "paraphrases": [
+      "there is an example circuit in my new schematic",
+      "should I delete the 24V supply in the template"
+    ]
+  },
+  {
+    "id": "es-42",
+    "lang": "es",
+    "question": "¿Por qué mi diseño nuevo ya trae un circuito de 24 V a 5 V?",
+    "accepted_refs": [
+      "08-using-create-design#template-circuit"
+    ],
+    "paraphrases": [
+      "mi esquemático nuevo ya trae un circuito de ejemplo",
+      "¿borro la fuente de 24 V que viene en la plantilla?"
+    ]
+  },
+  {
+    "id": "en-43",
+    "lang": "en",
+    "question": "Where are my files saved?",
+    "accepted_refs": [
+      "04-folder-structure#layout",
+      "07-faq#where-are-my-files"
+    ],
+    "paraphrases": [
+      "where is the KiCad project created",
+      "in which folder does the PDF go"
+    ]
+  },
+  {
+    "id": "es-43",
+    "lang": "es",
+    "question": "¿Dónde se guardan mis archivos?",
+    "accepted_refs": [
+      "04-folder-structure#layout",
+      "07-faq#where-are-my-files"
+    ],
+    "paraphrases": [
+      "¿dónde se crea el proyecto de KiCad?",
+      "¿en qué carpeta queda el PDF?"
+    ]
+  },
+  {
+    "id": "en-44",
+    "lang": "en",
+    "question": "Can I save the project on my desktop or another drive?",
+    "accepted_refs": [
+      "04-folder-structure#designs-root",
+      "04-folder-structure#dont"
+    ],
+    "paraphrases": [
+      "can I choose the folder where the project is saved",
+      "save the design to D: drive"
+    ]
+  },
+  {
+    "id": "es-44",
+    "lang": "es",
+    "question": "¿Puedo guardar el proyecto en el escritorio o en otra unidad?",
+    "accepted_refs": [
+      "04-folder-structure#designs-root",
+      "04-folder-structure#dont"
+    ],
+    "paraphrases": [
+      "¿puedo escoger la carpeta donde se guarda el proyecto?",
+      "guardar el diseño en la unidad D:"
+    ]
+  },
+  {
+    "id": "en-45",
+    "lang": "en",
+    "question": "How do I continue from my previous revision?",
+    "accepted_refs": [
+      "04-folder-structure#revision-folders",
+      "07-faq#old-project"
+    ],
+    "paraphrases": [
+      "can I copy the folder of the old revision",
+      "how do I reuse the schematic of rev B in rev C"
+    ]
+  },
+  {
+    "id": "es-45",
+    "lang": "es",
+    "question": "¿Cómo sigo a partir de mi revisión anterior?",
+    "accepted_refs": [
+      "04-folder-structure#revision-folders",
+      "07-faq#old-project"
+    ],
+    "paraphrases": [
+      "¿puedo copiar la carpeta de la revisión anterior?",
+      "¿cómo reuso el esquemático de la rev B en la rev C?"
+    ]
+  },
+  {
+    "id": "en-46",
+    "lang": "en",
+    "question": "Open in KiCad didn't work.",
+    "accepted_refs": [
+      "08-using-create-design#open-in-kicad"
+    ],
+    "paraphrases": [
+      "KiCad did not start when I clicked the button",
+      "how do I open the project if the button fails"
+    ]
+  },
+  {
+    "id": "es-46",
+    "lang": "es",
+    "question": "Abrir en KiCad no funcionó.",
+    "accepted_refs": [
+      "08-using-create-design#open-in-kicad"
+    ],
+    "paraphrases": [
+      "KiCad no se abrió al darle al botón",
+      "¿cómo abro el proyecto si el botón falla?"
+    ]
+  },
+  {
+    "id": "en-47",
+    "lang": "en",
+    "question": "There's no PDF or preview.",
+    "accepted_refs": [
+      "08-using-create-design#no-pdf"
+    ],
+    "paraphrases": [
+      "the PDF export failed",
+      "kicad-cli not found"
+    ]
+  },
+  {
+    "id": "es-47",
+    "lang": "es",
+    "question": "No hay PDF ni vista previa.",
+    "accepted_refs": [
+      "08-using-create-design#no-pdf"
+    ],
+    "paraphrases": [
+      "falló la exportación del PDF",
+      "no encuentra kicad-cli"
+    ]
+  },
+  {
+    "id": "en-48",
+    "lang": "en",
+    "question": "Can I edit the title block in KiCad's Page Settings?",
+    "accepted_refs": [
+      "03-title-block#dont"
+    ],
+    "paraphrases": [
+      "can I change the revision directly in KiCad",
+      "can I modify the kicad_wks drawing sheet"
+    ]
+  },
+  {
+    "id": "es-48",
+    "lang": "es",
+    "question": "¿Puedo editar el cajetín en la Configuración de página de KiCad?",
+    "accepted_refs": [
+      "03-title-block#dont"
+    ],
+    "paraphrases": [
+      "¿puedo cambiar la revisión directo en KiCad?",
+      "¿puedo modificar la hoja kicad_wks?"
+    ]
+  },
+  {
+    "id": "en-49",
+    "lang": "en",
+    "question": "What is the card in the chat?",
+    "accepted_refs": [
+      "08-using-create-design#confirmation-cards"
+    ],
+    "paraphrases": [
+      "what happens when I click confirm on a card",
+      "what does cancel on the card do"
+    ]
+  },
+  {
+    "id": "es-49",
+    "lang": "es",
+    "question": "¿Qué es la tarjeta que aparece en el chat?",
+    "accepted_refs": [
+      "08-using-create-design#confirmation-cards"
+    ],
+    "paraphrases": [
+      "¿qué pasa cuando le doy confirmar a una tarjeta?",
+      "¿qué hace cancelar en la tarjeta?"
+    ]
+  },
+  {
+    "id": "en-50",
+    "lang": "en",
+    "question": "My card says \"expired\".",
+    "accepted_refs": [
+      "08-using-create-design#card-expired"
+    ],
+    "paraphrases": [
+      "how long does a card last",
+      "the confirm card expired"
+    ]
+  },
+  {
+    "id": "es-50",
+    "lang": "es",
+    "question": "Mi tarjeta dice «Esta tarjeta caducó».",
+    "accepted_refs": [
+      "08-using-create-design#card-expired"
+    ],
+    "paraphrases": [
+      "¿cuánto dura una tarjeta?",
+      "se me caducó la tarjeta de confirmar"
+    ]
+  },
+  {
+    "id": "en-51",
+    "lang": "en",
+    "question": "What is \"Agent steps\"?",
+    "accepted_refs": [
+      "08-using-create-design#agent-steps"
+    ],
+    "paraphrases": [
+      "how can I see what the assistant did",
+      "where do I see the tool calls"
+    ]
+  },
+  {
+    "id": "es-51",
+    "lang": "es",
+    "question": "¿Qué son los «Pasos del agente»?",
+    "accepted_refs": [
+      "08-using-create-design#agent-steps"
+    ],
+    "paraphrases": [
+      "¿cómo veo lo que hizo el asistente?",
+      "¿dónde veo las herramientas que usó?"
+    ]
+  },
+  {
+    "id": "en-52",
+    "lang": "en",
+    "question": "The assistant only answers \"Demo mode: no language model is configured\".",
+    "accepted_refs": [
+      "08-using-create-design#demo-mode"
+    ],
+    "paraphrases": [
+      "the assistant says demo mode",
+      "no language model is configured, what does it mean"
+    ]
+  },
+  {
+    "id": "es-52",
+    "lang": "es",
+    "question": "El asistente solo responde «Demo mode: no language model is configured».",
+    "accepted_refs": [
+      "08-using-create-design#demo-mode"
+    ],
+    "paraphrases": [
+      "el asistente dice modo demo",
+      "¿qué significa que no hay modelo de lenguaje configurado?"
+    ]
+  },
+  {
+    "id": "en-53",
+    "lang": "en",
+    "question": "The assistant is slow or says it timed out.",
+    "accepted_refs": [
+      "08-using-create-design#slow-assistant"
+    ],
+    "paraphrases": [
+      "the model did not answer in time",
+      "why is the assistant so slow"
+    ]
+  },
+  {
+    "id": "es-53",
+    "lang": "es",
+    "question": "El asistente va lento o dice que se agotó el tiempo.",
+    "accepted_refs": [
+      "08-using-create-design#slow-assistant"
+    ],
+    "paraphrases": [
+      "el modelo no respondió a tiempo",
+      "¿por qué el asistente está tan lento?"
+    ]
+  },
+  {
+    "id": "en-54",
+    "lang": "en",
+    "question": "The assistant and the form disagree. Which one is right?",
+    "accepted_refs": [
+      "07-faq#assistant"
+    ],
+    "paraphrases": [
+      "the AI says my value is fine but the form shows an error",
+      "who decides if a value is valid"
+    ]
+  },
+  {
+    "id": "es-54",
+    "lang": "es",
+    "question": "El asistente y el formulario no coinciden. ¿Cuál tiene razón?",
+    "accepted_refs": [
+      "07-faq#assistant"
+    ],
+    "paraphrases": [
+      "la IA dice que está bien pero el formulario marca error",
+      "¿quién decide si un valor es válido?"
+    ]
+  }
+]

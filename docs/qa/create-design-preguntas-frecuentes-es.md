@@ -2,9 +2,10 @@
 
 Material base para el asistente de Create Design. Cada respuesta se apoya en el Manual de
 Diseño (`docs/manual/es/`) o en el código actual. La línea `Ref:` es el ancla del manual que
-el asistente debe citar (las anclas son iguales en inglés y en español). **Código:** indica
-que la respuesta sale del comportamiento de la app y no del manual, así que hará falta una
-sección del manual antes de que el asistente pueda citarla.
+el asistente debe citar (las anclas son iguales en inglés y en español). Las respuestas sobre el uso de
+la app citan el capítulo 08 (`08-using-create-design`). El test `backend/tests/test_faq_retrieval.py` comprueba
+que cada pregunta encuentra su sección (preguntas y paráfrasis en
+`backend/app/evals/faq_questions.json`).
 
 ---
 
@@ -28,7 +29,7 @@ Ref: 01-design-numbering#new-number-or-revision
 Departamento, un nombre de diseño en inglés y tu nombre como diseñador (`C. Velazquez`). SAP
 da el número, el material y el proyecto cuando pulsas **Obtener número SAP**. La descripción
 es opcional.
-Código: panel Inicio, `start.new_help`
+Ref: 08-using-create-design#start-panel
 
 ### ¿Qué necesito para una revisión nueva?
 Elige el diseño en la lista de SAP del panel Inicio. Departamento, número, nombre y la
@@ -40,11 +41,11 @@ Ref: 03-title-block#name-from-sap
 Sí. Describe el diseño en una frase («revisión C de la placa de visión del clasificador de
 cuentas» o «nueva placa controladora para la taladradora, Hardware») y propone los valores.
 Tú los revisas y pulsas **Confirmar**.
-Código: `propose_form_values`
+Ref: 08-using-create-design#assistant-fills-form
 
 ### ¿Me puede guiar campo por campo?
 Sí: pulsa **Guíame paso a paso**. Hace una sola pregunta corta en cada respuesta.
-Código: modo asistente (wizard) del prompt de sistema
+Ref: 08-using-create-design#step-by-step
 
 ### ¿El asistente crea algo por su cuenta?
 No. Explica las reglas, consulta SAP y propone valores. Un número se reserva, o se crean
@@ -94,7 +95,7 @@ Ref: 07-faq#wrong-reservation
 
 ### Pulsé **Deshacer** después de reservar. ¿Se liberó el número?
 No. **Deshacer** solo quita el número del formulario. La reserva sigue en SAP.
-Código: deshacer en `ActionCard`, `action.number_filled`
+Ref: 08-using-create-design#undo-number
 
 ---
 
@@ -126,7 +127,7 @@ Ref: 02-revisions#never-reuse
 Las revisiones C y D ya se crearon en Create Design. La siguiente letra libre cuenta tanto las
 revisiones que conoce SAP como las carpetas de revisión que existen, y una letra nunca se
 reutiliza.
-Ref: 02-revisions#never-reuse
+Ref: 08-using-create-design#next-free-revision, 02-revisions#never-reuse
 
 ### La carpeta de la revisión ya existe. ¿Qué hago?
 Create Design nunca sobrescribe archivos. Alguien ya creó esa revisión; crea la siguiente libre.
@@ -186,7 +187,7 @@ Ref: 07-faq#name-language
 Create Design no lo impide: lo que identifica un diseño es su número. Antes de reservar un
 número nuevo, busca en la lista de SAP de **Desde un diseño existente**. Si la placa puede
 sustituir a la anterior, lo que quieres es una revisión nueva, no un número nuevo.
-Ref: 01-design-numbering#new-number-or-revision
+Ref: 07-faq#same-name
 
 ### ¿Por qué el nombre está bloqueado en una revisión nueva?
 Una revisión nueva conserva el nombre que tiene SAP. Para otro nombre, pide a tu responsable
@@ -202,7 +203,7 @@ Ref: 03-title-block#description
 ### ¿Cómo escribo el diseñador?
 Inicial, punto, espacio y apellido, como en el directorio de la empresa: `C. Velazquez`. Se
 permiten acentos; máximo 40 caracteres.
-Ref: 03-title-block#designer
+Ref: 03-title-block#designer, 07-faq#designer-format
 
 ### ¿Por qué el número de material tiene tantos ceros?
 SAP guarda 18 caracteres; el cajetín lo muestra sin ceros a la izquierda:
@@ -242,7 +243,7 @@ Ref: 05-departments#choosing, 07-faq#wrong-reservation
 Es el circuito de ejemplo de la plantilla; demuestra que la hoja y el cajetín funcionan.
 Bórralo y dibuja tu circuito. En una revisión nueva, copia el circuito de la revisión anterior
 en KiCad.
-Código: `kicad/template/hl_template.kicad_sch` (necesita una sección en el manual, ver el plan, bloque 9a)
+Ref: 08-using-create-design#template-circuit
 
 ### ¿Dónde se guardan mis archivos?
 `<raíz de diseños>/<DEPT>/<NúmeroDeDiseño>/<Rev>/`, con archivos llamados
@@ -262,12 +263,13 @@ Ref: 04-folder-structure#revision-folders
 ### **Abrir en KiCad** no funcionó.
 Abre en KiCad 9 el archivo de proyecto que aparece bajo la vista previa (*Archivo › Abrir
 proyecto…*). También puedes descargar el proyecto en .zip.
-Código: `preview.open_failed`, `preview.how_to_open`
+Ref: 08-using-create-design#open-in-kicad
 
 ### No hay PDF ni vista previa.
-El PDF necesita `kicad-cli` (KiCad 9). Sin él, el proyecto se crea igual. Avisa al
-administrador, que configura `KICAD_CLI` si KiCad no está en el PATH.
-Código: README, «Try it»
+El PDF necesita `kicad-cli` (KiCad 9). Sin él, el diseño no se crea: no se guarda nada y un
+número reservado sigue reservado. Avisa al administrador, que instala KiCad 9 o configura
+`KICAD_CLI` si KiCad no está en el PATH.
+Ref: 08-using-create-design#no-pdf
 
 ### ¿Puedo editar el cajetín en la Configuración de página de KiCad?
 No. Los valores vienen de SAP y del manual. Para cambiar el número o la revisión, crea una
@@ -281,28 +283,28 @@ Ref: 03-title-block#dont
 ### ¿Qué es la tarjeta que aparece en el chat?
 Una tarjeta de confirmación. No pasa nada hasta que pulsas **Confirmar**; **Cancelar** deja
 todo como estaba.
-Código: `action.*`
+Ref: 08-using-create-design#confirmation-cards
 
 ### Mi tarjeta dice «Esta tarjeta caducó».
 Las tarjetas caducan a los 30 minutos. Pídelo de nuevo o usa el botón del formulario para
 obtener una tarjeta nueva.
-Código: `ACTION_TTL` en `db/store.py`
+Ref: 08-using-create-design#card-expired
 
 ### ¿Qué son los «Pasos del agente»?
 Un registro de lo que hizo el asistente: llamadas al modelo, herramientas usadas y sus
 resultados. Sirve para ver por qué respondió como respondió.
-Código: `StepsDrawer`
+Ref: 08-using-create-design#agent-steps
 
 ### El asistente solo responde «Demo mode: no language model is configured».
 No hay ningún modelo de IA conectado, así que el asistente no puede responder ni rellenar el
 formulario. Todo lo demás funciona: rellena el formulario tú mismo; las comprobaciones, SAP y
 las tarjetas de confirmación funcionan igual.
-Código: `DEMO_NOTICE` en `llm/fake.py`
+Ref: 08-using-create-design#demo-mode
 
 ### El asistente va lento o dice que se agotó el tiempo.
 El modelo local (Ollama) puede ser lento en CPU. Espera, pulsa **Parar** o rellena el
 formulario directamente: el formulario funciona sin el asistente.
-Código: `chat.timeout`
+Ref: 08-using-create-design#slow-assistant
 
 ### El asistente y el formulario no coinciden. ¿Cuál tiene razón?
 Las comprobaciones del formulario. El asistente solo explica sus resultados y puede
