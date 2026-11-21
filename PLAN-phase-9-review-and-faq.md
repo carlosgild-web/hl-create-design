@@ -44,6 +44,7 @@ Severity: **P1** = wrong behavior or a broken promise, **P2** = confusing or ris
 | 15 | P3 | The revision hint says "One letter", but after `Y` comes `AA`. | `hint.revision` | 9b |
 | 16 | P3 | The "Diseño nuevo" / "Desde un diseño existente" radios have no accessible name. The Start panel shows "Rellena antes…" twice, in an order different from the form. Manual refs show as raw `[03-title-block#designer]` text. | a11y tree; UI | 9f |
 | 17 | P3 | Local `.env` sets `LLM_PROVIDER` twice (`fake`, then `auto`). Both Create Design and Bead Studio use port 8000. The demo notice mentions only Ollama. | `.env`; first visit served Bead Studio | 9f |
+| 18 | P1 | Without `kicad-cli`, **Create** fails and keeps nothing ("The PDF export failed, so nothing was kept"). The README says KiCad is optional and "everything works except the PDF and the preview". | `actions._create` always exports; found while writing `08#no-pdf` (decision 0021) | 9c |
 
 What works well (keep): the confirmation gate, BLOCKED/OBSOLETE handling (`/api/validate`
 returns `status_blocked` with SAP's reason), the inline checks, the reserve → fill → create
@@ -92,6 +93,13 @@ Evals (9f) check all of this per provider with the same question bank.
 ---
 
 ## 9a — FAQ content and retrieval (no model needed)
+
+**Status: done (2026-11-21, decision 0021).** Top-3 retrieval with accepted alternative
+anchors: EN questions 34/54 → 54/54, ES 33/54 → 53/54, EN paraphrases 51/108 → 103/108,
+ES 59/108 → 107/108. Deviations: `Keywords:` lines on every section of 01–08 (not only the
+new ones); "same name" only in `07-faq#same-name` (no `08#duplicate-names`); `08` also has
+`what-it-does`, `assistant-fills-form` and `step-by-step`. Q7 answered: keep the template
+circuit and explain it.
 
 **Goal:** every question in the Q&A files finds an accepted manual anchor in the top 3, in both
 languages.
@@ -292,7 +300,8 @@ for questions, never opens a card, and is traced; prompt-injection scenarios unc
    hint, in the same order as the form; render `[ref]` as a link that opens the passage
    (`GET /api/manual/{lang}/{source}`, read-only, serves only indexed passages) in a small
    dialog; `start.cmd`/`start.sh` check whether port 8000 is busy and say which app holds it
-   (or offer `PORT=`); remove the duplicate `LLM_PROVIDER` from your local `.env` (manual, not
+   (or offer `PORT=`). **`start.cmd` done** (ports 8000 and 8100, offers to stop the process;
+   decision 0017 item 24); `start.sh` still to do; remove the duplicate `LLM_PROVIDER` from your local `.env` (manual, not
    committed).
 4. Close the phase: CHANGELOG, PLAN.md status, README screenshots if the UI changed.
 
@@ -308,4 +317,5 @@ for questions, never opens a card, and is traced; prompt-injection scenarios unc
 | Q4 | 9c | If SAP fails after the folder is written, roll back the folder or mark the action as partly done? | Write SAP first, then the folder; roll back nothing on disk |
 | Q5 | 9e | Should `fake` mean the demo in the app, or add a `demo` provider? | Add `demo`; keep `fake` for tests only |
 | Q6 | 9d | Pre-retrieval for Groq too, or only Ollama? | Both (saves a round trip on Groq) |
-| Q7 | 9a | Should new designs start without the template circuit? | Keep it (it shows the sheet works) and explain it in 08; optional `--empty` later |
+| Q7 | 9a | Should new designs start without the template circuit? | **Answered: keep it** and explain it in `08#template-circuit` |
+| Q8 | 9c | Finding 18: without `kicad-cli`, create the project without the PDF, or fix the README? | Create without the PDF and say so on the card (KiCad stays optional) |
