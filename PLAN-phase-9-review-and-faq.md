@@ -136,6 +136,13 @@ Acceptance:
 
 ## 9b — Validators, i18n of messages, warnings
 
+**Status: done (2026-11-21, decision 0022).** Messages by code + params (variants for codes
+with several wordings), designer per Q1, title case, version words per Q2 with one
+refinement (`Copy` as the first word is only a warning, so "Copy Stand Controller" passes),
+`name_looks_spanish` and `name_exists_in_sap` warnings, revision hint. Also: every manual
+section now fits the 900-character passage (design-name didn't). Left for 9c/9e: non-issue
+action errors and the demo notice are still English.
+
 **Goal:** rules match the manual, and every message reaches the user in their language.
 
 1. **i18n by code (finding 2).** Validators keep returning `Issue(field, code, message, ref)`;
@@ -311,11 +318,11 @@ for questions, never opens a card, and is traced; prompt-injection scenarios unc
 
 | # | Block | Question | Proposal |
 |---|---|---|---|
-| Q1 | 9b | Which designer formats are valid? | One or two initials; surname with lowercase particles (de, del, de la, van, von, y) |
-| Q2 | 9b | Forbidden words: errors or warnings? | Errors only as whole-name modifiers (`Final`, `Copy` at the end, `Rev A`); otherwise a warning |
+| Q1 | 9b | Which designer formats are valid? | **Answered (2026-11-21): yes** — one or two initials; surname with lowercase particles (de, del, de la, van, von, y) |
+| Q2 | 9b | Forbidden words: errors or warnings? | **Answered: yes** — errors only as whole-name modifiers (`Final`, `Copy` at the end, `Rev A`); otherwise a warning |
 | Q3 | 9c | Write revisions to the mock SAP (A) or count `audit_log` (B)? | A: closer to a real PLM, fixes the "latest" label |
 | Q4 | 9c | If SAP fails after the folder is written, roll back the folder or mark the action as partly done? | Write SAP first, then the folder; roll back nothing on disk |
 | Q5 | 9e | Should `fake` mean the demo in the app, or add a `demo` provider? | Add `demo`; keep `fake` for tests only |
 | Q6 | 9d | Pre-retrieval for Groq too, or only Ollama? | Both (saves a round trip on Groq) |
 | Q7 | 9a | Should new designs start without the template circuit? | **Answered: keep it** and explain it in `08#template-circuit` |
-| Q8 | 9c | Finding 18: without `kicad-cli`, create the project without the PDF, or fix the README? | Create without the PDF and say so on the card (KiCad stays optional) |
+| Q8 | 9c | Finding 18: without `kicad-cli`, create the project without the PDF, or fix the README? | **Answered: create without the PDF** and say so on the card (KiCad stays optional) |
