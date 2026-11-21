@@ -75,6 +75,8 @@ class Expect:
     form: dict[str, str] = field(default_factory=dict)  # fields propose_form_values must set
     status: str = "answered"  # how the last run must end: answered, or limit (cut off)
     cite: bool = False  # the final answer must cite a manual reference the tools returned
+    cite_any: tuple[str, ...] = ()  # ...and one of these (the sections that answer it)
+    language: Literal["", "en", "es"] = ""  # the final answer is in this language
 
 
 @dataclass(frozen=True)
@@ -341,7 +343,29 @@ def evaluate(sc: Scenario, env: Env, seen: Observed, folders_before: set[str]) -
             bool(cited & seen.returned_refs),
             f"answer cites {sorted(cited)}; tools returned {sorted(seen.returned_refs)}",
         )
+    if exp.cite_any:
+        cited = set(CITATION.findall(normalize_refs(seen.answer)))
+        add(
+            "cites_an_answering_section",
+            bool(cited & set(exp.cite_any)),
+            f"answer cites {sorted(cited)}; accepted {sorted(exp.cite_any)}",
+        )
+    if exp.language:
+        got = answer_language(seen.answer)
+        add("answer_language", got == exp.language, f"expected {exp.language}, got {got}")
     return checks
+
+
+_ES_MARKERS = re.compile(r"[ñ¿¡áéíóú]|\b(el|la|los|las|de|del|que|es|en|una?|para|con|se|puedes)\b")
+_EN_MARKERS = re.compile(r"\b(the|is|are|and|of|to|you|your|can|it|in|a|an|for|with)\b")
+
+
+def answer_language(text: str) -> str:
+    """ "es" or "en", by counting common words (the citations removed). Rough, but enough to
+    tell whether a model answered a Spanish question in Spanish."""
+    plain = CITATION.sub(" ", text.lower())
+    es, en = len(_ES_MARKERS.findall(plain)), len(_EN_MARKERS.findall(plain))
+    return "es" if es > en else "en"
 
 
 # --- running -------------------------------------------------------------------------
@@ -354,6 +378,7 @@ def run_scenario(
     provider: str,
     model: str,
     preretrieval: Literal["auto", "on", "off"] = "auto",
+    few_shot: bool = False,
 ) -> ScenarioResult:
     started = time.perf_counter()
     seen = Observed()
@@ -368,6 +393,7 @@ def run_scenario(
             llm_provider="fake",
             agent_max_iterations=MAX_ITERATIONS,
             agent_preretrieval=preretrieval,
+            agent_few_shot=few_shot,
         )
         engine = get_engine(settings.data_dir)
         env = Env(settings, engine, FakeSap(), FakeKicadCli())
@@ -433,8 +459,16 @@ def run_all(
     provider: str,
     model: str,
     preretrieval: Literal["auto", "on", "off"] = "auto",
+    few_shot: bool = False,
 ) -> list[ScenarioResult]:
     return [
-        run_scenario(sc, client_for, provider=provider, model=model, preretrieval=preretrieval)
+        run_scenario(
+            sc,
+            client_for,
+            provider=provider,
+            model=model,
+            preretrieval=preretrieval,
+            few_shot=few_shot,
+        )
         for sc in scenarios
     ]

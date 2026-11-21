@@ -105,7 +105,14 @@ def chat_turn(
         "run_id": run_id,
     }
     messages = [
-        Message("system", system_prompt(language, deps.today or date.today())),
+        Message(
+            "system",
+            system_prompt(
+                language,
+                deps.today or date.today(),
+                few_shot=deps.settings.agent_few_shot and client.provider == "ollama",
+            ),
+        ),
         *model_history(stored),
         Message("user", user["content"]),
     ]

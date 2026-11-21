@@ -21,7 +21,7 @@ def test_recall_on_the_faq_bank_is_at_least_95_percent():
 
 def test_no_form_fill_of_the_eval_scenarios_is_taken_for_a_question():
     questions = {"loop-is-bounded", "manual-question", "departments-list"}
-    questions |= {s.id for s in SCENARIOS if "preretrieval" in s.tags}
+    questions |= {s.id for s in SCENARIOS if {"preretrieval", "faq"} & set(s.tags)}
     fills = [t.text for s in SCENARIOS if s.id not in questions for t in s.turns]
     flagged = [t for t in fills if classify(t) == "rule_question"]
     assert flagged == []

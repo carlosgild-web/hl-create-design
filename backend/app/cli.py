@@ -106,6 +106,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         help="The backend's own manual search before the first model call (decision 0024)",
     )
+    ev.add_argument(
+        "--few-shot",
+        action="store_true",
+        help="Ollama only: one example answer in the prompt, for an A/B run (decision 0026)",
+    )
     return parser
 
 
@@ -451,7 +456,12 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
         client_for, provider, model = harness.real(client), client.provider, client.model
         print(f"{provider}: {model}; {len(scenarios)} scenarios (fake-only ones skipped)")
     results = harness.run_all(
-        scenarios, client_for, provider=provider, model=model, preretrieval=args.preretrieval
+        scenarios,
+        client_for,
+        provider=provider,
+        model=model,
+        preretrieval=args.preretrieval,
+        few_shot=args.few_shot,
     )
     print(report.console(results))
     if args.json:

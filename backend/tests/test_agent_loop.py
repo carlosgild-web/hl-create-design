@@ -235,3 +235,15 @@ def test_ollama_gets_three_short_passages(deps):
     passages = out[3].data["result"]["passages"]
     assert len(passages) <= 3
     assert all(len(p["text"]) <= 502 for p in passages)  # 500 + " …"
+
+
+def test_the_few_shot_example_is_for_ollama_only_and_off_by_default(deps):
+    plain = deps([say("ok")])
+    events(plain, text="hi")
+    assert "Example (the shape" not in plain.client.calls[0].messages[0].content
+
+    for provider, expected in (("ollama", True), ("groq", False)):
+        d = deps([say("ok")], agent_few_shot=True)
+        d.client.provider = provider
+        events(d, text="hi")
+        assert ("Example (the shape" in d.client.calls[0].messages[0].content) is expected

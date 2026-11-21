@@ -83,7 +83,7 @@ One or two initials with a period, a space and the surname, as in the company di
 with a capital. Accents, apostrophes and hyphens are allowed (`L. O'Brien`, `R. Navarro-Ruiz`);
 digits are not. Maximum 40 characters.
 
-Keywords: designer, designer name, format, initial, surname, rejected my name, diseñador, nombre del diseñador, formato, inicial, apellido
+Keywords: designer, designer name, write the designer, how to write my name, format, initial, surname, rejected my name, diseñador, nombre del diseñador, formato, inicial, apellido
 
 ## Date
 <a id="date"></a>

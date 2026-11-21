@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 from app.evals.fake_sap import _design
 from app.evals.harness import Env, Expect, Scenario, Turn
@@ -784,5 +785,57 @@ SCENARIOS: tuple[Scenario, ...] = (
         tags=("knowledge",),
     ),
 )
+
+
+# --- FAQ questions (Phase 9f): one per topic, in English and Spanish ----------------------
+# From `faq_questions.json`, so the eval asks what users ask. A search must happen (the
+# model's or the backend's pre-retrieval, decision 0024), the answer cites a section that
+# answers it, no card opens, and it is in the user's language.
+
+FAQ_BANK = Path(__file__).with_name("faq_questions.json")
+FAQ_TOPICS = {
+    "08": "own-number",
+    "17": "revision-i",
+    "24": "released",
+    "32": "spanish-name",
+    "36": "designer",
+    "42": "template-circuit",
+    "43": "where-files",
+    "50": "card-expired",
+}
+FAQ_ANSWER = {"en": "From the Design Manual:", "es": "Según el Manual de Diseño:"}
+
+
+def _faq_scenarios() -> tuple[Scenario, ...]:
+    entries = {e["id"]: e for e in json.loads(FAQ_BANK.read_text(encoding="utf-8"))}
+    out = []
+    for number, topic in FAQ_TOPICS.items():
+        for lang in ("en", "es"):
+            entry = entries[f"{lang}-{number}"]
+            out.append(
+                Scenario(
+                    f"faq-{topic}-{lang}",
+                    f"FAQ ({lang.upper()}): {entry['question']}",
+                    (
+                        Turn(
+                            entry["question"],
+                            [explain(FAQ_ANSWER[lang])],
+                            language=lang,
+                        ),
+                    ),
+                    Expect(
+                        tools=("search_design_manual",),
+                        cards=(),
+                        cite=True,
+                        cite_any=tuple(entry["accepted_refs"]),
+                        language=lang,
+                    ),
+                    tags=("knowledge", "faq", lang),
+                )
+            )
+    return tuple(out)
+
+
+SCENARIOS = (*SCENARIOS, *_faq_scenarios())
 
 assert len({s.id for s in SCENARIOS}) == len(SCENARIOS), "duplicate scenario id"

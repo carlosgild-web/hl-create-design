@@ -110,7 +110,7 @@ Keywords: sap down, not answering, sap caído, no responde
 One or two initials with a period, a space and the surname, as in the company directory:
 `C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Accents are allowed; maximum 40 characters. See [03-title-block](03-title-block.md#designer).
 
-Keywords: designer, designer name, format, my name, initial, surname, rejected, diseñador, nombre del diseñador, formato, inicial, apellido, no acepta
+Keywords: designer, designer name, write the designer, how to write my name, format, my name, initial, surname, rejected, diseñador, nombre del diseñador, formato, inicial, apellido, no acepta
 
 ## Where are my files?
 <a id="where-are-my-files"></a>

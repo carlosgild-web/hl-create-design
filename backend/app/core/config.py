@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     # The backend searches the manual itself before the first model call (decision 0024):
     # auto = for questions about the rules or the app, on = for every message, off = never.
     agent_preretrieval: Literal["auto", "on", "off"] = "auto"
+    # Ollama only: add one short example answer to the system prompt (decision 0026).
+    agent_few_shot: bool = False
 
     # The built frontend (`npm run build`); served at `/` when the folder exists (Docker image).
     frontend_dir: Path = Path("./frontend/dist")

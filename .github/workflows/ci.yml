@@ -60,6 +60,10 @@ jobs:
         run: |
           python -m app.cli agent-eval --fake --markdown eval.md
           { echo "## Agent eval (fake)"; echo; cat eval.md; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Scenario suite on the demo assistant (rules; 2 known limits, decision 0025)
+        run: |
+          python -m app.cli agent-eval --provider demo --allow-failures --markdown demo.md
+          { echo "## Agent eval (demo assistant)"; echo; cat demo.md; } >> "$GITHUB_STEP_SUMMARY"
 
   frontend:
     runs-on: ubuntu-latest

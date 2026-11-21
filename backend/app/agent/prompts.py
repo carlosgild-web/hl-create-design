@@ -78,15 +78,28 @@ LANGUAGE_NAMES = {"en": "English", "es": "Spanish"}
 EVENT_PREFIX = "Backend event (from Create Design, not typed by the user):"
 
 
-def system_prompt(language: str, today: date) -> str:
+# One short example of the answer shape (AGENT_FEW_SHOT, decision 0026). Off by default: it
+# is meant for a small local model, and only if an Ollama A/B run shows that it helps.
+FEW_SHOT = """
+
+Example (the shape of an answer, not a fact to reuse):
+User: Why was revision I rejected?
+Tool search_design_manual returned source 02-revisions#skipped-letters: "I, O, Q, S, X and \
+Z are never used ... After H comes J."
+You: I, O, Q, S, X and Z are never used, because they look like digits. After H comes J. \
+[02-revisions#skipped-letters]"""
+
+
+def system_prompt(language: str, today: date, *, few_shot: bool = False) -> str:
     departments = ", ".join(
         f"{code} = {name} / {DEPARTMENTS_ES[code]}" for code, name in DEPARTMENTS.items()
     )
-    return SYSTEM_PROMPT.format(
+    prompt = SYSTEM_PROMPT.format(
         departments=departments,
         language_name=LANGUAGE_NAMES.get(language, "English"),
         today=today.isoformat(),
     )
+    return prompt + FEW_SHOT if few_shot else prompt
 
 
 _TAG_RE = re.compile(r"<(/?)user_data", re.IGNORECASE)

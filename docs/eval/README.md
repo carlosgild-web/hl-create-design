@@ -6,11 +6,30 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
 
 | Provider | Model | Passed | Report |
 |---|---|---|---|
-| fake (scripted) | - | 34/34 (31 + 3 fake-only; the real-model runs below used the 27 that existed then) | CI job "agent eval" |
+| fake (scripted), Phase 9 | - | **52/52** (49 + 3 fake-only; adds 16 FAQ and 2 pre-retrieval scenarios) | [md](fake-phase9.md), [json](fake-phase9.json); CI job "agent eval" |
+| demo (rules, no AI), Phase 9 | rules | **47/49** (the multi-turn wizard and the folder-check route fail by design, decision 0025) | [md](demo-phase9.md), [json](demo-phase9.json) |
+| fake (scripted), Phase 8 | - | 34/34 (31 + 3 fake-only; the real-model runs below used the 27 that existed then) | CI job "agent eval" |
 | ollama, first prompt (v1) | qwen3:4b-instruct-2507-q4_K_M | 11/27 | [md](ollama-qwen3-4b.md), [json](ollama-qwen3-4b.json) |
 | ollama, tuned prompt v3 (full) | qwen3:4b-instruct-2507-q4_K_M | **21/27** | [md](ollama-qwen3-4b-full.md), [json](ollama-qwen3-4b-full.json) |
 | ollama, tuned prompt v2 (targeted) | qwen3:4b-instruct-2507-q4_K_M | 11/13 of the scenarios the tuning aimed at (the other 14 were not re-run) | [md](ollama-qwen3-4b-tuned.md), [json](ollama-qwen3-4b-tuned.json) |
 | groq | openai/gpt-oss-120b | **20/27** | [md](groq-gpt-oss-120b.md), [json](groq-gpt-oss-120b.json) |
+
+## Pending real-model runs (Phase 9f)
+
+The real-model rows above predate Phase 9 (27 scenarios, no pre-retrieval). To compare on
+the 49-scenario suite (run them in batches with `--only` if memory is short):
+
+```bash
+cd backend
+# Ollama: pre-retrieval off, then on (decision 0024), then on with the few-shot example (0026)
+python -m app.cli agent-eval --provider ollama --allow-failures --preretrieval off --json ../docs/eval/ollama-phase9-off.json --markdown ../docs/eval/ollama-phase9-off.md
+python -m app.cli agent-eval --provider ollama --allow-failures --preretrieval auto --json ../docs/eval/ollama-phase9-auto.json --markdown ../docs/eval/ollama-phase9-auto.md
+python -m app.cli agent-eval --provider ollama --allow-failures --preretrieval auto --few-shot --json ../docs/eval/ollama-phase9-fewshot.json --markdown ../docs/eval/ollama-phase9-fewshot.md
+# Groq, after its daily token quota resets (it was nearly used up on 2026-11-21)
+python -m app.cli agent-eval --provider groq --allow-failures --json ../docs/eval/groq-phase9.json --markdown ../docs/eval/groq-phase9.md
+```
+
+`AGENT_FEW_SHOT` stays off in the app unless the few-shot run beats the auto run.
 
 ## Reading the Ollama run (2026-11-17, 4B model, CPU)
 
