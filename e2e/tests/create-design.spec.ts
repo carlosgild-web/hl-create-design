@@ -45,7 +45,7 @@ test('a mode switch cancels the waiting card and leaves it without buttons', asy
   await expect(card).toHaveAttribute('data-status', 'cancelled')
   await expect(card.getByRole('button')).toHaveCount(0)
   await expect(card).toContainText('From an earlier design')
-  await expect(page.getByText('Started over: earlier cards were cancelled')).toBeVisible()
+  await expect(page.getByText('Started over. Waiting cards were cancelled; finished ones stay in the history.')).toBeVisible()
   await expect(page.getByLabel('Design number')).toHaveValue('')
 })
 
@@ -131,11 +131,17 @@ test('a new design: Get SAP number fills the number at once, then create it', as
   await expect(page.getByLabel('Design number')).toHaveValue(/HL-PWR-26-\d{4}/)
   await expect(page.getByLabel('Revision')).toHaveValue('A')
   await expect(page.getByText(/Reserved HL-PWR-26-\d{4} · rev A/).first()).toBeVisible()
+  await expect(page.getByLabel('Design name')).toHaveAttribute('readonly') // SAP's name now
 
   await page.getByRole('button', { name: 'Create design' }).click()
   await page.getByRole('region', { name: 'Create this design?' }).getByRole('button', { name: 'Confirm' }).click()
   const number = await page.getByLabel('Design number').inputValue()
   await previewLoaded(page, number, 'A')
+  await page.keyboard.press('Escape')
+
+  // the number is used: no Undo, and no second reservation from the same values
+  await expect(page.getByRole('button', { name: 'Undo' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Get SAP number', exact: true })).toBeDisabled()
 })
 
 test('a new design named Test: Create says why it waits, and a bad designer is caught inline', async ({ page }) => {
@@ -186,6 +192,14 @@ test('a description goes on the card and the recent list; the project downloads 
 
   await page.getByRole('button', { name: /Recent designs \(\d+\)/ }).click()
   await expect(page.getByText('Second source for the gate driver').last()).toBeVisible()
+
+  // rev D is in SAP now (decision 0023): the list counts it, folders or not
+  await page.goto('/')
+  await page.getByRole('radio', { name: 'From existing design' }).click()
+  await page.getByRole('searchbox', { name: 'Search by number or name' }).fill('polisher')
+  const option = page.getByRole('listbox', { name: 'Designs in SAP' }).getByRole('option', { name: /HL-PWR-26-0011/ })
+  await expect(option).toContainText('latest D')
+  await expect(option).toContainText('→ rev E')
 })
 
 test('switches to Spanish, rule messages included', async ({ page }) => {

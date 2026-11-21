@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
@@ -132,10 +132,53 @@ describe('form: where each value came from', () => {
     expect(within(summary).getByText('40009001 · P-26-0112')).toBeInTheDocument()
     expect(JSON.parse(String(calls.find((c) => c.url === '/api/actions')!.init?.body)).kind).toBe('reserve_number')
 
+    // SAP issued the number for this department and name: they lock (decision 0023)
+    expect(screen.getByLabelText('Design name')).toHaveAttribute('readonly')
+    expect(screen.getByLabelText('Department')).toHaveAttribute('readonly')
+    expect(screen.getByLabelText('Designer')).not.toHaveAttribute('readonly')
+
     await user.click(within(summary).getByRole('button', { name: 'Undo' }))
 
     expect(screen.getByLabelText('Design number')).toHaveValue('')
     expect(screen.queryByText('From SAP')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Design name')).not.toHaveAttribute('readonly')
+  })
+
+  it('a Create click while the check runs waits for it instead of being lost', async () => {
+    const opened: unknown[] = []
+    stubFetch(
+      (url, init) => {
+        if (url === '/api/actions') {
+          opened.push(JSON.parse(String(init?.body)))
+          return jsonResponse(makeAction({ id: 'q1' }), 201)
+        }
+        if (url !== '/api/validate') return undefined
+        const { fields } = JSON.parse(String(init?.body))
+        return jsonResponse(
+          fields.designer === 'carlos'
+            ? {
+                ok: false,
+                normalized: {},
+                errors: [{ field: 'designer', code: 'designer_format', message: 'Bad designer.', ref: '03-title-block#designer' }],
+                warnings: [],
+              }
+            : QUIET,
+        )
+      },
+      ...baseRoutes,
+    )
+    renderWithProviders(<App />)
+    await user.click(screen.getByRole('radio', { name: 'From existing design' }))
+    await user.click(await screen.findByRole('option', { name: /HL-HW-26-0042/ }))
+    await user.type(screen.getByLabelText('Designer'), 'carlos')
+    await screen.findByText(/Write the designer as one or two initials/, undefined, { timeout: 2000 })
+
+    fireEvent.change(screen.getByLabelText('Designer'), { target: { value: 'C. Velazquez' } })
+    // the last answer still has the error, but the click is kept
+    await user.click(screen.getByRole('button', { name: 'Create revision C' }))
+    expect(screen.getByRole('button', { name: 'Checking…' })).toBeInTheDocument()
+
+    await waitFor(() => expect(opened).toHaveLength(1), { timeout: 2000 })
   })
 })
 

@@ -33,6 +33,14 @@ export const LOCKED: Record<FormMode, ReadonlySet<FormField>> = {
   existing: new Set<FormField>(['department', 'design_number', 'revision', 'name']),
 }
 
+/** New mode, once SAP issued the number: these keep SAP's values (decision 0023). Undo
+ * clears the number and unlocks them. The designer stays editable, as in existing mode. */
+const LOCKED_AFTER_RESERVE: ReadonlySet<FormField> = new Set<FormField>(['department', 'name'])
+
+function isLocked(mode: FormMode, values: FormValues, field: FormField) {
+  return LOCKED[mode].has(field) || (mode === 'new' && Boolean(values.design_number) && LOCKED_AFTER_RESERVE.has(field))
+}
+
 export type Created = { values: FormValues; design_number: string; revision: string }
 type Snapshot = { values: FormValues; source: Partial<Record<FormField, ValueSource>> }
 
@@ -78,7 +86,7 @@ export function useDesignForm() {
     const suggest: Partial<FormValues> = {}
     for (const f of FORM_FIELDS) {
       const value = fields[f]
-      if (typeof value !== 'string' || !value.trim() || value === now[f] || LOCKED[current].has(f)) continue
+      if (typeof value !== 'string' || !value.trim() || value === now[f] || isLocked(current, now, f)) continue
       if (!isFilled(f, now[f]) || from[f] === 'ai') take[f] = value
       else suggest[f] = value
     }
@@ -134,7 +142,7 @@ export function useDesignForm() {
 
   /** The user types: the value is theirs now. Locked fields don't change. */
   const edit = useCallback((field: FormField, value: string) => {
-    if (LOCKED[state.current.mode].has(field)) return
+    if (isLocked(state.current.mode, state.current.values, field)) return
     setValues((v) => ({ ...v, [field]: value }))
     setSource((s) => Object.fromEntries(Object.entries(s).filter(([f]) => f !== field)))
     setSuggestions((s) => Object.fromEntries(Object.entries(s).filter(([f]) => f !== field)))
@@ -171,8 +179,9 @@ export function useDesignForm() {
     created,
     sameAsCreated,
     selected,
-    canUndo: (actionId: string) => actionId in undo,
-    locked: (field: FormField) => LOCKED[mode].has(field),
+    // After a create the number is used: Undo would only invite a second reservation.
+    canUndo: (actionId: string) => actionId in undo && created === null,
+    locked: (field: FormField) => isLocked(mode, values, field),
     startOver,
     propose,
     selectExisting,

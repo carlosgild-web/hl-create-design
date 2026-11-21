@@ -3,7 +3,7 @@ import { Loader2 } from 'lucide-react'
 
 import { cancelAction, confirmAction } from '@/api/client'
 import { FORM_FIELDS, type Action, type Department } from '@/api/types'
-import { issueText } from '@/lib/issues'
+import { cardWarnings, issueText } from '@/lib/issues'
 import { departmentName, FIELD_LABELS } from '@/lib/fields'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n'
@@ -91,6 +91,16 @@ export function ActionCard({ action, stale = false, departments = [], onChange, 
           ))}
         </dl>
 
+        {live && cardWarnings(action.payload).length > 0 && (
+          <ul aria-label={t('action.warnings')} className="mt-3 space-y-1 rounded-md border bg-muted/50 p-2 text-xs">
+            {cardWarnings(action.payload).map((w) => (
+              <li key={w.code} className="text-foreground/80">
+                <span aria-hidden>⚠ </span>
+                {issueText(lang, w)} <span className="text-muted-foreground">[{w.ref}]</span>
+              </li>
+            ))}
+          </ul>
+        )}
         {pending && !stale && (
           <div className="mt-3 flex gap-2">
             <Button size="sm" disabled={busy !== null} aria-busy={busy === 'confirm'} onClick={() => decide('confirm')}>

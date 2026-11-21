@@ -1,4 +1,5 @@
 import { CheckCircle2, Lock, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import type * as React from 'react'
 
 import {
@@ -34,6 +35,8 @@ type Props = {
   suggestions: Partial<Record<FormField, string>>
   errors: Issue[]
   validation?: Validation
+  /** The inline check for the current values hasn't answered yet (debounce or request). */
+  checking?: boolean
   created: Created | null
   sameAsCreated: boolean
   departments: Department[]
@@ -92,11 +95,31 @@ export function DesignForm({
   onCreate,
   onNewDesign,
   className,
+  checking = false,
 }: Props) {
   const { t, lang } = useI18n()
   const folder = folderPreview(values)
   const todo = blockers(mode, values, validation?.errors.length ?? 0)
   const canCreate = REQUIRED_FIELDS.every((f) => isFilled(f, values[f])) && !sameAsCreated && todo.length === 0
+  // While the check runs, the last result may be out of date: a click is kept and runs once
+  // the answer says the values are valid (finding 13), instead of being lost.
+  const mayCreateAfterCheck =
+    checking && REQUIRED_FIELDS.every((f) => isFilled(f, values[f])) && !sameAsCreated && blockers(mode, values, 0).length === 0
+  const valuesKey = JSON.stringify(values)
+  const [queuedFor, setQueuedFor] = useState<string | null>(null) // the values a click waits for
+  const fired = useRef<string | null>(null)
+  const queued = queuedFor === valuesKey && checking
+  useEffect(() => {
+    if (queuedFor !== valuesKey || checking || fired.current === queuedFor) return
+    fired.current = queuedFor // once per click; an edit in between drops the click
+    if (canCreate) onCreate()
+  }, [queuedFor, valuesKey, checking, canCreate, onCreate])
+  const requestCreate = () => {
+    if (checking && mayCreateAfterCheck) {
+      fired.current = null
+      setQueuedFor(valuesKey)
+    } else if (canCreate) onCreate()
+  }
   const needsNumber = mode === 'new' && !isFilled('design_number', values.design_number)
   const todoText = todo
     .map((b) =>
@@ -177,7 +200,7 @@ export function DesignForm({
           className="grid gap-x-4 gap-y-3 sm:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault()
-            if (canCreate) onCreate()
+            requestCreate()
           }}
         >
           {LAYOUT.map((field) => {
@@ -305,10 +328,17 @@ export function DesignForm({
                 {t('form.next_sap_number')}
               </Button>
             )}
-            <Button type="submit" disabled={!canCreate || busy} aria-describedby="create-hint">
-              {mode === 'existing' && values.revision
-                ? t('form.create_revision', { rev: values.revision })
-                : t('form.create')}
+            <Button
+              type="submit"
+              disabled={!(canCreate || mayCreateAfterCheck) || busy || queued}
+              aria-busy={queued}
+              aria-describedby="create-hint"
+            >
+              {queued
+                ? t('form.checking')
+                : mode === 'existing' && values.revision
+                  ? t('form.create_revision', { rev: values.revision })
+                  : t('form.create')}
             </Button>
             <p id="create-hint" className="min-w-48 flex-1 text-xs text-muted-foreground">
               {sameAsCreated ? (

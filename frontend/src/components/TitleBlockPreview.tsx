@@ -56,7 +56,7 @@ export function TitleBlockPreview({ values, source, departments, sap }: Props) {
         <Cell label="Title" className="col-span-2 border-r border-b">
           <Value value={values.name.trim()} className={cn('text-lg leading-tight font-semibold', tint('name'))} />
           {values.description.trim() && (
-            <p className={cn('mt-0.5 truncate text-xs italic', tint('description'))}>{values.description.trim()}</p>
+            <p className={cn('mt-0.5 break-words text-xs italic', tint('description'))}>{values.description.trim()}</p>
           )}
         </Cell>
         <Cell label="Design No." className="border-b">

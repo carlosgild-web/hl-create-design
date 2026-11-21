@@ -13,7 +13,7 @@ export type TimelineItem =
   | { id: number; kind: 'stopped' }
   | { id: number; kind: 'sap'; design: SapDesign; notes: Issue[] }
   | { id: number; kind: 'action'; actionId: string; epoch: number }
-  | { id: number; kind: 'divider' }
+  | { id: number; kind: 'divider'; cancelled: boolean }
 
 export type Step = { id: string; name: string; arguments?: Record<string, unknown>; ok?: boolean; result?: unknown }
 
@@ -129,11 +129,13 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
   /** The form started over (mode switch, New design): waiting cards are cancelled and the
    * earlier ones lose their buttons, so none of them can change the new form. */
   const retire = useCallback(() => {
-    const hasCards = Object.keys(actionsRef.current).length > 0
+    const cards = Object.values(actionsRef.current)
+    const cancelled = cards.some((a) => a.status === 'pending')
     void cancelWaiting(() => false)
     epochRef.current += 1
     setEpoch(epochRef.current)
-    if (hasCards) push({ kind: 'divider' })
+    // Say "cancelled" only when a card was waiting; finished cards stay in the history.
+    if (cards.length > 0) push({ kind: 'divider', cancelled })
   }, [cancelWaiting, push])
 
   const handle = useCallback(

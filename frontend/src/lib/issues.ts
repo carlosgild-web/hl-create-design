@@ -17,3 +17,12 @@ export function issueText(lang: Lang, issue: IssueLike): string {
   const key = candidates.find((k) => k && k in messages.en) as MessageKey | undefined
   return key ? translate(lang, key, issue.params) : issue.message
 }
+
+/**
+ * The warnings stored in a card when it was opened (decision 0023): the same read-only check
+ * the form runs, so the user sees them before Confirm. The payload's other values are strings.
+ */
+export function cardWarnings(payload: Record<string, unknown>): Issue[] {
+  const warnings = payload.warnings
+  return Array.isArray(warnings) ? (warnings as Issue[]) : []
+}

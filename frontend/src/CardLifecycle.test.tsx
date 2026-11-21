@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
+import { ActionCard } from './components/ActionCard'
 import { samePayload } from './hooks/useChat'
 import { blockers } from './lib/fields'
 import { baseRoutes, jsonResponse, makeAction, renderWithProviders, sseResponse, stubFetch, user } from './test/helpers'
@@ -121,5 +122,33 @@ describe('samePayload', () => {
     expect(samePayload({ name: 'Bead Sorter', designer: '' }, { name: 'Bead Sorter' })).toBe(true)
     // an assistant card from the real backend also carries SAP's material and project (or null)
     expect(samePayload({ name: 'Bead Sorter', sap_material: '000000000040001177', project: null }, { name: 'Bead Sorter' })).toBe(true)
+  })
+})
+
+describe('card warnings (decision 0023)', () => {
+  it('shows the warnings stored with the card above Confirm, in the UI language', () => {
+    const action = makeAction({
+      payload: {
+        ...makeAction().payload,
+        warnings: [
+          { field: 'status', code: 'status_released_needs_eco', message: 'The design is RELEASED…', ref: '06-sap-statuses#released' },
+        ],
+      } as unknown as Record<string, string>,
+    })
+    renderWithProviders(<ActionCard action={action} onChange={() => {}} onUseNumber={() => {}} onShowPreview={() => {}} />, 'es')
+
+    const list = screen.getByRole('list', { name: 'Revisa antes de confirmar' })
+    expect(list).toHaveTextContent('El diseño está LIBERADO')
+    expect(list).toHaveTextContent('[06-sap-statuses#released]')
+    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeInTheDocument()
+  })
+
+  it('no warning list once the card is decided', () => {
+    const action = makeAction({
+      status: 'cancelled',
+      payload: { ...makeAction().payload, warnings: [{ field: 'name', code: 'name_looks_spanish', message: 'x', ref: 'r' }] } as unknown as Record<string, string>,
+    })
+    renderWithProviders(<ActionCard action={action} onChange={() => {}} onUseNumber={() => {}} onShowPreview={() => {}} />)
+    expect(screen.queryByRole('list', { name: 'Check before you confirm' })).not.toBeInTheDocument()
   })
 })

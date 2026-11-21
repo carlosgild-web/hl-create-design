@@ -166,7 +166,7 @@ export function AssistantPanel({
                 return (
                   <div key={item.id} role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span aria-hidden className="h-px flex-1 bg-border" />
-                    {t('chat.started_over')}
+                    {t(item.cancelled ? 'chat.started_over' : 'chat.started_over_kept')}
                     <span aria-hidden className="h-px flex-1 bg-border" />
                   </div>
                 )

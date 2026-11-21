@@ -26,7 +26,7 @@ export default function CreateDesignPage() {
   const sapDesigns = useQuery({ queryKey: ['sap-designs'], queryFn: listSapDesigns, retry: false })
 
   const form = useDesignForm()
-  const validation = useValidation(form.values)
+  const { validation, checking } = useValidation(form.values)
   const lastDesigner = recentDesigns.data?.[0]?.designer
   const [preview, setPreview] = useState<PreviewTarget | null>(null)
   const [opening, setOpening] = useState(false)
@@ -168,7 +168,9 @@ export default function CreateDesignPage() {
     form.mode === 'existing'
       ? form.selected !== null
       : Boolean(v.department || v.name.trim() || isFilled('design_number', v.design_number))
-  const canReserve = Boolean(v.department.trim() && v.name.trim() && v.designer.trim()) && !v.design_number
+  // After a create, a new number only after "New design" (no second reservation from the same values).
+  const canReserve =
+    Boolean(v.department.trim() && v.name.trim() && v.designer.trim()) && !v.design_number && form.created === null
   const statusNotes =[...(validation?.errors ?? []), ...(validation?.warnings ?? [])].filter((i) => i.field === 'status')
 
   const startPanel = (
@@ -210,6 +212,7 @@ export default function CreateDesignPage() {
       suggestions={form.suggestions}
       errors={form.errors}
       validation={validation}
+      checking={checking}
       created={form.created}
       sameAsCreated={form.sameAsCreated}
       departments={departments.data ?? []}
