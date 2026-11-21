@@ -314,7 +314,8 @@ header badge, README/manual/Q&A updated, `agent-eval --provider demo`.
 (EN/ES, `cite_any`, `language`); reports `fake-phase9` 52/52 and `demo-phase9` 47/49, demo in
 CI; `AGENT_FEW_SHOT` / `--few-shot` for the Ollama A/B; `[ref]` opens the passage
 (`GET /api/manual/...`); "fill in first" hint in form order; `start.sh` port check; CHANGELOG
-Phase 9 entry. **Pending:** Ollama runs off / auto / auto+few-shot (user), Groq run and token
+Phase 9 entry. **Ollama A/B done:** off 24/49, auto 34/49, few-shot 38/49 but leaks, so few-shot stays off;
+linked sections now count as returned (0026 items 7-8). **Pending:** Groq run and token
 measurement after the quota reset (commands in `docs/eval/README.md`); the user's `.env`
 duplicate `LLM_PROVIDER`; README screenshots not regenerated.
 

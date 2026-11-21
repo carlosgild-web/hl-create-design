@@ -36,6 +36,8 @@ from app.standards.manual_search import ManualIndex, normalize_refs
 TODAY = date(2026, 11, 17)  # the demo's pinned date (decision 0007)
 MAX_ITERATIONS = 6
 CITATION = re.compile(r"\[([\w-]+#[\w-]+)\]")
+# A link inside a manual passage: "(02-revisions.md#skipped-letters)".
+_MANUAL_LINK = re.compile(r"\((\d{2}-[a-z0-9-]+)\.md#([a-z0-9-]+)\)")
 
 
 @dataclass
@@ -194,9 +196,17 @@ class Observed:
 
     @property
     def returned_refs(self) -> set[str]:
-        return {
+        """The manual ids a tool returned: each `ref` and `source`, and the sections a
+        returned passage links to ("See [02-revisions](02-revisions.md#skipped-letters)").
+        Citing a linked section cites an id the tool output contains (decision 0026)."""
+        refs = {
             str(v) for r in self.tool_results for k, v in _walk(r) if k in ("ref", "source") and v
         }
+        for r in self.tool_results:
+            for key, value in _walk(r):
+                if key == "text" and isinstance(value, str):
+                    refs |= {f"{doc}#{anchor}" for doc, anchor in _MANUAL_LINK.findall(value)}
+        return refs
 
 
 def _play_turn(

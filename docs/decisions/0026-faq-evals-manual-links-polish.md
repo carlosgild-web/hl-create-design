@@ -42,6 +42,19 @@ Phase 9 block 9f (`PLAN-phase-9-review-and-faq.md`, findings 16–17 and the eva
    explains and exits. Only the "port free" path was run (Windows Git Bash has neither
    tool); the "busy" path still needs a run on Linux or macOS.
 
+## Decided after the Ollama A/B (2026-11-21)
+
+7. **Few-shot stays off.** It scored 38/49 against 34/49 with pre-retrieval alone, but in
+   both "revision I" scenarios the model called no tool and pasted the example's answer,
+   citing a reference no tool returned. `AGENT_FEW_SHOT` stays available for experiments
+   (default off). A fact-free example was not tried.
+8. **A linked section counts as returned.** The eval's `returned_refs` now also includes the
+   sections that a returned passage links to (`See [02-revisions](02-revisions.md#…)`). The
+   id is in the tool's output, and the model citing it cites the manual correctly.
+   `faq-revision-i` failed on exactly this in all three passes. The finished Ollama reports
+   are not re-scored: Ollama got passages cut to 500 characters, so what it saw can't be
+   rebuilt. The rule applies from the next run.
+
 ## Pending
 
 - Ollama runs on the 49-scenario suite: `--preretrieval off`, `auto`, and `auto

@@ -27,7 +27,9 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
   prompt forbids, so `AGENT_FEW_SHOT` stays off.
 - **`faq-revision-i` fails in all three runs:** the search returns `07-faq#revision-i`
   (correct), whose text links to `02-revisions#skipped-letters`. The model cites the linked
-  section, and the strict rule "cite only ids a tool returned" counts that as invented.
+  section, and the strict rule "cite only ids a tool returned" counted that as invented.
+  Since then a section linked from a returned passage counts as returned (decision 0026,
+  item 8); the reports above were scored before that change.
 - **Timeouts:** `create-valid` (off, few-shot) and `example-button-fill-es` (few-shot) hit
   the 120 s turn limit on CPU. The turn ended cleanly with the timeout message.
 - **Still failing everywhere:** `create-valid`, `one-sentence-fill` (the model asks for a

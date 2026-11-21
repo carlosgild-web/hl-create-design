@@ -198,3 +198,18 @@ def test_a_resumed_run_skips_the_scenarios_already_saved(tmp_path, monkeypatch, 
     monkeypatch.setattr(h, "run_scenario", must_not_run)
     assert cli.main(args, settings=settings) == 0
     assert "2/2 scenarios passed" in capsys.readouterr().out
+
+
+def test_a_section_linked_from_a_returned_passage_counts_as_returned():
+    seen = harness.Observed()
+    seen.tool_results.append(
+        {
+            "passages": [
+                {
+                    "source": "07-faq#revision-i",
+                    "text": "After H comes J. See [02-revisions](02-revisions.md#skipped-letters).",
+                }
+            ]
+        }
+    )
+    assert seen.returned_refs == {"07-faq#revision-i", "02-revisions#skipped-letters"}
