@@ -165,11 +165,14 @@ the function. It's stored in title case.
 Ref: 03-title-block#design-name
 
 ### Why did my name change from `bead drill controller` to `Bead Drill Controller`?
-Names are stored in title case. Words already in capitals (`LED`, `USB`, `24V`) are kept.
+Names are stored in title case, also each part of a hyphenated word (`Burn-In`). Words written
+with capitals (`LED`, `24V`, `LEDs`) are kept.
 Ref: 03-title-block#design-name
 
 ### Why can't I use "New", "Final" or "Copy" in the name?
-The name describes the function. Version words and the design number belong elsewhere.
+The name describes the function. `New` or `Final` as the first word, `New`, `Final` or `Copy`
+as the last word, and `Rev A` are rejected. Inside the name they're only a warning
+(`Copy Stand Controller` passes). The version goes in the revision.
 Ref: 03-title-block#design-name
 
 ### Can I write the name in Spanish or with accents?
@@ -192,8 +195,8 @@ second source for the gate driver". Accents and Spanish are fine. `${` isn't all
 Ref: 03-title-block#description
 
 ### How do I write the designer?
-Initial, period, space, surname, as in the company directory: `C. Velazquez`. Accents are
-allowed; maximum 40 characters.
+One or two initials with a period, a space and the surname, as in the company directory:
+`C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Accents are allowed; maximum 40 characters.
 Ref: 03-title-block#designer, 07-faq#designer-format
 
 ### Why does the material number have so many zeros?

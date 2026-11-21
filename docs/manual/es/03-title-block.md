@@ -32,18 +32,17 @@ Palabras clave: cajetín, campos, qué se rellena, title block
 
 El nombre del diseño es el título de todas las hojas y el texto breve del material en SAP.
 
-- **De 3 a 40 caracteres.** 40 es la longitud del texto breve de material en SAP.
-- **Caracteres permitidos:** letras `A–Z` y `a–z`, dígitos, espacios, y `-`, `_`, `.`.
-  Sin tildes, eñes ni otros símbolos: el nombre va a SAP y a sistemas de proveedores que
-  no los admiten.
-- **En inglés**, porque el nombre aparece en documentos para proveedores.
-- **Se guarda con mayúscula inicial en cada palabra.** Las palabras ya escritas en
-  mayúsculas se mantienen (`LED`, `USB`, `24V`). Create Design convierte el nombre por ti:
-  `bead drill controller` pasa a `Bead Drill Controller`.
-- Se quitan los espacios del principio y del final, y los espacios repetidos quedan en uno.
-- **Describe la función.** No pongas en el nombre el número de diseño, la revisión ni
-  palabras como `new`, `final` o `copy`. `Kiln Thermocouple Interface` es un buen nombre;
-  `HL-HW-26-0042 Rev A` y `New Board Final` no lo son.
+- **De 3 a 40 caracteres.**
+- **Solo** `A–Z`, `a–z`, dígitos, espacios y `- _ .`: sin tildes, eñes ni otros símbolos,
+  que SAP y los proveedores no admiten.
+- **En inglés**: aparece en documentos de proveedores.
+- **Mayúscula inicial** en cada palabra y en cada parte de una palabra con guion
+  (`bead drill controller` → `Bead Drill Controller`, `burn-in` → `Burn-In`). Se mantienen
+  las palabras con mayúsculas (`LED`, `24V`, `USB-C`, `LEDs`). Se quitan los espacios de más.
+- **Describe la función.** Sin número de diseño ni palabras de versión: `new` o `final`
+  al principio, `new`, `final` o `copy` al final, o `rev`/`revision` + una letra o un
+  número (`Rev A`). `HL-HW-26-0042 Rev A` y `New Board Final` se rechazan. En medio
+  solo dan un aviso: `Copy Stand Controller` vale.
 
 Palabras clave: reglas del nombre, nombre del diseño, largo, qué tan largo, caracteres, se permiten, mayúsculas, mayúscula inicial, new, final, copy, palabra, rechaza, name rules
 
@@ -80,8 +79,11 @@ Palabras clave: descripción, opcional, 60 caracteres, español, qué tan larga,
 ## Diseñador
 <a id="designer"></a>
 
-Inicial, punto, espacio y apellido, como en el directorio de la empresa: `C. Velazquez`,
-`E. Marín`. Aquí sí se admiten tildes. Máximo 40 caracteres.
+Una o dos iniciales con punto, un espacio y el apellido, como en el directorio de la
+empresa: `C. Velazquez`, `J. C. Pérez`, `E. Marín`. Las partículas pueden ir en minúscula
+(`de`, `del`, `de la`, `de los`, `van`, `von`, `y`): `C. de la Torre`, `M. van Dijk`. La
+última palabra del apellido empieza con mayúscula. Se admiten tildes, apóstrofos y guiones
+(`L. O'Brien`, `R. Navarro-Ruiz`); los dígitos no. Máximo 40 caracteres.
 
 Palabras clave: diseñador, nombre del diseñador, formato, inicial, apellido, no me acepta, designer
 

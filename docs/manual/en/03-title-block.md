@@ -29,20 +29,19 @@ Keywords: title block, fields, what is filled, cajetín, campos, qué se rellena
 ## Design name
 <a id="design-name"></a>
 
-The design name is the title on every sheet and the short text of the material in SAP.
+The design name is the title on every sheet and the material's short text in SAP.
 
-- **3 to 40 characters.** 40 is the length of the SAP material short text.
-- **Allowed characters:** letters `A–Z` and `a–z`, digits, spaces, and `-`, `_`, `.`.
-  No accents or other symbols: the name goes to SAP and to supplier systems that can't
-  handle them.
-- **In English**, because the name appears on supplier documents.
-- **Stored in title case:** every word starts with a capital letter. Words already written
-  in capitals are kept (`LED`, `USB`, `24V`). Create Design converts the name for you:
-  `bead drill controller` becomes `Bead Drill Controller`.
-- Spaces at the start and the end are removed, and repeated spaces become one.
-- **Describe the function.** Don't put the design number, the revision or words like
-  `new`, `final` or `copy` in the name. `Kiln Thermocouple Interface` is a good name;
-  `HL-HW-26-0042 Rev A` and `New Board Final` are not.
+- **3 to 40 characters** (the length of the SAP short text).
+- **Only** `A–Z`, `a–z`, digits, spaces and `- _ .`: no accents or other symbols, which
+  SAP and supplier systems can't handle.
+- **In English**: the name appears on supplier documents.
+- **Title case:** each word and each part of a hyphenated word starts with a capital
+  (`bead drill controller` → `Bead Drill Controller`, `burn-in` → `Burn-In`). Words
+  written with capitals stay (`LED`, `24V`, `USB-C`, `LEDs`). Extra spaces are removed.
+- **Describe the function.** No design number and no version words: `new` or `final`
+  first, `new`, `final` or `copy` last, or `rev`/`revision` + a letter or number
+  (`Rev A`). `HL-HW-26-0042 Rev A` and `New Board Final` are rejected. Inside a name they
+  are only a warning: `Copy Stand Controller` passes.
 
 Keywords: name rules, design name, length, how long, characters, allowed, title case, capitals, capitalized, new, final, copy, rejected word, reglas del nombre, nombre del diseño, largo, caracteres, mayúsculas, palabra rechazada
 
@@ -78,8 +77,11 @@ Keywords: description, optional, 60 characters, spanish, how long, descripción,
 ## Designer
 <a id="designer"></a>
 
-Initial, period, space, surname, as in the company directory: `C. Velazquez`, `E. Marín`.
-Accents are allowed here. Maximum 40 characters.
+One or two initials with a period, a space and the surname, as in the company directory:
+`C. Velazquez`, `J. C. Pérez`, `E. Marín`. Particles may be lowercase (`de`, `del`, `de la`,
+`de los`, `van`, `von`, `y`): `C. de la Torre`, `M. van Dijk`. The surname's last word starts
+with a capital. Accents, apostrophes and hyphens are allowed (`L. O'Brien`, `R. Navarro-Ruiz`);
+digits are not. Maximum 40 characters.
 
 Keywords: designer, designer name, format, initial, surname, rejected my name, diseñador, nombre del diseñador, formato, inicial, apellido
 

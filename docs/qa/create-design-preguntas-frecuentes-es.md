@@ -170,12 +170,15 @@ describe la función. Se guarda con cada palabra en mayúscula inicial.
 Ref: 03-title-block#design-name
 
 ### ¿Por qué mi nombre pasó de `bead drill controller` a `Bead Drill Controller`?
-Los nombres se guardan con mayúscula inicial en cada palabra. Las palabras ya escritas en
-mayúsculas (`LED`, `USB`, `24V`) se mantienen.
+Los nombres se guardan con mayúscula inicial en cada palabra, también en cada parte de una
+palabra con guion (`Burn-In`). Las palabras escritas con mayúsculas (`LED`, `24V`, `LEDs`) se
+mantienen.
 Ref: 03-title-block#design-name
 
 ### ¿Por qué no puedo usar «New», «Final» o «Copy» en el nombre?
-El nombre describe la función. Las palabras de versión y el número de diseño van en otro sitio.
+El nombre describe la función. Se rechazan `New` o `Final` como primera palabra, `New`, `Final`
+o `Copy` como última, y `Rev A`. Dentro del nombre solo dan un aviso (`Copy Stand Controller`
+es válido). La versión va en la revisión.
 Ref: 03-title-block#design-name
 
 ### ¿Puedo escribir el nombre en español o con acentos?
@@ -201,8 +204,9 @@ permite `${`.
 Ref: 03-title-block#description
 
 ### ¿Cómo escribo el diseñador?
-Inicial, punto, espacio y apellido, como en el directorio de la empresa: `C. Velazquez`. Se
-permiten acentos; máximo 40 caracteres.
+Una o dos iniciales con punto, un espacio y el apellido, como en el directorio de la
+empresa: `C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Se permiten acentos; máximo 40
+caracteres.
 Ref: 03-title-block#designer, 07-faq#designer-format
 
 ### ¿Por qué el número de material tiene tantos ceros?

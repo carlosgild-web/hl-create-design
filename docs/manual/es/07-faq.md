@@ -108,8 +108,9 @@ Palabras clave: sap caído, no responde, sap down
 ## ¿Cómo escribo el diseñador?
 <a id="designer-format"></a>
 
-Inicial, punto, espacio y apellido, como en el directorio de la empresa: `C. Velazquez`. Se
-permiten acentos; máximo 40 caracteres. Ver [03-title-block](03-title-block.md#designer).
+Una o dos iniciales con punto, un espacio y el apellido, como en el directorio de la
+empresa: `C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Se permiten acentos; máximo 40
+caracteres. Ver [03-title-block](03-title-block.md#designer).
 
 Palabras clave: diseñador, nombre del diseñador, formato, mi nombre, inicial, apellido, no acepta, rechaza, designer, format
 
