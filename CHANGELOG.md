@@ -55,7 +55,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     gets 3 short passages. Citations with Unicode dashes are normalized.
   - `LLM_PROVIDER=demo`: a rule-based demo assistant. It answers FAQ questions with a
     citation, fills the form from a sentence and opens the card when valid.
-  - Manual references open their passage (`GET /api/manual/{lang}/{document}/{anchor}`).
+  - Manual references open their passage (`GET /api/manual/{lang}/{document}/{anchor}`),
+    rendered with its lists, tables, bold and code (no raw Markdown, no HTML).
+  - README screenshots and GIF regenerated with real KiCad, plus a cited manual answer
+    and its passage.
   - 16 FAQ eval scenarios (EN and ES; `cite_any`, `language`), `agent-eval --provider
     demo`, `--preretrieval` and `--few-shot`.
   - `start.cmd` and `start.sh` offer to stop a process that holds port 8000 or 8100.

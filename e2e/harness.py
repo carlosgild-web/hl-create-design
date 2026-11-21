@@ -1,7 +1,8 @@
 """The backend for the browser tests: the real app with two stand-ins.
 
 - The model is a scripted `FakeClient`: one chat turn fills the form, looks the design
-  up in SAP and opens a confirmation card. No Ollama, no key.
+  up in SAP and opens a confirmation card; a question (ending in `?`) gets an answer that
+  cites the manual passage the backend's own search returned. No Ollama, no key.
 - `kicad-cli` is a stub that writes a small PDF and SVG, so the test needs no KiCad.
   `E2E_REAL_KICAD=1` (with `KICAD_CLI` set) uses the real one, for the showcase images.
 
@@ -32,6 +33,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 import uvicorn  # noqa: E402
 
 from app.api import deps  # noqa: E402
+from app.llm.base import ChatTurn, LLMClient, Message, ToolSpec  # noqa: E402
 from app.llm.fake import FakeClient, call, say  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -60,6 +62,31 @@ def script() -> FakeClient:
     )
 
 
+ANSWER = (
+    "Keep the number and make a new revision when you change the same design and the new "
+    "board can replace the old one. Ask SAP for a new number when the function changes, "
+    "it is a different product, or the new board can't replace the old one "
+    "[01-design-numbering#new-number-or-revision]."
+)
+
+
+class Scripted(LLMClient):
+    """Picks the script from the user's message on the first call of a turn."""
+
+    provider, model = "fake", "scripted"
+
+    def __init__(self) -> None:
+        self._client: FakeClient | None = None
+
+    def chat(self, messages: list[Message], tools: list[ToolSpec]) -> ChatTurn:
+        if self._client is None:
+            user = next(m.content for m in reversed(messages) if m.role == "user")
+            chat = user.split('<user_data kind="chat">', 1)[-1].split("</user_data>", 1)[0]
+            question = chat.strip().endswith("?")
+            self._client = FakeClient([say(ANSWER)]) if question else script()
+        return self._client.chat(messages, tools)
+
+
 def stub_kicad_cli(command, **kwargs):
     output, schematic = Path(command[command.index("--output") + 1]), Path(command[-1])
     if command[3] == "pdf":
@@ -69,7 +96,7 @@ def stub_kicad_cli(command, **kwargs):
     return subprocess.CompletedProcess(command, 0, "Plotted.", "")
 
 
-app.dependency_overrides[deps.llm_factory_dep] = lambda: script
+app.dependency_overrides[deps.llm_factory_dep] = lambda: Scripted
 if not os.environ.get("E2E_REAL_KICAD"):
     app.dependency_overrides[deps.runner_dep] = lambda: stub_kicad_cli
 

@@ -23,6 +23,19 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: join(OUT, `${name}.png`) })
 }
 
+// First: the script proposes revision C, which the next test creates.
+test('phone: design and assistant tabs', async ({ page }) => {
+  await page.setViewportSize(PHONE)
+  await page.goto('/')
+  await shot(page, 'phone-design')
+  const tabs = page.getByRole('tablist', { name: 'Sections' })
+  await tabs.getByRole('tab', { name: /Assistant/ }).click()
+  await page.getByLabel(/describe your design/i).fill('Revision C of the bead sorter vision board')
+  await page.getByRole('button', { name: 'Send' }).click()
+  await expect(page.getByRole('region', { name: 'SAP record' })).toBeVisible()
+  await shot(page, 'phone-assistant')
+})
+
 test('desktop: start, the assistant picks an existing design, confirm, preview dialog', async ({ page }) => {
   test.setTimeout(120_000)
   await page.setViewportSize(DESKTOP)
@@ -61,16 +74,18 @@ test('desktop in Spanish: a new design with an inline rule message', async ({ pa
   await shot(page, 'desktop-es-inline-check')
 })
 
-test('phone: design and assistant tabs', async ({ page }) => {
-  await page.setViewportSize(PHONE)
+test('desktop: a question about the rules, answered with a manual reference', async ({ page }) => {
+  await page.setViewportSize(DESKTOP)
   await page.goto('/')
-  await shot(page, 'phone-design')
-  const tabs = page.getByRole('tablist', { name: 'Sections' })
-  await tabs.getByRole('tab', { name: /Assistant/ }).click()
-  await page.getByLabel(/describe your design/i).fill('New controller board for the drilling machine, Hardware.')
+  await page.getByLabel(/describe your design/i).fill('When do I need a new revision instead of a new design number?')
   await page.getByRole('button', { name: 'Send' }).click()
-  await expect(page.getByRole('region', { name: 'SAP record' })).toBeVisible()
-  await shot(page, 'phone-assistant')
+  const ref = page.getByRole('button', { name: '[01-design-numbering#new-number-or-revision]' })
+  await expect(ref).toBeVisible()
+  await shot(page, 'desktop-manual-answer')
+
+  await ref.click()
+  await expect(page.getByRole('dialog').getByText(/can replace the old one/)).toBeVisible()
+  await shot(page, 'desktop-manual-passage')
 })
 
 /**

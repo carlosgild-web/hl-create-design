@@ -155,6 +155,8 @@ cd backend && python -m app.cli agent-eval --fake      # the CI suite
 | Start: chat, Start panel, form and a live title-block preview | The assistant filled the form; a card waits for Confirm |
 | ![The SAP design list with status badges](docs/showcase/desktop-existing-list.png) | ![Spanish UI with an inline rule message and its manual reference](docs/showcase/desktop-es-inline-check.png) |
 | A new revision of an existing SAP design | Spanish, with an inline rule and its manual section |
+| ![A question about the rules answered with a manual reference](docs/showcase/desktop-manual-answer.png) | ![The cited manual passage opened from the answer](docs/showcase/desktop-manual-passage.png) |
+| A rule question, answered with a manual reference | Click the reference: the passage from the Design Manual |
 
 <p>
   <img src="docs/showcase/phone-design.png" alt="Phone: the design tab" width="260">

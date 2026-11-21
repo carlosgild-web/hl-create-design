@@ -317,7 +317,8 @@ CI; `AGENT_FEW_SHOT` / `--few-shot` for the Ollama A/B; `[ref]` opens the passag
 Phase 9 entry. **Ollama A/B done:** off 24/49, auto 34/49, few-shot 38/49 but leaks, so few-shot stays off;
 linked sections now count as returned (0026 items 7-8). **Pending:** Groq run and token
 measurement after the quota reset (commands in `docs/eval/README.md`); the user's `.env`
-duplicate `LLM_PROVIDER`; README screenshots not regenerated.
+duplicate `LLM_PROVIDER`. **README screenshots and GIF regenerated** (2026-11-21, real KiCad;
+2 new shots: a cited manual answer and its passage, now rendered as formatted text).
 
 1. **FAQ scenarios** in `evals/scenarios.py`: about 15 grouped scenarios (numbers, revisions,
    statuses, name/designer, files/KiCad, cards/app), each in EN and ES, from
