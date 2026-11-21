@@ -1,0 +1,16 @@
+{
+  "name": "hl-create-design-video",
+  "private": true,
+  "type": "module",
+  "description": "Records the explainer video from the running app (decision 0028).",
+  "scripts": {
+    "video:check": "node lines.mjs --check storyboard.json",
+    "video:smoke": "playwright test --grep @smoke",
+    "video:demo": "playwright test --grep @demo && node cues.mjs out/demo && node compose.mjs out/demo",
+    "video:verify": "node cues.mjs out/demo --verify"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.1",
+    "@types/node": "^24.19.2"
+  }
+}
