@@ -236,6 +236,14 @@ Acceptance: invariant 2 tests unchanged and green (no SAP write outside confirm)
 
 ## 9d — Agent grounding and provider tuning
 
+**Status: done (2026-11-21, decision 0024), except the Groq token measurement.** Detector
+`agent/intent.py` (recall 321/324 on the FAQ bank, no form fill flagged), pre-retrieval in
+the loop (`auto_<run id>`, traced `auto`, not a model call), `AGENT_PRERETRIEVAL` +
+`agent-eval --preretrieval`, prompt line, Ollama 3 × 500-char passages, `normalize_refs` in
+the eval checker, two fake scenarios (fake eval 36/36). The Ollama few-shot waits for the 9f
+A/B. **Pending:** Groq's daily quota was almost used up on 2026-11-21; measure Groq tokens per
+FAQ turn (off vs auto) after the reset.
+
 1. **Question detector** (`agent/intent.py`, new; ask first): returns `rule_question` when the
    message ends with `?` or starts with `¿`, or contains why/can/how/must/what/when/where /
    por qué/puedo/cómo/debo/qué/cuándo/dónde, **and** no design number with a revision. Pure
@@ -330,6 +338,6 @@ for questions, never opens a card, and is traced; prompt-injection scenarios unc
 | Q3 | 9c | Write revisions to the mock SAP (A) or count `audit_log` (B)? | **Answered (2026-11-21): A** — closer to a real PLM, fixes the "latest" label |
 | Q4 | 9c | If SAP fails after the folder is written, roll back the folder or mark the action as partly done? | **Answered: yes** — write SAP first, then the folder; roll back nothing on disk |
 | Q5 | 9e | Should `fake` mean the demo in the app, or add a `demo` provider? | Add `demo`; keep `fake` for tests only |
-| Q6 | 9d | Pre-retrieval for Groq too, or only Ollama? | Both (saves a round trip on Groq) |
+| Q6 | 9d | Pre-retrieval for Groq too, or only Ollama? | **Answered (2026-11-21): both** (saves a round trip on Groq) |
 | Q7 | 9a | Should new designs start without the template circuit? | **Answered: keep it** and explain it in `08#template-circuit` |
 | Q8 | 9c | Finding 18: without `kicad-cli`, create the project without the PDF, or fix the README? | **Answered: create without the PDF** and say so on the card (KiCad stays optional) |
