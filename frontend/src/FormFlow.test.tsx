@@ -132,6 +132,9 @@ describe('form: where each value came from', () => {
     const summary = screen.getByText('Reserved HL-PWR-26-0101 · rev A').closest('[role="status"]') as HTMLElement
     expect(within(summary).getByText('40009001 · P-26-0112')).toBeInTheDocument()
     expect(JSON.parse(String(calls.find((c) => c.url === '/api/actions')!.init?.body)).kind).toBe('reserve_number')
+    // nothing is missing any more: no empty "Fill in first: ." hint (live check, finding U1)
+    expect(screen.queryByText(/Fill in first/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Get SAP number' })).not.toHaveAttribute('aria-describedby')
 
     // SAP issued the number for this department and name: they lock (decision 0023)
     expect(screen.getByLabelText('Design name')).toHaveAttribute('readonly')

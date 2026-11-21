@@ -157,17 +157,20 @@ export function StartPanel(props: Props) {
 function NewDesign({ canReserve, missingFields, busy, onReserve, reservation, canUndoReservation, onUndoReservation }: Props) {
   const { t } = useI18n()
   const result = reservation?.result
+  // Disabled with nothing missing (a number is already reserved): no "Fill in first: ." hint.
+  const missing = missingFields ?? []
+  const showNeeds = !canReserve && missing.length > 0
   return (
     <div className="space-y-3 text-sm">
       <p className="text-muted-foreground">{t('start.new_help')}</p>
       <div>
-        <Button className="w-full" disabled={!canReserve || busy} aria-describedby={canReserve ? undefined : 'start-needs'} onClick={onReserve}>
+        <Button className="w-full" disabled={!canReserve || busy} aria-describedby={showNeeds ? 'start-needs' : undefined} onClick={onReserve}>
           <Sparkles aria-hidden className="size-4" />
           {t('start.get_sap_number')}
         </Button>
-        {!canReserve && (
+        {showNeeds && (
           <p id="start-needs" className="mt-1 text-xs text-muted-foreground">
-            {t('start.needs_fields', { fields: (missingFields ?? []).map((f) => t(FIELD_LABELS[f])).join(' · ') })}
+            {t('start.needs_fields', { fields: missing.map((f) => t(FIELD_LABELS[f])).join(' · ') })}
           </p>
         )}
       </div>
