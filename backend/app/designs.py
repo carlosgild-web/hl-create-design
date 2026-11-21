@@ -99,21 +99,29 @@ _SEQUENCE_CODES = frozenset({"rev_first_not_a", "rev_jump", "rev_reused"})
 
 # Looks a number up in SAP for `check_fields`: (record or None, or a note when SAP failed).
 SapLookup = Callable[[str], tuple[SapDesign | None, dict[str, Any] | None]]
+# The (number, name) of every design in SAP, for the same-name warning; [] when SAP fails.
+SapNames = Callable[[], list[tuple[str, str]]]
 
 
-def issue_dict(issue: Issue) -> dict[str, str]:
-    return {"field": issue.field, "code": issue.code, "message": issue.message, "ref": issue.ref}
+def issue_dict(issue: Issue) -> dict[str, Any]:
+    return issue.to_dict()
 
 
-def check_fields(fields: dict[str, str], designs_root: Path, lookup: SapLookup) -> dict[str, Any]:
+def check_fields(
+    fields: dict[str, str],
+    designs_root: Path,
+    lookup: SapLookup,
+    sap_names: SapNames | None = None,
+) -> dict[str, Any]:
     """Check the fields given so far, read-only: missing fields are listed, not reported
     as errors. The assistant's `validate_design_request` tool and the form's inline check
     (`POST /api/validate`) both use this, so they always agree (invariant 1).
 
     The result has `ok`, `normalized` (the given fields as they would be stored),
     `errors`, `warnings`, `missing`, and when a number is given `next_free_revision`,
-    `sap` {status, material, wbs} or `sap_unavailable`. `lookup` is the caller's SAP
-    access (through `SapClient`); this module never calls SAP.
+    `sap` {status, material, wbs} or `sap_unavailable`. `lookup` and `sap_names` are the
+    caller's SAP access (through `SapClient`); this module never calls SAP. With `sap_names`, a
+    valid name that another SAP design already has gets a `name_exists_in_sap` warning.
     """
     names = FORM_FIELDS + OPTIONAL_FIELDS
     given = {name: fields[name] for name in names if fields.get(name, "").strip()}
@@ -148,6 +156,10 @@ def check_fields(fields: dict[str, str], designs_root: Path, lookup: SapLookup) 
         "warnings": [issue_dict(w) for w in report.warnings],
         "missing": [name for name in FORM_FIELDS if name not in given],
     }
+    if sap_names is not None and "name" in given and not report.errors_for("name"):
+        own = report.request.design_number if number_ok else ""
+        same = v.check_name_unique(report.request.name, own, sap_names())
+        content["warnings"].extend(issue_dict(w) for w in same)
     if "design_number" in given:
         content["next_free_revision"] = report.next_revision
     suggest = _suggestions(request, report.next_revision if "design_number" in given else None)

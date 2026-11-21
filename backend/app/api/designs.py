@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.agent.tools import sap_lookup_for
+from app.agent.tools import sap_lookup_for, sap_names_for
 from app.api.deps import EngineDep, LauncherDep, RateLimited, SapFactoryDep, SettingsDep
 from app.core.config import Settings
 from app.db import store
@@ -59,7 +59,7 @@ def validate(body: ValidateRequest, settings: SettingsDep, sap_factory: SapFacto
     if not any(val.strip() for val in fields.values()):
         return {"ok": True, "normalized": {}, "errors": [], "warnings": [], "missing": []}
     with sap_factory() as sap:
-        return check_fields(fields, settings.designs_root, sap_lookup_for(sap))
+        return check_fields(fields, settings.designs_root, sap_lookup_for(sap), sap_names_for(sap))
 
 
 @router.post("/actions", status_code=201, dependencies=[RateLimited])

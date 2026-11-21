@@ -146,6 +146,25 @@ def test_validate_normalizes_and_writes_nothing(api, settings, fake_sap):
     assert audit_rows(deps.engine_dep(settings)) == []
 
 
+def test_validate_warns_when_another_sap_design_has_the_same_name(api):
+    result = validate(api, department="HW", name="bead drill controller")
+    assert result["ok"]
+    [warning] = [w for w in result["warnings"] if w["code"] == "name_exists_in_sap"]
+    assert warning["params"] == {"number": "HL-HW-26-0042", "name": "Bead Drill Controller"}
+    assert warning["ref"] == "07-faq#same-name"
+    # the design's own number is not a duplicate of itself
+    own = validate(
+        api, department="HW", design_number="HL-HW-26-0042", name="Bead Drill Controller"
+    )
+    assert not [w for w in own["warnings"] if w["code"] == "name_exists_in_sap"]
+
+
+def test_the_same_name_hint_is_skipped_when_sap_fails(api, fake_sap):
+    fake_sap.maintenance = True
+    result = validate(api, department="HW", name="Bead Drill Controller")
+    assert result["ok"] and result["warnings"] == []
+
+
 def test_validate_with_nothing_filled_is_quiet(api):
     assert validate(api) == {
         "ok": True,

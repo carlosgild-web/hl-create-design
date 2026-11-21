@@ -25,7 +25,7 @@ from sqlalchemy import Engine
 
 from app.core.config import Settings
 from app.db import store
-from app.designs import SapLookup, check_design_request, check_fields, issue_dict
+from app.designs import SapLookup, SapNames, check_design_request, check_fields, issue_dict
 from app.llm.base import ToolCall, ToolSpec
 from app.sap.client import SapClient, SapDesign, SapError
 from app.standards import validators as v
@@ -178,13 +178,32 @@ def sap_lookup_for(sap: SapClient) -> SapLookup:
     return lookup
 
 
+def sap_names_for(sap: SapClient) -> SapNames:
+    """`check_fields`' list of SAP design names, fetched once per check. When SAP fails the
+    list is empty: the same-name warning is a hint, never a reason to fail the check."""
+    cache: list[tuple[str, str]] | None = None
+
+    def names() -> list[tuple[str, str]]:
+        nonlocal cache
+        if cache is None:
+            try:
+                cache = [(d.design_number, d.name) for d in sap.list_designs(top=500)]
+            except SapError:
+                cache = []
+        return cache
+
+    return names
+
+
 def validate_design_request(args: DesignFieldsArgs, ctx: ToolContext) -> ToolResult:
     """Check the fields given so far. Missing fields are listed, not reported as errors.
     The same check as the form's inline validation (`app.designs.check_fields`)."""
     given = {name: getattr(args, name) for name in FIELDS if getattr(args, name)}
     if not given:
         return _error("no_fields", "Pass at least one field to check.")
-    content = check_fields(given, ctx.settings.designs_root, sap_lookup_for(ctx.sap))
+    content = check_fields(
+        given, ctx.settings.designs_root, sap_lookup_for(ctx.sap), sap_names_for(ctx.sap)
+    )
     if not content["normalized"] and not content["ok"]:  # a path outside DESIGNS_ROOT
         return ToolResult({"ok": False, "errors": content["errors"]})
     return ToolResult(content)

@@ -75,8 +75,7 @@ def test_keywords_are_indexed_but_not_shown_to_the_model(manual):
     assert "08-using-create-design#undo-number" in sources
 
 
-def test_every_app_usage_section_is_short_and_has_keywords(manual):
+def test_every_section_reaches_the_model_whole_and_has_keywords(manual):
     for passage in manual.passages:
-        if passage.source.startswith("08-"):
-            assert len(passage.text) <= MAX_TEXT_CHARS, passage.source
-            assert passage.keywords, passage.source
+        assert len(passage.text) <= MAX_TEXT_CHARS, (passage.source, passage.lang)
+        assert passage.keywords, (passage.source, passage.lang)

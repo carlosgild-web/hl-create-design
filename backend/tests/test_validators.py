@@ -206,6 +206,10 @@ def test_unknown_status():
         ("USB-C power_sink v1.2", "USB-C Power_sink V1.2"),
         ("abc", "Abc"),
         ("x" * 40, "X" + "x" * 39),
+        ("status LEDs board", "Status LEDs Board"),
+        ("iPhone dock tester", "iPhone Dock Tester"),
+        ("kiln burn-in rack", "Kiln Burn-In Rack"),
+        ("RS-485 bridge", "RS-485 Bridge"),
     ],
 )
 def test_design_name_is_normalized_to_title_case(raw, stored):
@@ -228,12 +232,55 @@ def test_design_name_is_normalized_to_title_case(raw, stored):
         ("HL-HW-26-0042 Rev A", "name_contains_number"),
         ("New Board Final", "name_forbidden_word"),
         ("Drill Controller Copy", "name_forbidden_word"),
+        ("Final Drill Controller", "name_forbidden_word"),
+        ("Drill Controller Rev A", "name_forbidden_word"),
+        ("Drill Controller Revision 2", "name_forbidden_word"),
+        ("Drill Controller New", "name_forbidden_word"),
     ],
 )
 def test_bad_design_names(raw, code):
     check = v.validate_design_name(raw)
     assert codes(check) == [code]
     assert check.errors[0].ref == "03-title-block#design-name"
+
+
+@pytest.mark.parametrize(
+    ("raw", "words"),
+    [
+        ("Copy Stand Controller", "copy"),
+        ("Revision Counter Board", "revision"),
+        ("Kiln New Sensor Bridge", "new"),
+    ],
+)
+def test_version_words_inside_a_name_are_only_a_warning(raw, words):
+    check = v.validate_design_name(raw)
+    assert check.ok, check.errors
+    assert [(w.code, w.params) for w in check.warnings] == [("name_word_check", {"words": words})]
+
+
+@pytest.mark.parametrize("raw", ["Prueba", "Placa De Control", "Fuente Para Horno"])
+def test_spanish_looking_names_get_a_warning_not_an_error(raw):
+    check = v.validate_design_name(raw)
+    assert check.ok
+    assert [w.code for w in check.warnings] == ["name_looks_spanish"]
+    assert check.warnings[0].ref == "07-faq#name-language"
+
+
+@pytest.mark.parametrize(
+    "raw", ["Motor Sensor Interface", "Control Board", "Bead Drill Controller", "Sensor Node"]
+)
+def test_english_names_with_shared_words_get_no_warning(raw):
+    assert v.validate_design_name(raw).warnings == ()
+
+
+def test_same_name_in_sap_is_a_warning_naming_the_other_design():
+    designs = [("HL-HW-26-0042", "bead drill controller"), ("HL-HW-26-0050", "Other")]
+    [warning] = v.check_name_unique("Bead Drill Controller", "", designs)
+    assert warning.code == "name_exists_in_sap"
+    assert warning.params == {"number": "HL-HW-26-0042", "name": "Bead Drill Controller"}
+    assert warning.ref == "07-faq#same-name"
+    # the design's own number is not a duplicate
+    assert v.check_name_unique("Bead Drill Controller", "HL-HW-26-0042", designs) == []
 
 
 def test_tabs_and_newlines_collapse_to_one_space():
@@ -244,7 +291,19 @@ def test_tabs_and_newlines_collapse_to_one_space():
 
 
 @pytest.mark.parametrize(
-    "raw", ["C. Velazquez", "E. Marín", "A. Kowalski", "R. Navarro-Ruiz", "L. O'Brien"]
+    "raw",
+    [
+        "C. Velazquez",
+        "E. Marín",
+        "A. Kowalski",
+        "R. Navarro-Ruiz",
+        "L. O'Brien",
+        "C. de la Torre",
+        "J. C. Pérez",
+        "M. van Dijk",
+        "A. de los Santos",
+        "L. García y Pérez",
+    ],
 )
 def test_valid_designers(raw):
     assert v.validate_designer(raw).ok
@@ -260,6 +319,11 @@ def test_valid_designers(raw):
         "C. Velazquez 2",
         "",
         "C. " + "A" * 40,
+        "C.Velazquez",
+        "C. 123",
+        "C. de la torre",
+        "J. C. D. Pérez",
+        "C. el Torre",
     ],
 )
 def test_bad_designers(raw):
@@ -478,3 +542,26 @@ def test_a_name_other_than_sap_is_an_error():
 
 def test_sap_name_in_other_formatting_is_fine():
     assert _existing("bead  sorter vision board").ok
+
+
+def test_issues_carry_params_for_the_ui_and_to_dict_drops_empty_params():
+    [issue] = v.validate_revision("I", ["A", "B", "C", "D", "E", "F", "G", "H"]).errors
+    assert issue.params == {"letters": "I", "value": "I", "expected": "J"}
+    assert issue.to_dict()["params"] == issue.params
+    [plain] = v.validate_design_name("Drill HL-HW-26-0042").errors
+    assert "params" not in plain.to_dict()
+
+
+@pytest.mark.parametrize(
+    ("number", "variant"),
+    [
+        ("hl-hw-26-0042", "capitals"),
+        ("HL_HW_26_0042", "hyphens"),
+        ("HL-HWD-26-0042", "department"),
+        ("HL-HW-2026-0042", "year"),
+        ("HL-HW-26-42", "sequence"),
+    ],
+)
+def test_malformed_numbers_name_their_variant(number, variant):
+    [issue] = v.validate_design_number(number).errors
+    assert issue.params["variant"] == variant

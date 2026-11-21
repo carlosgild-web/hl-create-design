@@ -49,8 +49,8 @@ class ActionOutcome:
     error_kind: str | None = None  # validation | sap_unavailable | sap | export | conflict
 
 
-def _issue_dict(issue: v.Issue) -> dict[str, str]:
-    return {"field": issue.field, "code": issue.code, "message": issue.message, "ref": issue.ref}
+def _issue_dict(issue: v.Issue) -> dict[str, Any]:
+    return issue.to_dict()
 
 
 def _not_pending(engine: Engine, action_id: str) -> ActionNotPending:

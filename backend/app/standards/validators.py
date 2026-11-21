@@ -14,20 +14,40 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from datetime import date
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any
 
 # --- results ---------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class Issue:
-    """One broken rule (an error) or one thing to tell the user (a warning)."""
+    """One broken rule (an error) or one thing to tell the user (a warning).
+
+    `message` is English: the model, the traces and the logs read it. The UI shows the
+    user's language from `code` and `params` (decision 0022): the template
+    `issue.<code>` in `frontend/src/i18n/messages.ts`, or `issue.<code>.<variant>` when
+    `params["variant"]` is set, filled in with the other params.
+    """
 
     field: str
     code: str
     message: str
     ref: str  # manual section and anchor, e.g. "02-revisions#skipped-letters"
+    params: dict[str, str] = dataclass_field(default_factory=dict, compare=False, hash=False)
+
+    def to_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {
+            "field": self.field,
+            "code": self.code,
+            "message": self.message,
+            "ref": self.ref,
+        }
+        if self.params:
+            out["params"] = dict(self.params)
+        return out
 
 
 @dataclass(frozen=True)
@@ -69,7 +89,11 @@ def validate_department(code: str) -> FieldCheck:
     code = code.strip()
     if code in DEPARTMENTS:
         return _check(code)
-    hint = f" Did you mean {code.upper()}?" if code.upper() in DEPARTMENTS else ""
+    suggest = code.upper() in DEPARTMENTS
+    hint = f" Did you mean {code.upper()}?" if suggest else ""
+    params = {"value": code, "departments": ", ".join(DEPARTMENTS)}
+    if suggest:
+        params |= {"variant": "suggest", "suggestion": code.upper()}
     return _check(
         code,
         Issue(
@@ -78,6 +102,7 @@ def validate_department(code: str) -> FieldCheck:
             f"'{code}' is not an Electronics Engineering department. "
             f"Use one of {', '.join(DEPARTMENTS)}.{hint}",
             "05-departments#list",
+            params,
         ),
     )
 
@@ -99,7 +124,8 @@ def validate_design_number(number: str, department: str | None = None) -> FieldC
     ref = "01-design-numbering#format"
     match = DESIGN_NUMBER_RE.match(number)
     if not match:
-        return _check(number, Issue("design_number", "number_format", _why(number), ref))
+        message, params = _why(number)
+        return _check(number, Issue("design_number", "number_format", message, ref, params))
     if match.group(3) == "0000":
         return _check(
             number,
@@ -118,28 +144,44 @@ def validate_design_number(number: str, department: str | None = None) -> FieldC
                 "number_department_mismatch",
                 f"{number} belongs to department {match.group(1)}, not {department}.",
                 ref,
+                {"number": number, "owner": match.group(1), "department": department},
             ),
         )
     return _check(number)
 
 
-def _why(number: str) -> str:
-    """Explain the most likely mistake in a malformed design number."""
+def _why(number: str) -> tuple[str, dict[str, str]]:
+    """Explain the most likely mistake in a malformed design number: the English message
+    and the params of its `number_format` variant."""
     expected = "The format is HL-<DEPT>-<YY>-<NNNN>, for example HL-HW-26-0042."
     if number != number.upper() and DESIGN_NUMBER_RE.match(number.upper()):
-        return f"Write the design number in capital letters: {number.upper()}. {expected}"
+        upper = number.upper()
+        return (
+            f"Write the design number in capital letters: {upper}. {expected}",
+            {"variant": "capitals", "upper": upper},
+        )
     if "_" in number or " " in number:
-        return f"Use hyphens, without spaces or underscores. {expected}"
+        return f"Use hyphens, without spaces or underscores. {expected}", {"variant": "hyphens"}
     loose = _NUMBER_LOOSE_RE.match(number.upper())
     if loose:
         dept, year, seq = loose.groups()
         if dept not in DEPARTMENTS:
-            return f"'{dept}' is not an Electronics Engineering department. {expected}"
+            return (
+                f"'{dept}' is not an Electronics Engineering department. {expected}",
+                {"variant": "department", "dept": dept},
+            )
         if len(year) != 2:
-            return f"The year has two digits ({year[-2:]}). {expected}"
+            return (
+                f"The year has two digits ({year[-2:]}). {expected}",
+                {"variant": "year", "year": year[-2:]},
+            )
         if len(seq) != 4:
-            return f"The sequence has four digits ({seq.zfill(4)[-4:]}). {expected}"
-    return expected
+            sequence = seq.zfill(4)[-4:]
+            return (
+                f"The sequence has four digits ({sequence}). {expected}",
+                {"variant": "sequence", "sequence": sequence},
+            )
+    return expected, {}
 
 
 # --- revisions: 02-revisions --------------------------------------------------------
@@ -206,7 +248,7 @@ def validate_revision(rev: str, existing: Iterable[str] = ()) -> FieldCheck:
             "There is no revision 0, -, 01 or P1, and no sub-revisions such as A1."
         )
         ref = "02-revisions#first-revision" if rev else "02-revisions#sequence"
-        return _check(rev, Issue("revision", "rev_format", message, ref))
+        return _check(rev, Issue("revision", "rev_format", message, ref, {"value": rev}))
 
     skipped = sorted(SKIPPED_LETTERS.intersection(rev))
     if skipped:
@@ -220,18 +262,21 @@ def validate_revision(rev: str, existing: Iterable[str] = ()) -> FieldCheck:
                 f"The letters I, O, Q, S, X and Z are never used ({letters} in '{rev}'). "
                 f"The next free revision is {expected}.",
                 "02-revisions#skipped-letters",
+                {"letters": letters, "value": rev, "expected": expected},
             ),
         )
 
     if rev in existing:
+        expected = next_revision(existing)
         return _check(
             rev,
             Issue(
                 "revision",
                 "rev_reused",
                 f"Revision {rev} already exists, and a letter is never reused. "
-                f"The next free revision is {next_revision(existing)}.",
+                f"The next free revision is {expected}.",
                 "02-revisions#never-reuse",
+                {"value": rev, "expected": expected},
             ),
         )
 
@@ -245,6 +290,7 @@ def validate_revision(rev: str, existing: Iterable[str] = ()) -> FieldCheck:
                     "rev_first_not_a",
                     f"A new design starts at revision {FIRST_REVISION}, not {rev}.",
                     "02-revisions#first-revision",
+                    {"value": rev},
                 ),
             )
         older = (revision_index(rev) or 0) < (revision_index(expected) or 0)
@@ -260,6 +306,8 @@ def validate_revision(rev: str, existing: Iterable[str] = ()) -> FieldCheck:
                     else f"Don't jump ahead: after {existing[-1]} comes {expected}, not {rev}."
                 ),
                 "02-revisions#never-reuse" if older else "02-revisions#next-revision",
+                {"value": rev, "latest": existing[-1], "expected": expected}
+                | ({"variant": "older"} if older else {}),
             ),
         )
     return _check(rev)
@@ -285,6 +333,7 @@ def check_status_allows_revision(
         return _check(status, warnings=[warning])
     if status == "BLOCKED":
         reason = f" Reason in SAP: {block_reason}." if block_reason else ""
+        blocked = {"variant": "reason", "reason": block_reason} if block_reason else {}
         return _check(
             status,
             Issue(
@@ -293,10 +342,12 @@ def check_status_allows_revision(
                 "The design is BLOCKED by Product Engineering; no new revision can be created."
                 f"{reason} Contact Product Engineering.",
                 "06-sap-statuses#blocked",
+                blocked,
             ),
         )
     if status == "OBSOLETE":
         hint = f" Work on the successor {successor} instead." if successor else ""
+        obsolete = {"variant": "successor", "successor": successor} if successor else {}
         return _check(
             status,
             Issue(
@@ -305,6 +356,7 @@ def check_status_allows_revision(
                 "The design is OBSOLETE and no longer built; no new revision can be created."
                 f"{hint}",
                 "06-sap-statuses#obsolete",
+                obsolete,
             ),
         )
     return _check(
@@ -314,6 +366,7 @@ def check_status_allows_revision(
             "status_unknown",
             f"Unknown SAP status '{status}'.",
             "06-sap-statuses#overview",
+            {"status": status},
         ),
     )
 
@@ -330,6 +383,7 @@ def check_known_in_sap(design_number: str, found: bool) -> FieldCheck:
             f"{design_number} doesn't exist in SAP. Only SAP issues design numbers: reserve a "
             "new number, or check that you typed an existing one correctly.",
             "01-design-numbering#issued-by-sap",
+            {"number": design_number},
         ),
     )
 
@@ -338,8 +392,22 @@ def check_known_in_sap(design_number: str, found: bool) -> FieldCheck:
 
 NAME_MIN, NAME_MAX = 3, 40
 _NAME_CHARS_RE = re.compile(r"^[A-Za-z0-9 ._-]+$")
-_NAME_FORBIDDEN_WORDS = frozenset({"new", "final", "copy", "rev", "revision"})
 _NAME_HAS_NUMBER_RE = re.compile(r"\bHL[-_ ]?[A-Z]{2,4}[-_ ]?\d", re.IGNORECASE)
+# Version words (decision 0022). An error when they modify the whole name: "New"/"Final"
+# first, "New"/"Final"/"Copy" last, or "Rev"/"Revision" + a letter or digit ("Rev A").
+# Anywhere else only a warning, so "Copy Stand Controller" and "Revision Counter Board" pass.
+_NAME_VERSION_WORDS = frozenset({"new", "final", "copy", "rev", "revision"})
+_NAME_LEADING_MODIFIERS = frozenset({"new", "final"})
+_NAME_TRAILING_MODIFIERS = frozenset({"new", "final", "copy"})
+_NAME_REVISION_TAG_RE = re.compile(r"\b(rev|revision)[ ._-]*([a-z]{1,2}|\d+)\b", re.IGNORECASE)
+# Common Spanish words in board names; two of them, or a one-word name that is one, look
+# Spanish (07-faq#name-language). A warning only: "Control Board" is English too.
+_SPANISH_TEXT = (
+    "de del la el los las para con sin y placa tarjeta fuente controlador prueba "
+    "pruebas nueva nuevo sensores taladro horno potencia alimentacion "
+    "medidor medicion lector interfaz modulo banco utillaje contador pantalla"
+)
+_SPANISH_WORDS = frozenset(_SPANISH_TEXT.split())
 
 
 def collapse_spaces(text: str) -> str:
@@ -347,9 +415,36 @@ def collapse_spaces(text: str) -> str:
     return " ".join(text.split())
 
 
+def _title_word(word: str) -> str:
+    # Written with capitals on purpose: "LED", "24V", "USB-C", "LEDs", "iPhone".
+    if word.isupper() or any(c.isupper() for c in word[1:]):
+        return word
+    return "-".join(part[:1].upper() + part[1:].lower() for part in word.split("-"))
+
+
 def title_case(name: str) -> str:
-    """Capitalise each word; keep words already written in capitals (`LED`, `24V`)."""
-    return " ".join(w if w.isupper() else w[:1].upper() + w[1:].lower() for w in name.split())
+    """Capitalize each word and each part of a hyphenated word (`burn-in` -> `Burn-In`);
+    keep words written with capitals (`LED`, `24V`, `LEDs`, `iPhone`)."""
+    return " ".join(_title_word(w) for w in name.split())
+
+
+def _version_words(name: str) -> tuple[list[str], list[str]]:
+    """(errors, warnings): the version words that modify the whole name, and the others."""
+    words = [w.lower().strip("._-") for w in name.split()]
+    errors: set[str] = set()
+    if words and words[0] in _NAME_LEADING_MODIFIERS:
+        errors.add(words[0])
+    if words and words[-1] in _NAME_TRAILING_MODIFIERS:
+        errors.add(words[-1])
+    errors |= {m.group(1).lower() for m in _NAME_REVISION_TAG_RE.finditer(name)}
+    warnings = (set(words) & _NAME_VERSION_WORDS) - errors
+    return sorted(errors), sorted(warnings)
+
+
+def _looks_spanish(name: str) -> bool:
+    words = [w.lower().strip("._-") for w in name.split()]
+    spanish = [w for w in words if w in _SPANISH_WORDS]
+    return len(spanish) >= 2 or (len(words) == 1 and bool(spanish))
 
 
 def validate_design_name(raw: str) -> FieldCheck:
@@ -357,14 +452,16 @@ def validate_design_name(raw: str) -> FieldCheck:
     ref = "03-title-block#design-name"
     bad = sorted({c for c in name if not _NAME_CHARS_RE.match(c)})
     if bad:
+        chars = " ".join(repr(c) for c in bad)
         return _check(
             name,
             Issue(
                 "name",
                 "name_characters",
                 "The design name may contain only letters A-Z, digits, spaces and - _ . "
-                f"(no accents or other symbols). Not allowed: {' '.join(repr(c) for c in bad)}.",
+                f"(no accents or other symbols). Not allowed: {chars}.",
                 ref,
+                {"chars": chars},
             ),
         )
     if not NAME_MIN <= len(name) <= NAME_MAX:
@@ -375,6 +472,7 @@ def validate_design_name(raw: str) -> FieldCheck:
                 "name_length",
                 f"The design name needs {NAME_MIN} to {NAME_MAX} characters; it has {len(name)}.",
                 ref,
+                {"min": str(NAME_MIN), "max": str(NAME_MAX), "length": str(len(name))},
             ),
         )
     if _NAME_HAS_NUMBER_RE.search(name):
@@ -387,20 +485,69 @@ def validate_design_name(raw: str) -> FieldCheck:
                 ref,
             ),
         )
-    words = {w.lower().strip("._-") for w in name.split()}
-    forbidden = sorted(words & _NAME_FORBIDDEN_WORDS)
-    if forbidden:
+    errors, maybe = _version_words(name)
+    if errors:
+        words = ", ".join(errors)
         return _check(
             name,
             Issue(
                 "name",
                 "name_forbidden_word",
-                f"Don't use words like {', '.join(forbidden)} in the name; describe the "
+                f"Don't use words like {words} in the name; describe the "
                 "function, for example 'Kiln Thermocouple Interface'.",
                 ref,
+                {"words": words},
             ),
         )
-    return _check(name)
+    warnings: list[Issue] = []
+    if maybe:
+        words = ", ".join(maybe)
+        warnings.append(
+            Issue(
+                "name",
+                "name_word_check",
+                f"Check that '{words}' describes the function and isn't a version word; "
+                "versions go in the revision.",
+                ref,
+                {"words": words},
+            )
+        )
+    if _looks_spanish(name):
+        warnings.append(
+            Issue(
+                "name",
+                "name_looks_spanish",
+                "The name looks Spanish. Design names are in English, because they go to SAP "
+                "and to supplier documents; Spanish text can go in the description.",
+                "07-faq#name-language",
+            )
+        )
+    return _check(name, warnings=warnings)
+
+
+def _name_key(name: str) -> str:
+    return title_case(collapse_spaces(name)).lower()
+
+
+def check_name_unique(
+    name: str, design_number: str, designs: Iterable[tuple[str, str]]
+) -> list[Issue]:
+    """07-faq#same-name: a warning when another SAP design (`(number, name)` pairs) has the
+    same name. Never an error: the number identifies a design, not its name."""
+    key = _name_key(name)
+    for number, other in designs:
+        if number != design_number and other and _name_key(other) == key:
+            return [
+                Issue(
+                    "name",
+                    "name_exists_in_sap",
+                    f"{number} in SAP already has the name '{title_case(other)}'. If the new "
+                    "board can replace it, make a new revision of that number instead.",
+                    "07-faq#same-name",
+                    {"number": number, "name": title_case(other)},
+                )
+            ]
+    return []
 
 
 # --- description: 03-title-block#description ------------------------------------------
@@ -441,6 +588,7 @@ def validate_description(raw: str) -> FieldCheck:
                 "description_length",
                 f"The description has at most {DESCRIPTION_MAX} characters; it has {len(text)}.",
                 ref,
+                {"max": str(DESCRIPTION_MAX), "length": str(len(text))},
             ),
         )
     return _check(text)
@@ -449,14 +597,37 @@ def validate_description(raw: str) -> FieldCheck:
 # --- designer: 03-title-block#designer ------------------------------------------------
 
 DESIGNER_MAX = 40
-# Initial, period, space, surname. Letters with accents are allowed; digits are not.
-_DESIGNER_RE = re.compile(r"^([^\W\d_])\. ([^\W\d_](?:[^\W\d_]|['\- ])*[^\W\d_])$")
+# One or two initials ("C.", "J. C."), then a surname of one or more words. Letters with
+# accents, apostrophes and hyphens are allowed; digits are not. Particles may be lowercase
+# ("C. de la Torre", "M. van Dijk"); the surname's last word starts with a capital.
+_INITIAL_RE = re.compile(r"^[^\W\d_]\.$")
+_SURNAME_WORD_RE = re.compile(r"^[^\W\d_]+(?:['\-][^\W\d_]+)*$")
+SURNAME_PARTICLES = frozenset(
+    {"de", "del", "la", "las", "los", "y", "van", "von", "der", "den", "da", "do", "dos"}
+)
+
+
+def _designer_ok(designer: str) -> bool:
+    parts = designer.split(" ")
+    initials = 0
+    while initials < len(parts) and _INITIAL_RE.match(parts[initials]):
+        if not parts[initials][0].isupper():
+            return False
+        initials += 1
+    surname = parts[initials:]
+    if not 1 <= initials <= 2 or not surname:
+        return False
+    if not all(_SURNAME_WORD_RE.match(w) for w in surname):
+        return False
+    *particles_or_names, last = surname
+    if len(last) < 2 or not last[0].isupper():
+        return False
+    return all(w[0].isupper() or w in SURNAME_PARTICLES for w in particles_or_names)
 
 
 def validate_designer(raw: str) -> FieldCheck:
     designer = collapse_spaces(raw)
     ref = "03-title-block#designer"
-    match = _DESIGNER_RE.match(designer)
     if len(designer) > DESIGNER_MAX:
         return _check(
             designer,
@@ -465,16 +636,18 @@ def validate_designer(raw: str) -> FieldCheck:
                 "designer_length",
                 f"The designer has at most {DESIGNER_MAX} characters.",
                 ref,
+                {"max": str(DESIGNER_MAX)},
             ),
         )
-    if not match or not match.group(1).isupper() or not match.group(2)[0].isupper():
+    if not _designer_ok(designer):
         return _check(
             designer,
             Issue(
                 "designer",
                 "designer_format",
-                "Write the designer as initial, period, space and surname, as in the company "
-                "directory: C. Velazquez.",
+                "Write the designer as one or two initials with a period, a space and the "
+                "surname, as in the company directory: C. Velazquez, J. C. Pérez, "
+                "C. de la Torre.",
                 ref,
             ),
         )
@@ -513,6 +686,7 @@ def validate_material(raw: str) -> FieldCheck:
                 f"{material_display(value)} is outside the range for electronic assemblies "
                 "(40000000 to 49999999).",
                 ref,
+                {"material": material_display(value)},
             ),
         )
     return _check(value)
@@ -609,6 +783,7 @@ def check_name_matches_sap(name: FieldCheck, sap_name: str) -> FieldCheck:
         f"This design is called '{expected}' in SAP, and a new revision keeps that name. "
         "For a different name, ask for a new design number.",
         "03-title-block#name-from-sap",
+        {"expected": expected},
     )
     return FieldCheck(name.value, (*name.errors, issue), name.warnings)
 
@@ -723,6 +898,7 @@ def design_folder(root: Path, department: str, design_number: str, revision: str
                 "rev_format",
                 f"'{revision}' is not a revision.",
                 "02-revisions#sequence",
+                {"value": revision},
             )
         )
     if errors:
