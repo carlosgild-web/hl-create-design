@@ -139,10 +139,12 @@ Palabras clave: pasos del agente, pasos, registro, herramientas, qué hizo, cóm
 ## Modo demostración
 <a id="demo-mode"></a>
 
-«Demo mode: no language model is configured» significa que no hay ningún modelo de IA
-conectado, así que el asistente no puede responder ni rellenar el formulario. Todo lo demás
-funciona: rellena el formulario tú mismo; las comprobaciones, SAP y las tarjetas de
-confirmación funcionan igual.
+Sin un modelo de IA responde el asistente de demostración («(Asistente de demostración)», y
+la cabecera dice «Asistente: demostración (sin IA)»). Sigue reglas sencillas: responde
+preguntas con las primeras líneas de la mejor sección del manual y su referencia, rellena el
+formulario con una frase que nombre los valores (el nombre entre comillas) y abre la tarjeta de
+confirmación cuando pasan las comprobaciones. Para lo demás, rellena el formulario tú: las
+comprobaciones, SAP y las tarjetas funcionan igual.
 
 Palabras clave: modo demo, demo mode, demostración, sin ia, sin modelo, modelo de lenguaje, no configurado, significa, fake
 

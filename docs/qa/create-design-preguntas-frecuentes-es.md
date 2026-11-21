@@ -301,9 +301,10 @@ resultados. Sirve para ver por qué respondió como respondió.
 Ref: 08-using-create-design#agent-steps
 
 ### El asistente solo responde «Demo mode: no language model is configured».
-No hay ningún modelo de IA conectado, así que el asistente no puede responder ni rellenar el
-formulario. Todo lo demás funciona: rellena el formulario tú mismo; las comprobaciones, SAP y
-las tarjetas de confirmación funcionan igual.
+No hay ningún modelo de IA conectado, así que responde el asistente de demostración con reglas
+sencillas: preguntas con el manual y una referencia, el formulario con una frase y la tarjeta
+cuando pasan las comprobaciones. Para lo demás, rellena el formulario tú; las comprobaciones,
+SAP y las tarjetas funcionan igual.
 Ref: 08-using-create-design#demo-mode
 
 ### El asistente va lento o dice que se agotó el tiempo.

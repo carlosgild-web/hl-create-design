@@ -278,6 +278,10 @@ for questions, never opens a card, and is traced; prompt-injection scenarios unc
 
 ## 9e — A real demo mode (`DemoClient`)
 
+**Status: done (2026-11-21, decision 0025).** `LLM_PROVIDER=demo` (Q5), `fake` stays the test
+double. FAQ bank 103/108 cited, demo eval 31/33 (wizard and folder-check route fail by design),
+header badge, README/manual/Q&A updated, `agent-eval --provider demo`.
+
 **Goal:** with no model, the assistant still helps, and the README claim becomes true.
 
 - `llm/demo.py` (new; ask first): `DemoClient(LLMClient)`, provider `demo`, model `rules`. It's
@@ -337,7 +341,7 @@ for questions, never opens a card, and is traced; prompt-injection scenarios unc
 | Q2 | 9b | Forbidden words: errors or warnings? | **Answered: yes** — errors only as whole-name modifiers (`Final`, `Copy` at the end, `Rev A`); otherwise a warning |
 | Q3 | 9c | Write revisions to the mock SAP (A) or count `audit_log` (B)? | **Answered (2026-11-21): A** — closer to a real PLM, fixes the "latest" label |
 | Q4 | 9c | If SAP fails after the folder is written, roll back the folder or mark the action as partly done? | **Answered: yes** — write SAP first, then the folder; roll back nothing on disk |
-| Q5 | 9e | Should `fake` mean the demo in the app, or add a `demo` provider? | Add `demo`; keep `fake` for tests only |
+| Q5 | 9e | Should `fake` mean the demo in the app, or add a `demo` provider? | **Answered (2026-11-21): add `demo`**; keep `fake` for tests only |
 | Q6 | 9d | Pre-retrieval for Groq too, or only Ollama? | **Answered (2026-11-21): both** (saves a round trip on Groq) |
 | Q7 | 9a | Should new designs start without the template circuit? | **Answered: keep it** and explain it in `08#template-circuit` |
 | Q8 | 9c | Finding 18: without `kicad-cli`, create the project without the PDF, or fix the README? | **Answered: create without the PDF** and say so on the card (KiCad stays optional) |

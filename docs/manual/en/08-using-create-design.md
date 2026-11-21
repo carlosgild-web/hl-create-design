@@ -137,9 +137,11 @@ Keywords: agent steps, steps, trace, log, tool calls, what did the assistant do,
 ## Demo mode
 <a id="demo-mode"></a>
 
-"Demo mode: no language model is configured" means no AI model is connected, so the
-assistant can't answer or fill the form. Everything else works: fill in the form yourself;
-the checks, SAP and the confirmation cards work as usual.
+Without an AI model, the demo assistant answers ("(Demo assistant)", and the header says
+"Assistant: demo (no AI)"). It follows simple rules: it answers questions with the first lines
+of the best manual section and its reference, fills the form from a sentence that names the
+values (a name in quotes), and opens the confirmation card when the checks pass. For anything
+else, fill in the form yourself: the checks, SAP and the cards work as usual.
 
 Keywords: demo mode, demo, no language model, no ai, not configured, fake, modo demo, demostración, sin ia, sin modelo, no configurado
 

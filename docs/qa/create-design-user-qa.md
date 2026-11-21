@@ -288,8 +288,9 @@ it answered the way it did.
 Ref: 08-using-create-design#agent-steps
 
 ### The assistant only answers "Demo mode: no language model is configured".
-No AI model is connected, so the assistant can't answer or fill the form. Everything else
-works: fill in the form yourself, and the checks, SAP and the confirmation cards work as usual.
+No AI model is connected, so the demo assistant answers with simple rules: questions from the
+manual with a reference, the form from a sentence, and the card when the checks pass. For the
+rest, fill in the form yourself; the checks, SAP and the cards work as usual.
 Ref: 08-using-create-design#demo-mode
 
 ### The assistant is slow or says it timed out.
