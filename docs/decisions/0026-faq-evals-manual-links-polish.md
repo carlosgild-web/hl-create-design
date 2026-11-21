@@ -1,6 +1,6 @@
 # 0026: FAQ evals, clickable manual references, and the last polish of Phase 9
 
-**Status:** accepted (2026-11-21); real-model runs pending (see below)
+**Status:** accepted (2026-11-21); the Ollama A/B is done (items 7-8), the Groq run is pending
 
 ## Context
 
@@ -57,9 +57,6 @@ Phase 9 block 9f (`PLAN-phase-9-review-and-faq.md`, findings 16–17 and the eva
 
 ## Pending
 
-- Ollama runs on the 49-scenario suite: `--preretrieval off`, `auto`, and `auto
-  --few-shot` (commands in `docs/eval/README.md`). The user runs them (memory on the dev
-  machine).
 - The Groq run and the Groq token measurement of decision 0024, after the daily quota
   resets (it was nearly used up on 2026-11-21).
 - The user's local `.env` sets `LLM_PROVIDER` twice (finding 17): a manual clean-up, not
