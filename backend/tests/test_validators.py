@@ -163,6 +163,14 @@ def test_skipped_letter_suggests_the_next_free_revision():
     assert check.errors[0].ref == "02-revisions#skipped-letters"
 
 
+def test_a_lone_skipped_letter_reads_plainly():
+    # "I" alone: no "(I in 'I')" (live check, finding D4); the UI uses the "single" template
+    alone = v.validate_revision("I", list("ABCDEFGH")).errors[0]
+    assert alone.params["variant"] == "single" and "in 'I'" not in alone.message
+    within = v.validate_revision("AI", ["Y"]).errors[0]
+    assert "variant" not in within.params and "(I in 'AI')" in within.message
+
+
 # --- 06-sap-statuses ----------------------------------------------------------------
 
 
@@ -546,7 +554,7 @@ def test_sap_name_in_other_formatting_is_fine():
 
 def test_issues_carry_params_for_the_ui_and_to_dict_drops_empty_params():
     [issue] = v.validate_revision("I", ["A", "B", "C", "D", "E", "F", "G", "H"]).errors
-    assert issue.params == {"letters": "I", "value": "I", "expected": "J"}
+    assert issue.params == {"letters": "I", "value": "I", "expected": "J", "variant": "single"}
     assert issue.to_dict()["params"] == issue.params
     [plain] = v.validate_design_name("Drill HL-HW-26-0042").errors
     assert "params" not in plain.to_dict()

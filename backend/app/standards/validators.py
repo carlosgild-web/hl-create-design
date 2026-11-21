@@ -254,15 +254,19 @@ def validate_revision(rev: str, existing: Iterable[str] = ()) -> FieldCheck:
     if skipped:
         letters = ", ".join(skipped)
         expected = next_revision(existing)
+        # "I" alone needs no "(I in 'I')": the plain sentence, as variant "single".
+        single = rev == letters
+        where = "" if single else f" ({letters} in '{rev}')"
         return _check(
             rev,
             Issue(
                 "revision",
                 "rev_skipped_letter",
-                f"The letters I, O, Q, S, X and Z are never used ({letters} in '{rev}'). "
+                f"The letters I, O, Q, S, X and Z are never used{where}. "
                 f"The next free revision is {expected}.",
                 "02-revisions#skipped-letters",
-                {"letters": letters, "value": rev, "expected": expected},
+                {"letters": letters, "value": rev, "expected": expected}
+                | ({"variant": "single"} if single else {}),
             ),
         )
 

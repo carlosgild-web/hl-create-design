@@ -4,16 +4,26 @@ import { issueText } from './issues'
 
 const skipped = {
   code: 'rev_skipped_letter',
-  message: 'The letters I, O, Q, S, X and Z are never used (I in "I"). The next free revision is J.',
-  params: { letters: 'I', value: 'I', expected: 'J' },
+  message: "The letters I, O, Q, S, X and Z are never used (I in 'AI'). The next free revision is AJ.",
+  params: { letters: 'I', value: 'AI', expected: 'AJ' },
 }
 
 describe('issueText', () => {
   it('renders the code in the UI language with its params', () => {
     expect(issueText('es', skipped)).toBe(
-      'Las letras I, O, Q, S, X y Z no se usan nunca (I en «I»). La siguiente revisión libre es J.',
+      'Las letras I, O, Q, S, X y Z no se usan nunca (I en «AI»). La siguiente revisión libre es AJ.',
     )
-    expect(issueText('en', skipped)).toContain('The next free revision is J.')
+    expect(issueText('en', skipped)).toContain('The next free revision is AJ.')
+  })
+
+  it('a lone skipped letter uses the plain "single" template', () => {
+    const alone = {
+      code: 'rev_skipped_letter',
+      message: 'The letters I, O, Q, S, X and Z are never used. The next free revision is J.',
+      params: { letters: 'I', value: 'I', expected: 'J', variant: 'single' },
+    }
+    expect(issueText('es', alone)).toBe('Las letras I, O, Q, S, X y Z no se usan nunca. La siguiente revisión libre es J.')
+    expect(issueText('en', alone)).toBe('The letters I, O, Q, S, X and Z are never used. The next free revision is J.')
   })
 
   it('uses the variant template when the params name one', () => {

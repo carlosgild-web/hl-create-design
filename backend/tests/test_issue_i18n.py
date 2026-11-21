@@ -62,6 +62,7 @@ def produced() -> list[v.Issue]:
         v.check_known_in_sap("HL-HW-26-0099", found=False),
         v.validate_revision("A1"),
         v.validate_revision("I", existing),
+        v.validate_revision("AI", existing),
         v.validate_revision("B", existing),
         v.validate_revision("A", ["A", "B", "C", "D"][1:]),
         v.validate_revision("C"),
