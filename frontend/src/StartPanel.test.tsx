@@ -105,15 +105,26 @@ describe('Start panel (decision 0018)', () => {
     let down = true
     stubFetch(
       (url) =>
-        url === '/api/sap/designs' && down
-          ? jsonResponse({ code: 'sap_unavailable', message: 'SAP is not available right now.' }, 503)
+        url === '/api/sap/designs?lang=en' && down
+          ? jsonResponse(
+              {
+                code: 'sap_unavailable',
+                message: 'SAP is not available right now (SAP system is in maintenance). ...',
+                params: { sap_code: 'ZHL_GW/003', detail: 'SAP system is in maintenance; try again later' },
+              },
+              503,
+            )
           : undefined,
       ...baseRoutes,
     )
     renderWithProviders(<App />)
     await user.click(screen.getByRole('radio', { name: 'From existing design' }))
 
-    expect(await screen.findByText('SAP is not available right now.')).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        'SAP is not available right now (SAP system is in maintenance; try again later). Nothing was checked in SAP; try again later.',
+      ),
+    ).toBeInTheDocument()
     down = false
     await user.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByRole('listbox')).toBeInTheDocument()

@@ -10,6 +10,8 @@ The body is always the action with its result.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
@@ -47,9 +49,12 @@ def confirm(
     engine: EngineDep,
     sap_factory: SapFactoryDep,
     runner: RunnerDep,
+    lang: Literal["en", "es"] = "en",
 ) -> JSONResponse:
+    """`lang`: the UI language, so SAP's own refusal text comes in it (decision 0027)."""
     try:
         with sap_factory() as sap:
+            sap.use_language(lang)
             outcome = confirm_action(
                 action_id, settings=settings, engine=engine, sap=sap, runner=runner
             )

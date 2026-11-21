@@ -110,7 +110,7 @@ describe('form: where each value came from', () => {
     }
     const calls = stubFetch(
       (url) => (url === '/api/actions' ? jsonResponse(pending, 201) : undefined),
-      (url) => (url === '/api/actions/r1/confirm' ? jsonResponse(confirmed) : undefined),
+      (url) => (url === '/api/actions/r1/confirm?lang=en' ? jsonResponse(confirmed) : undefined),
       ...baseRoutes,
     )
     renderWithProviders(<App />)
@@ -195,7 +195,7 @@ describe('confirmation card', () => {
               ['done', { status: 'answered' }],
             ])
           : undefined,
-      (url) => (url === '/api/actions/a1/confirm' ? new Promise<Response>((r) => (finish = r)) : undefined),
+      (url) => (url === '/api/actions/a1/confirm?lang=en' ? new Promise<Response>((r) => (finish = r)) : undefined),
       ...baseRoutes,
     )
     renderWithProviders(<App />)

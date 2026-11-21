@@ -141,6 +141,12 @@ class SapClient:
     def close(self) -> None:
         self._http.close()
 
+    def use_language(self, language: str) -> SapClient:
+        """Ask SAP for its texts (error messages) in this logon language, `en` or `es`:
+        the `sap-language` header of SAP Gateway (decision 0027)."""
+        self._http.headers["sap-language"] = language.upper()
+        return self
+
     # --- reads -----------------------------------------------------------------------
 
     def get_design(self, design_number: str) -> SapDesign | None:

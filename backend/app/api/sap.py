@@ -52,11 +52,13 @@ def list_designs(
     department: Department | None = None,
     status: Status | None = None,
     q: Annotated[str, Query(max_length=40)] = "",
+    lang: Literal["en", "es"] = "en",
 ) -> list[dict[str, Any]] | JSONResponse:
     """The designs SAP knows, ordered by number. `q` matches the number or the name
     (SAP's OData cannot filter on the name, so this filter runs here)."""
     try:
         with sap_factory() as sap:
+            sap.use_language(lang)
             designs = sap.list_designs(department=department, status=status, top=500)
     except SapError as exc:
         return _unavailable(exc)
@@ -73,9 +75,11 @@ def get_design(
     design_number: Annotated[str, Path(max_length=40)],
     settings: SettingsDep,
     sap_factory: SapFactoryDep,
+    lang: Literal["en", "es"] = "en",
 ) -> dict[str, Any] | JSONResponse:
     try:
         with sap_factory() as sap:
+            sap.use_language(lang)
             design = sap.get_design(design_number)
     except SapError as exc:
         return _unavailable(exc)

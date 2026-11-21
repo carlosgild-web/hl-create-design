@@ -33,6 +33,10 @@ COMPANY = "Hilda & Luna Beadworks"
 class DesignFolderExistsError(FileExistsError):
     """The revision folder already exists; nothing was changed."""
 
+    def __init__(self, folder: object) -> None:
+        super().__init__(f"{folder} already exists; nothing was changed")
+        self.folder = str(folder)
+
 
 @dataclass(frozen=True)
 class TitleBlock:
@@ -146,7 +150,7 @@ def render_project(
     try:
         folder.mkdir()
     except FileExistsError as exc:
-        raise DesignFolderExistsError(f"{folder} already exists; nothing was changed") from exc
+        raise DesignFolderExistsError(folder) from exc
 
     try:
         project_file = folder / f"{stem}.kicad_pro"

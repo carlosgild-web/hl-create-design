@@ -19,6 +19,22 @@ export function issueText(lang: Lang, issue: IssueLike): string {
 }
 
 /**
+ * A backend failure in the UI language (decision 0027): the template `<prefix>.<code>` with
+ * its params, where SAP's own text (`detail`) already comes in the language the UI asked for.
+ * Without a code or a template, the English message.
+ */
+export function failureText(
+  lang: Lang,
+  prefix: 'failure' | 'sap',
+  code: string | undefined,
+  params: Record<string, string> | undefined,
+  message: string,
+): string {
+  const key = `${prefix}.${code}` as MessageKey
+  return code && key in messages.en ? translate(lang, key, params) : message
+}
+
+/**
  * The warnings stored in a card when it was opened (decision 0023): the same read-only check
  * the form runs, so the user sees them before Confirm. The payload's other values are strings.
  */

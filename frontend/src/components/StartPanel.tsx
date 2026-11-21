@@ -2,6 +2,7 @@ import { Collapsible } from 'radix-ui'
 import { ChevronDown, FilePlus2, Files, RotateCw, Search, Sparkles } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
+import { SapRequestError } from '@/api/client'
 import type { Action, Department, FormField, FormMode, Issue, PreviewTarget, SapListDesign } from '@/api/types'
 import { RecentDesigns } from '@/components/RecentDesigns'
 import { SapCard } from '@/components/SapCard'
@@ -11,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useI18n, type MessageKey } from '@/i18n'
 import { departmentName, FIELD_LABELS } from '@/lib/fields'
+import { failureText } from '@/lib/issues'
 import { STATUS_STYLE } from '@/lib/status'
 import { cn } from '@/lib/utils'
 
@@ -306,7 +308,11 @@ function FromExisting({
       {designs.isLoading && <p className="text-muted-foreground">{t('start.loading')}</p>}
       {designs.error && (
         <div role="alert" className="space-y-2 rounded-lg border border-destructive/40 p-2 text-destructive">
-          <p>{designs.error.message}</p>
+          <p>
+            {designs.error instanceof SapRequestError
+              ? failureText(lang, 'sap', designs.error.code, designs.error.params, designs.error.message)
+              : designs.error.message}
+          </p>
           <Button size="xs" variant="outline" onClick={() => designs.refetch()}>
             <RotateCw aria-hidden />
             {t('start.retry')}

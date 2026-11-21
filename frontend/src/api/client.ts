@@ -9,6 +9,7 @@ import type {
   SwitchTarget,
   Validation,
 } from './types'
+import type { Lang } from '@/i18n/messages'
 
 async function json<T>(response: Response): Promise<T> {
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
@@ -32,12 +33,29 @@ export const getRecentDesigns = () => fetch('/api/designs').then((r) => json<Rec
 
 export const getRun = (id: number) => fetch(`/api/runs/${id}`).then((r) => json<RunTrace>(r))
 
-/** The designs SAP knows (read-only, for the Start panel). SAP down: the error says so. */
-export async function listSapDesigns(): Promise<SapListDesign[]> {
-  const response = await fetch('/api/sap/designs')
+/** A SAP failure with its code (`sap_unavailable`, `sap_error`) and params, for the UI's text. */
+export class SapRequestError extends Error {
+  readonly code?: string
+  readonly params?: Record<string, string>
+
+  constructor(message: string, code?: string, params?: Record<string, string>) {
+    super(message)
+    this.code = code
+    this.params = params
+  }
+}
+
+/**
+ * The designs SAP knows (read-only, for the Start panel). SAP down: the error says so.
+ * `lang` asks SAP for its own texts in the UI language (decision 0027).
+ */
+export async function listSapDesigns(lang: Lang = 'en'): Promise<SapListDesign[]> {
+  const response = await fetch(`/api/sap/designs?lang=${lang}`)
   if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { message?: string } | null
-    throw new Error(body?.message ?? `HTTP ${response.status}`)
+    const body = (await response.json().catch(() => null)) as
+      | { message?: string; code?: string; params?: Record<string, string> }
+      | null
+    throw new SapRequestError(body?.message ?? `HTTP ${response.status}`, body?.code, body?.params)
   }
   return response.json() as Promise<SapListDesign[]>
 }
@@ -80,8 +98,9 @@ export const proposeAction = (
  * (409 already decided, 410 expired, 422 rule, 502 SAP, 500 export), so those bodies
  * are returned with their HTTP status, not thrown.
  */
-async function decide(id: string, verb: 'confirm' | 'cancel'): Promise<Decision> {
-  const response = await fetch(`/api/actions/${id}/${verb}`, { method: 'POST' })
+async function decide(id: string, verb: 'confirm' | 'cancel', lang?: Lang): Promise<Decision> {
+  const query = lang ? `?lang=${lang}` : ''
+  const response = await fetch(`/api/actions/${id}/${verb}${query}`, { method: 'POST' })
   const body = (await response.json().catch(() => null)) as
     | (Action & { action?: Action; detail?: string })
     | null
@@ -91,7 +110,8 @@ async function decide(id: string, verb: 'confirm' | 'cancel'): Promise<Decision>
 }
 
 export type Decision = { action: Action; http: number }
-export const confirmAction = (id: string) => decide(id, 'confirm')
+/** `lang`: SAP's refusal text comes in the UI language (decision 0027). */
+export const confirmAction = (id: string, lang: Lang = 'en') => decide(id, 'confirm', lang)
 export const cancelAction = (id: string) => decide(id, 'cancel')
 
 const designBase = (t: PreviewTarget) => `/api/designs/${t.department}/${t.design_number}/${t.revision}`

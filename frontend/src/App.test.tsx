@@ -53,7 +53,7 @@ describe('Create Design', () => {
             ])
           : undefined,
       (url) =>
-        url === '/api/actions/a1/confirm'
+        url === '/api/actions/a1/confirm?lang=en'
           ? jsonResponse(
               makeAction({
                 status: 'confirmed',
@@ -161,7 +161,7 @@ describe('Create Design', () => {
     })
     stubFetch(
       (url, init) => (url === '/api/actions' && init?.method === 'POST' ? jsonResponse(makeAction(), 201) : undefined),
-      (url) => (url === '/api/actions/a1/confirm' ? jsonResponse(failed, 422) : undefined),
+      (url) => (url === '/api/actions/a1/confirm?lang=en' ? jsonResponse(failed, 422) : undefined),
       ...baseRoutes,
     )
     renderWithProviders(<App />)
@@ -175,10 +175,36 @@ describe('Create Design', () => {
     expect(screen.getByLabelText('Revision')).toHaveAttribute('aria-invalid', 'true')
   })
 
+  it('a SAP refusal on confirm reads in Spanish: our words and the SAP text (decision 0027)', async () => {
+    const detail = 'El diseño HL-HW-26-0042 está en BLOCKED; no se permiten revisiones nuevas'
+    const failed = makeAction({
+      status: 'failed',
+      result: {
+        ok: false,
+        error_kind: 'sap',
+        message: `SAP refused: ZHL_PLM/020 ${detail}`,
+        params: { sap_code: 'ZHL_PLM/020', detail },
+      },
+    })
+    stubFetch(
+      (url, init) => (url === '/api/actions' && init?.method === 'POST' ? jsonResponse(makeAction(), 201) : undefined),
+      (url) => (url === '/api/actions/a1/confirm?lang=es' ? jsonResponse(failed, 502) : undefined),
+      ...baseRoutes,
+    )
+    renderWithProviders(<App />)
+    await pickExisting('HL-HW-26-0042')
+    await user.click(screen.getByRole('button', { name: 'Create revision C' }))
+    await screen.findByRole('button', { name: 'Confirm' })
+    await user.click(screen.getByRole('button', { name: 'ES' }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    expect(await screen.findByText(`SAP lo rechazó: ${detail} (ZHL_PLM/020)`)).toBeInTheDocument()
+  })
+
   it('an expired card says so instead of pretending it worked', async () => {
     stubFetch(
       (url, init) => (url === '/api/actions' && init?.method === 'POST' ? jsonResponse(makeAction(), 201) : undefined),
-      (url) => (url === '/api/actions/a1/confirm' ? jsonResponse({ detail: 'expired', action: makeAction() }, 410) : undefined),
+      (url) => (url === '/api/actions/a1/confirm?lang=en' ? jsonResponse({ detail: 'expired', action: makeAction() }, 410) : undefined),
       ...baseRoutes,
     )
     renderWithProviders(<App />)

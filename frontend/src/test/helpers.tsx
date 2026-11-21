@@ -105,7 +105,7 @@ export const SAP_DESIGNS = [
 ]
 
 export const baseRoutes: Route[] = [
-  (url) => (url === '/api/sap/designs' ? jsonResponse(SAP_DESIGNS) : undefined),
+  (url) => (url === '/api/sap/designs?lang=en' ? jsonResponse(SAP_DESIGNS) : undefined),
   (url) =>
     url === '/api/departments'
       ? jsonResponse([

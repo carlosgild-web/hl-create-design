@@ -80,3 +80,15 @@ def test_the_list_writes_nothing(api, settings, fake_sap):
     designs(api)
     assert fake_sap.posts == []
     assert not settings.designs_root.exists() or not any(settings.designs_root.iterdir())
+
+
+def test_sap_down_gives_the_panel_a_code_and_sap_text(api, fake_sap):
+    fake_sap.maintenance = True
+
+    response = api.get("/api/sap/designs", params={"lang": "es"})
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["code"] == "sap_unavailable"
+    assert body["params"]["sap_code"] == "ZHL_GW/003"
+    assert fake_sap.requests[-1].headers["sap-language"] == "ES"

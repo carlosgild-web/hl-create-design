@@ -77,6 +77,7 @@ def chat(
             yield sse(AgentEvent("done", {"status": "error"}))
             return
         with sap_factory() as sap:
+            sap.use_language(body.language)
             deps = AgentDeps(
                 settings=settings,
                 engine=engine,

@@ -213,3 +213,31 @@ def test_validate_suggests_the_number_prefix_for_the_department(api):
 def test_validate_suggests_the_next_free_revision(api):
     result = validate(api, department="HW", design_number="HL-HW-26-0042")
     assert result["suggest"]["revision"] == result["next_free_revision"] == "C"
+
+
+@pytest.mark.parametrize(("lang", "header"), [("es", "ES"), (None, "EN")])
+def test_confirm_asks_sap_in_the_ui_language(api, fake_sap, lang, header):
+    # Decision 0027: SAP's refusal text comes in the language the user reads.
+    action = api.post("/api/actions", json={"kind": "create_design", "payload": CREATE}).json()
+    fake_sap.requests.clear()
+
+    params = {"lang": lang} if lang else {}
+    assert api.post(f"/api/actions/{action['id']}/confirm", params=params).status_code == 200
+
+    assert fake_sap.requests
+    assert {r.headers["sap-language"] for r in fake_sap.requests} == {header}
+
+
+def test_a_sap_refusal_gives_the_ui_its_code_and_text(api, fake_sap):
+    fake_sap.maintenance = True
+    action = api.post("/api/actions", json={"kind": "create_design", "payload": CREATE}).json()
+
+    response = api.post(f"/api/actions/{action['id']}/confirm", params={"lang": "es"})
+
+    assert response.status_code == 502
+    result = response.json()["result"]
+    assert result["error_kind"] == "sap_unavailable"
+    assert result["params"] == {
+        "sap_code": "ZHL_GW/003",
+        "detail": "SAP system is in maintenance; try again later",
+    }

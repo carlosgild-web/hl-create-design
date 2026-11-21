@@ -35,6 +35,8 @@ export type ActionResult = {
   cancelled?: boolean
   error_kind?: string
   message?: string
+  /** The values `failure.<error_kind>` needs (decision 0027). */
+  params?: Record<string, string>
   errors?: Issue[]
   warnings?: Issue[]
   ref?: string

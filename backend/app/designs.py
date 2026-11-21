@@ -307,7 +307,7 @@ def create_design(
     )
 
     if folder.exists():
-        raise DesignFolderExistsError(f"{folder} already exists; nothing was changed")
+        raise DesignFolderExistsError(folder)
     recorded = record_revision is not None and sap is not None and req.revision not in sap.revisions
     if recorded:
         record_revision(req.design_number, req.revision, req.designer)

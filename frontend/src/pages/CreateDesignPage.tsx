@@ -23,7 +23,7 @@ export default function CreateDesignPage() {
   const queryClient = useQueryClient()
   const departments = useQuery({ queryKey: ['departments'], queryFn: getDepartments, retry: false })
   const recentDesigns = useQuery({ queryKey: ['recent-designs'], queryFn: getRecentDesigns, retry: false })
-  const sapDesigns = useQuery({ queryKey: ['sap-designs'], queryFn: listSapDesigns, retry: false })
+  const sapDesigns = useQuery({ queryKey: ['sap-designs'], queryFn: () => listSapDesigns(lang), retry: false })
 
   const form = useDesignForm()
   const { validation, checking } = useValidation(form.values)
@@ -54,7 +54,7 @@ export default function CreateDesignPage() {
         const list =
           sapRef.current ??
           (await queryClient
-            .fetchQuery({ queryKey: ['sap-designs'], queryFn: listSapDesigns })
+            .fetchQuery({ queryKey: ['sap-designs'], queryFn: () => listSapDesigns(lang) })
             .catch(() => undefined))
         const known = list?.find((d) => d.design_number === fields.design_number)
         if (known && known.selectable && formRef.current.values.design_number !== known.design_number) {
@@ -68,7 +68,7 @@ export default function CreateDesignPage() {
       }
       propose(fields)
     },
-    [propose, queryClient, selectExisting],
+    [propose, queryClient, selectExisting, lang],
   )
 
   const chat = useChat({

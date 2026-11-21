@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { cancelAction, confirmAction } from '@/api/client'
 import { FORM_FIELDS, type Action, type Department } from '@/api/types'
 import { ManualRef } from '@/components/ManualRef'
-import { cardWarnings, issueText } from '@/lib/issues'
+import { cardWarnings, failureText, issueText } from '@/lib/issues'
 import { departmentName, FIELD_LABELS } from '@/lib/fields'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n'
@@ -46,7 +46,7 @@ export function ActionCard({ action, stale = false, departments = [], onChange, 
     setBusy(verb)
     setFailure('')
     try {
-      const { action: next, http } = await (verb === 'confirm' ? confirmAction : cancelAction)(action.id)
+      const { action: next, http } = await (verb === 'confirm' ? confirmAction(action.id, lang) : cancelAction(action.id))
       onChange(next)
       if (http === 410) setFailure(t('action.expired'))
       else if (http === 409 && next.status !== 'failed') setFailure(t('action.already'))
@@ -165,7 +165,7 @@ export function ActionCard({ action, stale = false, departments = [], onChange, 
         {status === 'failed' && (
           <div className="mt-3 space-y-1" role="alert">
             <p className="font-medium text-destructive">{t('action.failed')}</p>
-            {result.message && <p>{result.message}</p>}
+            {result.message && <p>{failureText(lang, 'failure', result.error_kind, result.params, result.message)}</p>}
             {result.errors?.map((e) => (
               <p key={e.code + e.field} className="text-xs">
                 {issueText(lang, e)} <ManualRef source={e.ref} />
