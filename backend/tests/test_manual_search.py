@@ -3,7 +3,7 @@
 import re
 
 from app.core.config import REPO_ROOT
-from app.standards.manual_search import fts_query
+from app.standards.manual_search import MAX_TEXT_CHARS, fts_query
 
 
 def test_every_section_of_both_languages_is_indexed(manual):
@@ -51,3 +51,32 @@ def test_query_syntax_from_users_cant_break_fts(manual):
 def test_passage_text_is_truncated_for_the_model(manual):
     passage = manual.passages[0]
     assert len(passage.to_dict(max_chars=20)["text"]) <= 22
+
+
+def test_stopwords_are_dropped_in_both_languages():
+    assert fts_query("What are the rules for the design name?") == '"rules" OR "design" OR "name"'
+    spanish = fts_query("¿Qué reglas tiene el nombre del diseño?")
+    assert spanish == '"reglas" OR "nombre" OR "diseño"'
+
+
+def test_words_that_change_a_rule_are_not_stopwords():
+    assert fts_query("no new rev in sap") == '"no" OR "new" OR "rev" OR "sap"'
+
+
+def test_a_query_of_only_stopwords_still_searches():
+    assert fts_query("what is it?") == '"what" OR "is" OR "it"'
+
+
+def test_keywords_are_indexed_but_not_shown_to_the_model(manual):
+    passage = manual.get("08-using-create-design#undo-number", "en")
+    assert passage and "deshacer" in passage.keywords
+    assert "Keywords" not in passage.text and "keywords" not in passage.to_dict()
+    sources = [p.source for p in manual.search("deshacer liberar", lang="en", limit=3)]
+    assert "08-using-create-design#undo-number" in sources
+
+
+def test_every_app_usage_section_is_short_and_has_keywords(manual):
+    for passage in manual.passages:
+        if passage.source.startswith("08-"):
+            assert len(passage.text) <= MAX_TEXT_CHARS, passage.source
+            assert passage.keywords, passage.source
