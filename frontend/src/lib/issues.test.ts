@@ -31,3 +31,12 @@ describe('issueText', () => {
     expect(issueText('es', { message: 'No code.' })).toBe('No code.')
   })
 })
+
+describe('normalizeRefs', () => {
+  it('turns unicode dashes and spaced brackets into the manual form', async () => {
+    const { normalizeRefs } = await import('./issues')
+    expect(normalizeRefs('see [02‑revisions#skipped‑letters] and [ 07-faq # assistant ]')).toBe(
+      'see [02-revisions#skipped-letters] and [07-faq#assistant]',
+    )
+  })
+})

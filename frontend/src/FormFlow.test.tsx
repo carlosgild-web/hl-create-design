@@ -116,7 +116,8 @@ describe('form: where each value came from', () => {
     renderWithProviders(<App />)
     const get = screen.getByRole('button', { name: 'Get SAP number' })
     expect(get).toBeDisabled()
-    expect(screen.getByText('Fill in Department, Design name and Designer first.')).toBeInTheDocument()
+    // the same order as the form: Department, Designer, Design name
+    expect(screen.getByText('Fill in first: Department · Designer · Design name.')).toBeInTheDocument()
     await screen.findByRole('option', { name: /^PWR/ })
     await user.selectOptions(screen.getByLabelText('Department'), 'PWR')
     await user.type(screen.getByLabelText('Design name'), 'Gate Driver')

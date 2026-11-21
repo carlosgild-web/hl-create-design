@@ -67,7 +67,8 @@ export function blockers(mode: FormMode, values: FormValues, errorCount: number)
   const out: Blocker[] = []
   const missing = (f: FormField) => !isFilled(f, values[f])
   if (mode === 'existing' && missing('design_number')) out.push({ key: 'need_design' })
-  const typed: FormField[] = mode === 'new' ? ['department', 'name', 'designer'] : ['designer']
+  // In the form's order (Department, Designer, Design name), so every hint reads the same way.
+  const typed: FormField[] = mode === 'new' ? ['department', 'designer', 'name'] : ['designer']
   for (const f of typed) if (missing(f)) out.push({ key: 'need_field', field: f })
   if (mode === 'new' && missing('design_number')) out.push({ key: 'need_sap_number' })
   if (errorCount > 0) out.push({ key: 'fix_errors' })

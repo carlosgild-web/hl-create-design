@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useI18n, type MessageKey, type Translate } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { WithRefs } from '@/components/ManualRef'
 
 type Props = {
   timeline: TimelineItem[]
@@ -123,7 +124,7 @@ export function AssistantPanel({
               case 'assistant':
                 return (
                   <p key={item.id} className="mr-6 border-l-2 border-hl-cobalt/30 pl-3 text-sm leading-relaxed whitespace-pre-wrap">
-                    {item.text}
+                    <WithRefs text={item.text} />
                   </p>
                 )
               case 'error':

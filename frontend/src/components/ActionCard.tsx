@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react'
 
 import { cancelAction, confirmAction } from '@/api/client'
 import { FORM_FIELDS, type Action, type Department } from '@/api/types'
+import { ManualRef } from '@/components/ManualRef'
 import { cardWarnings, issueText } from '@/lib/issues'
 import { departmentName, FIELD_LABELS } from '@/lib/fields'
 import { Button } from '@/components/ui/button'
@@ -96,7 +97,7 @@ export function ActionCard({ action, stale = false, departments = [], onChange, 
             {cardWarnings(action.payload).map((w) => (
               <li key={w.code} className="text-foreground/80">
                 <span aria-hidden>⚠ </span>
-                {issueText(lang, w)} <span className="text-muted-foreground">[{w.ref}]</span>
+                {issueText(lang, w)} <ManualRef source={w.ref} />
               </li>
             ))}
           </ul>
@@ -135,7 +136,7 @@ export function ActionCard({ action, stale = false, departments = [], onChange, 
             {result.warnings?.map((w) => (
               <p key={w.code} className="text-xs text-foreground/80">
                       <span aria-hidden>⚠ </span>
-                {issueText(lang, w)} [{w.ref}]
+                {issueText(lang, w)} <ManualRef source={w.ref} />
               </p>
             ))}
             {action.kind === 'reserve_number' ? (
@@ -167,10 +168,14 @@ export function ActionCard({ action, stale = false, departments = [], onChange, 
             {result.message && <p>{result.message}</p>}
             {result.errors?.map((e) => (
               <p key={e.code + e.field} className="text-xs">
-                {issueText(lang, e)} <span className="text-muted-foreground">[{e.ref}]</span>
+                {issueText(lang, e)} <ManualRef source={e.ref} />
               </p>
             ))}
-            {result.ref && <p className="text-xs text-muted-foreground">[{result.ref}]</p>}
+            {result.ref && (
+              <p className="text-xs">
+                <ManualRef source={result.ref} />
+              </p>
+            )}
           </div>
         )}
         {stale && <p className="mt-2 text-xs text-muted-foreground">{t('action.stale')}</p>}

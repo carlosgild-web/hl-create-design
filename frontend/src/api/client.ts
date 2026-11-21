@@ -18,6 +18,14 @@ async function json<T>(response: Response): Promise<T> {
 /** `llm_provider` is the model that answers now (`demo` = the rule-based demo assistant). */
 export const getHealth = () => fetch('/api/health').then((r) => json<{ llm_provider: string }>(r))
 
+/** One indexed Design Manual passage (`GET /api/manual/{lang}/{document}/{anchor}`). */
+export const getManualPassage = (lang: string, source: string) => {
+  const [document, anchor] = source.split('#')
+  return fetch(`/api/manual/${lang}/${encodeURIComponent(document)}/${encodeURIComponent(anchor)}`).then((r) =>
+    json<{ source: string; lang: string; document: string; heading: string; text: string }>(r),
+  )
+}
+
 export const getDepartments = () => fetch('/api/departments').then((r) => json<Department[]>(r))
 
 export const getRecentDesigns = () => fetch('/api/designs').then((r) => json<RecentDesign[]>(r))

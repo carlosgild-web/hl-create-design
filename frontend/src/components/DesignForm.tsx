@@ -23,6 +23,7 @@ import type { Created } from '@/hooks/useDesignForm'
 import { useI18n } from '@/i18n'
 import { blockers, departmentName, FIELD_LABELS, FIELD_PLACEHOLDERS, isFilled } from '@/lib/fields'
 import { folderPreview } from '@/lib/folder'
+import { ManualRef } from '@/components/ManualRef'
 import { issueText } from '@/lib/issues'
 import { cn } from '@/lib/utils'
 
@@ -294,14 +295,14 @@ export function DesignForm({
                 <div id={`${id}-errors`}>
                   {errorList.map((e) => (
                     <p key={e.code} role="alert" className="text-xs text-destructive">
-                      {issueText(lang, e)} <span className="text-muted-foreground">[{e.ref}]</span>
+                      {issueText(lang, e)} <ManualRef source={e.ref} />
                     </p>
                   ))}
                 </div>
                 {warnings.map((w) => (
                   <p key={w.code} className="text-xs text-foreground/80">
                     <span aria-hidden>⚠ </span>
-                    {issueText(lang, w)} <span className="text-muted-foreground">[{w.ref}]</span>
+                    {issueText(lang, w)} <ManualRef source={w.ref} />
                   </p>
                 ))}
               </div>

@@ -1,4 +1,5 @@
 import type { SapDesign } from '@/api/types'
+import { ManualRef } from '@/components/ManualRef'
 import { issueText, type IssueLike } from '@/lib/issues'
 import { Badge } from '@/components/ui/badge'
 import { STATUS_STYLE } from '@/lib/status'
@@ -32,7 +33,7 @@ export function SapCard({ design, notes }: { design: SapDesign; notes: (IssueLik
       {design.successor && <p className="mt-1">{t('sap.successor', { successor: design.successor })}</p>}
       {notes.map((n) => (
         <p key={n.ref + n.message} className="mt-1 text-xs text-muted-foreground">
-          {issueText(lang, n)} [{n.ref}]
+          {issueText(lang, n)} <ManualRef source={n.ref} />
         </p>
       ))}
     </section>

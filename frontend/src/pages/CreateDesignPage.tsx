@@ -16,7 +16,7 @@ import { useDesignForm } from '@/hooks/useDesignForm'
 import { DESKTOP, WIDE, useMediaQuery } from '@/hooks/useMediaQuery'
 import { useValidation } from '@/hooks/useValidation'
 import { useI18n } from '@/i18n'
-import { filledValues, isFilled } from '@/lib/fields'
+import { blockers, filledValues, isFilled } from '@/lib/fields'
 
 export default function CreateDesignPage() {
   const { lang, t } = useI18n()
@@ -180,6 +180,7 @@ export default function CreateDesignPage() {
       onModeChange={changeMode}
       departments={departments.data ?? []}
       canReserve={canReserve}
+      missingFields={blockers('new', v, 0).flatMap((b) => (b.key === 'need_field' ? [b.field] : []))}
       busy={opening}
       onReserve={() => void openCard('reserve_number')}
       reservation={form.mode === 'new' && v.design_number ? reservation : null}

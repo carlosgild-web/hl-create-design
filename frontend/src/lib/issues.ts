@@ -26,3 +26,16 @@ export function cardWarnings(payload: Record<string, unknown>): Issue[] {
   const warnings = payload.warnings
   return Array.isArray(warnings) ? (warnings as Issue[]) : []
 }
+
+const DASHES = /[\u2010\u2011\u2012\u2013\u2014\u2212\ufe63\uff0d]/g
+
+/**
+ * Citations as the manual writes them (decision 0024): NFKC, every dash as "-", no spaces
+ * inside the brackets. `[02‑revisions#skipped‑letters]` -> `[02-revisions#skipped-letters]`.
+ */
+export function normalizeRefs(text: string): string {
+  return text
+    .normalize('NFKC')
+    .replace(DASHES, '-')
+    .replace(/\[\s*([\w-]+)\s*#\s*([\w-]+)\s*\]/g, '[$1#$2]')
+}

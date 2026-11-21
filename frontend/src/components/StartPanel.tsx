@@ -2,7 +2,7 @@ import { Collapsible } from 'radix-ui'
 import { ChevronDown, FilePlus2, Files, RotateCw, Search, Sparkles } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 
-import type { Action, Department, FormMode, Issue, PreviewTarget, SapListDesign } from '@/api/types'
+import type { Action, Department, FormField, FormMode, Issue, PreviewTarget, SapListDesign } from '@/api/types'
 import { RecentDesigns } from '@/components/RecentDesigns'
 import { SapCard } from '@/components/SapCard'
 import { Badge } from '@/components/ui/badge'
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useI18n, type MessageKey } from '@/i18n'
-import { departmentName } from '@/lib/fields'
+import { departmentName, FIELD_LABELS } from '@/lib/fields'
 import { STATUS_STYLE } from '@/lib/status'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +29,8 @@ type Props = {
   departments: Department[]
   // new design
   canReserve: boolean
+  /** The fields still to fill in before Get SAP number, in the form's order. */
+  missingFields?: FormField[]
   busy: boolean
   onReserve: () => void
   reservation: Action | null
@@ -150,7 +152,7 @@ export function StartPanel(props: Props) {
   )
 }
 
-function NewDesign({ canReserve, busy, onReserve, reservation, canUndoReservation, onUndoReservation }: Props) {
+function NewDesign({ canReserve, missingFields, busy, onReserve, reservation, canUndoReservation, onUndoReservation }: Props) {
   const { t } = useI18n()
   const result = reservation?.result
   return (
@@ -163,7 +165,7 @@ function NewDesign({ canReserve, busy, onReserve, reservation, canUndoReservatio
         </Button>
         {!canReserve && (
           <p id="start-needs" className="mt-1 text-xs text-muted-foreground">
-            {t('start.needs_fields')}
+            {t('start.needs_fields', { fields: (missingFields ?? []).map((f) => t(FIELD_LABELS[f])).join(' · ') })}
           </p>
         )}
       </div>
