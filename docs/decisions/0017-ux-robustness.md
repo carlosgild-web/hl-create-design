@@ -155,6 +155,12 @@ and Stop could not reach the backend. The console logged nothing about the model
     Decision 0018 later removes the prefix pre-fill in new mode, where the number comes only
     from SAP.
 
+24. `start.cmd` (local mode) checks ports 8000 and 8100 before starting. When one is in use
+    it names the process and PID and asks "Stop it and continue? [Y/n]" (it waits; Enter =
+    yes, then `taskkill /t /f` and a recheck for up to 10 s). "n", a Windows system process
+    or a port that stays busy stops the script with a clear message, instead of uvicorn's
+    `[Errno 10048]`. Docker mode is not checked: the listener there is Docker itself.
+
 ## Consequences
 
 - One extra thread per model call (pool of 8). Tests with `FakeClient` work as before; the

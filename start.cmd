@@ -36,6 +36,10 @@ if not exist frontend\dist\index.html (
 rem Without a .env, pin the mock SAP's date so the demo numbers stay in 2026 (decision 0007).
 if not exist .env if not defined SAP_TODAY set "SAP_TODAY=2026-11-17"
 where kicad-cli >nul 2>&1 || findstr /b /c:"KICAD_CLI=" .env >nul 2>&1 || echo Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env.
+rem Both ports must be free, or uvicorn fails with "[Errno 10048] ... only one usage of each
+rem socket address". Usually an earlier run is still open; offer to stop it (Enter = yes).
+call :freeport 8000 "the app" || exit /b 1
+call :freeport 8100 "the mock SAP" || exit /b 1
 rem Which model will answer? It checks Groq and Ollama, suggests one and asks (Enter = suggestion).
 rem Run in this console (not in for /f) so the question can read the keyboard.
 echo.
@@ -75,6 +79,44 @@ echo Create Design -^> http://localhost:%PORT%  ^(Ctrl+C to stop^)
 call :openbrowser %PORT%
 docker compose%EXTRA% up --build
 exit /b %errorlevel%
+
+rem If something listens on port %1, say what it is and ask before stopping it. Waits for the
+rem answer; "n" stops start.cmd so nothing fails half-started. Exit code 1 = port still busy.
+:freeport
+call :portowner %1
+if not defined BUSY_PID exit /b 0
+echo.
+echo Port %1 ^(%~2^) is already in use by %BUSY_NAME% ^(PID %BUSY_PID%^).
+echo It is probably an earlier start.cmd that is still running.
+if %BUSY_PID% LEQ 4 (
+  echo That is a Windows system process and cannot be stopped from here. Free port %1 and run start.cmd again.
+  exit /b 1
+)
+set "ANSWER=y"
+set /p "ANSWER=Stop it and continue? [Y/n] "
+if /i not "%ANSWER:~0,1%"=="y" (
+  echo Not stopped. Close it, or stop PID %BUSY_PID%, then run start.cmd again.
+  exit /b 1
+)
+taskkill /pid %BUSY_PID% /t /f >nul 2>&1
+for /l %%i in (1,1,10) do (
+  call :portowner %1
+  if not defined BUSY_PID (echo   Stopped. Port %1 is free. & exit /b 0)
+  ping -n 2 127.0.0.1 >nul
+)
+echo Port %1 is still in use ^(PID %BUSY_PID%^). Stop it by hand, then run start.cmd again.
+exit /b 1
+
+rem Sets BUSY_PID and BUSY_NAME to the process listening on port %1 (both empty if free).
+:portowner
+set "BUSY_PID="
+set "BUSY_NAME="
+for /f "tokens=1,2" %%a in ('powershell -NoProfile -Command "$c = @(Get-NetTCPConnection -LocalPort %1 -State Listen -ErrorAction SilentlyContinue)[0]; if ($c) { $p = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue; '{0} {1}' -f $c.OwningProcess, $p.ProcessName }"') do (
+  set "BUSY_PID=%%a"
+  set "BUSY_NAME=%%b"
+)
+if defined BUSY_PID if not defined BUSY_NAME set "BUSY_NAME=an unknown process"
+exit /b 0
 
 rem Open the browser once the app answers (waits up to 90 s). Set NO_BROWSER=1 to skip.
 :openbrowser
