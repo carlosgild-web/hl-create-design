@@ -16,11 +16,15 @@ create a new revision.
 | `BLOCKED` | On hold by Product Engineering | Not allowed | Contact Product Engineering |
 | `OBSOLETE` | Replaced, no longer built | Not allowed | Use the successor design |
 
+Keywords: status, statuses, in work, released, blocked, obsolete, estado, estados
+
 ## IN_WORK
 <a id="in-work"></a>
 
 The design is being developed and hasn't been released to production. New revisions can
 be created freely, following [02-revisions](02-revisions.md).
+
+Keywords: in work, in progress, en trabajo, en curso
 
 ## RELEASED
 <a id="released"></a>
@@ -30,6 +34,8 @@ the workshop builds, so the company process requires an engineering change order
 number before the new revision is released. This version of Create Design does not check
 ECO numbers: it creates the revision and shows a warning. Tell your lead.
 
+Keywords: released, ECO, new revision of released, liberado, revisión de un diseño liberado
+
 ## BLOCKED
 <a id="blocked"></a>
 
@@ -38,6 +44,8 @@ in field units, a failed safety test or a supplier issue. SAP shows the reason. 
 revision can be created until the block is lifted. Contact Product Engineering and quote
 the design number and the block reason.
 
+Keywords: blocked, block reason, product engineering, bloqueado, motivo del bloqueo, ingeniería de producto
+
 ## OBSOLETE
 <a id="obsolete"></a>
 
@@ -45,11 +53,15 @@ The design has been replaced and is no longer built. SAP names the successor des
 Work on the successor instead: look it up and create a revision there. If there is no
 successor and you need the old function again, reserve a new number.
 
+Keywords: obsolete, successor, use successor, obsoleto, sucesor, usar el sucesor
+
 ## Who changes the status
 <a id="who-changes"></a>
 
 Product Engineering changes statuses in SAP. Create Design only reads them; it never
 releases, blocks or makes a design obsolete.
+
+Keywords: change status, release a design, who changes, product engineering, cambiar estado, liberar un diseño, quién cambia
 
 ## When SAP is not available
 <a id="sap-unavailable"></a>
@@ -57,3 +69,5 @@ releases, blocks or makes a design obsolete.
 If SAP doesn't answer (maintenance, network problems), Create Design can't check the
 design number and doesn't create anything. Nothing is created or reserved halfway. Try
 again later; during SAP maintenance the message says *service unavailable (503)*.
+
+Keywords: sap down, not answering, timeout, 503, error, sap caído, no responde, no contesta, se cae, tiempo de espera

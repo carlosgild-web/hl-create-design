@@ -25,6 +25,8 @@ Empresa ficticia; contenido de demostración.*
 
 Una carpeta por departamento, una por número de diseño y una por revisión.
 
+Palabras clave: carpeta, dónde, se guardan, se crea, queda, archivos, proyecto de kicad, ruta, folder, where
+
 ## La raíz de diseños
 <a id="designs-root"></a>
 
@@ -37,12 +39,16 @@ de unidad como `C:` y enlaces que apunten fuera.
 *Por qué:* se perdieron diseños guardados en escritorios y unidades personales, y nadie
 encontraba la última revisión.
 
+Palabras clave: escritorio, otra unidad, unidad D:, escoger carpeta, fuera, ruta absoluta, desktop
+
 ## Nombres de fichero
 <a id="file-names"></a>
 
 Los ficheros se llaman `<NúmeroDeDiseño>_<Rev>`, por ejemplo `HL-HW-26-0042_A.kicad_sch`.
 El nombre del diseño nunca forma parte de un nombre de fichero o carpeta: los nombres
 pueden cambiar, los números no, y los nombres llevan espacios.
+
+Palabras clave: nombres de archivo, renombrar, file names
 
 ## Una carpeta por revisión
 <a id="revision-folders"></a>
@@ -55,11 +61,15 @@ Para continuar desde la revisión anterior, abre los dos proyectos en KiCad y co
 contenido del esquemático en el nuevo. No copies la carpeta entera: los nombres de fichero
 y el cajetín serían los de la revisión antigua.
 
+Palabras clave: carpeta de revisión, ya existe, sobrescribir, copiar carpeta, revisión anterior, reusar, reuso, esquemático, revision folder
+
 ## La carpeta output
 <a id="output"></a>
 
 `output/` contiene el PDF y el SVG generados. Vuelve a generarlos después de un cambio; no
 los edites.
+
+Palabras clave: salida, pdf, svg, exportar, output
 
 ## No hagas esto
 <a id="dont"></a>
@@ -68,3 +78,5 @@ los edites.
   carpeta.
 - No guardes copias personales de un diseño fuera de la raíz de diseños.
 - No renombres ni muevas carpetas de diseño a mano.
+
+Palabras clave: no copiar, mover archivos, renombrar, don't

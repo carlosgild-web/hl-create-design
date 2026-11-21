@@ -25,6 +25,8 @@ este manual.
 | Fecha | `2026-11-17` | El día en que se creó la revisión |
 | Hoja | `1/1` | KiCad |
 
+Palabras clave: cajetín, campos, qué se rellena, title block
+
 ## Nombre del diseño
 <a id="design-name"></a>
 
@@ -43,6 +45,8 @@ El nombre del diseño es el título de todas las hojas y el texto breve del mate
   palabras como `new`, `final` o `copy`. `Kiln Thermocouple Interface` es un buen nombre;
   `HL-HW-26-0042 Rev A` y `New Board Final` no lo son.
 
+Palabras clave: reglas del nombre, nombre del diseño, largo, qué tan largo, caracteres, se permiten, mayúsculas, mayúscula inicial, new, final, copy, palabra, rechaza, name rules
+
 ## Nombre de un diseño existente
 <a id="name-from-sap"></a>
 
@@ -54,6 +58,8 @@ breve del material de SAP, así que todas las revisiones de un diseño llevan el
   rellena y lo bloquea.
 - Para dar otro nombre a un diseño, pide al responsable del departamento un número de diseño
   nuevo. El nombre de un material existente nunca se cambia desde un cajetín.
+
+Palabras clave: nombre bloqueado, no me deja editar, cambiar el nombre, cambiarle el nombre, renombrar, diseño existente, locked name
 
 ## Descripción
 <a id="description"></a>
@@ -69,11 +75,15 @@ diseño o esta revisión cuando el nombre no basta: `Accionamiento paso a paso d
   una variable de texto y sustituiría por otro campo.
 - En KiCad es el *Comentario 1* del cajetín (`${COMMENT1}`).
 
+Palabras clave: descripción, opcional, 60 caracteres, español, qué tan larga, description
+
 ## Diseñador
 <a id="designer"></a>
 
 Inicial, punto, espacio y apellido, como en el directorio de la empresa: `C. Velazquez`,
 `E. Marín`. Aquí sí se admiten tildes. Máximo 40 caracteres.
+
+Palabras clave: diseñador, nombre del diseñador, formato, inicial, apellido, no me acepta, designer
 
 ## Fecha
 <a id="date"></a>
@@ -81,11 +91,15 @@ Inicial, punto, espacio y apellido, como en el directorio de la empresa: `C. Vel
 Formato ISO 8601, `AAAA-MM-DD`: `2026-11-17`. Nunca `17/11/2026` ni `11/17/2026`, que
 significan días distintos según el país.
 
+Palabras clave: fecha, date
+
 ## Papel y hojas
 <a id="paper"></a>
 
 La plantilla usa A4 apaisado. En un esquemático jerárquico todas las hojas usan la misma
 plantilla de hoja, así que todas muestran el mismo número de diseño y la misma revisión.
+
+Palabras clave: papel, tamaño de hoja, A4, A3, hojas, paper
 
 ## No hagas esto
 <a id="dont"></a>
@@ -93,3 +107,5 @@ plantilla de hoja, así que todas muestran el mismo número de diseño y la mism
 - No copies el cajetín, ni el proyecto entero, de un diseño antiguo.
 - No escribas texto encima del cajetín ni modifiques `hl_title_block.kicad_wks`.
 - No cambies el número de diseño ni la revisión en KiCad; crea una revisión nueva.
+
+Palabras clave: configuración de página, editar cajetín, cambiar revisión en kicad, directo en kicad, kicad_wks, modificar, hoja, page settings

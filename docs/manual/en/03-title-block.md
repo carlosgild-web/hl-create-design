@@ -24,6 +24,8 @@ Design fills in the fields when it creates the project. Don't type them by hand 
 | Date | `2026-11-17` | The day the revision was created |
 | Sheet | `1/1` | KiCad |
 
+Keywords: title block, fields, what is filled, cajetín, campos, qué se rellena
+
 ## Design name
 <a id="design-name"></a>
 
@@ -42,6 +44,8 @@ The design name is the title on every sheet and the short text of the material i
   `new`, `final` or `copy` in the name. `Kiln Thermocouple Interface` is a good name;
   `HL-HW-26-0042 Rev A` and `New Board Final` are not.
 
+Keywords: name rules, design name, length, how long, characters, allowed, title case, capitals, capitalized, new, final, copy, rejected word, reglas del nombre, nombre del diseño, largo, caracteres, mayúsculas, palabra rechazada
+
 ## Name of an existing design
 <a id="name-from-sap"></a>
 
@@ -52,6 +56,8 @@ the SAP material, so every revision of a design carries the same title.
   formatting above: title case, single spaces). Create Design fills it in and locks it.
 - To give a design a different name, ask the department lead for a new design number. The
   name of an existing material is never changed from a title block.
+
+Keywords: locked name, rename, change name, revision name, existing design, nombre bloqueado, cambiar el nombre, renombrar, diseño existente
 
 ## Description
 <a id="description"></a>
@@ -67,11 +73,15 @@ drill`, `Rev C: second source for the gate driver`.
   text variable and replace with another field.
 - In KiCad it is the title block's *Comment 1* (`${COMMENT1}`).
 
+Keywords: description, optional, 60 characters, spanish, how long, descripción, opcional, español, qué tan larga
+
 ## Designer
 <a id="designer"></a>
 
 Initial, period, space, surname, as in the company directory: `C. Velazquez`, `E. Marín`.
 Accents are allowed here. Maximum 40 characters.
+
+Keywords: designer, designer name, format, initial, surname, rejected my name, diseñador, nombre del diseñador, formato, inicial, apellido
 
 ## Date
 <a id="date"></a>
@@ -79,11 +89,15 @@ Accents are allowed here. Maximum 40 characters.
 ISO 8601 format, `YYYY-MM-DD`: `2026-11-17`. Never `17/11/2026` or `11/17/2026`, which
 mean different days in different countries.
 
+Keywords: date, issue date, fecha
+
 ## Paper and sheets
 <a id="paper"></a>
 
 The template uses A4 landscape. In a hierarchical schematic, every sheet uses the same
 drawing sheet, so every page shows the same design number and revision.
+
+Keywords: paper, sheet size, A4, A3, sheets, papel, tamaño de hoja, hojas
 
 ## Don't
 <a id="dont"></a>
@@ -91,3 +105,5 @@ drawing sheet, so every page shows the same design number and revision.
 - Don't copy the title block, or the whole project, from an old design.
 - Don't draw text over the title block or edit `hl_title_block.kicad_wks`.
 - Don't change the design number or revision in KiCad; create a new revision instead.
+
+Keywords: page settings, edit title block, change revision in kicad, kicad_wks, drawing sheet, modify, configuración de página, editar cajetín, modificar, hoja

@@ -24,6 +24,8 @@ Ejemplo: `HL-HW-26-0042` es el número 42 que Diseño de Hardware reservó en 20
 Se escribe en mayúsculas, con guiones y sin espacios. Todos estos son incorrectos:
 `hl-hw-26-0042`, `HL-HW-2026-0042`, `HL_HW_26_0042`, `HL-HW-26-42`, `HL-HWD-26-0042`.
 
+Palabras clave: formato, cómo se escribe, cómo es, HL-, código de departamento, otro departamento, pertenece, HW, PWR, format
+
 ## Solo SAP emite números
 <a id="issued-by-sap"></a>
 
@@ -34,6 +36,8 @@ de diseño, el número de material SAP y el proyecto (elemento PEP).
 *Por qué:* antes de 2024, dos ingenieros cogiendo «el siguiente» número el mismo día es
 como llegaron números duplicados al taller.
 
+Palabras clave: elegir, escoger, inventar, propio número, ponerle, no existe, no encuentra, emite sap, choose, own number
+
 ## El año del número
 <a id="year"></a>
 
@@ -41,12 +45,16 @@ como llegaron números duplicados al taller.
 el diseño. Nunca cambia: un número reservado el 30 de diciembre de 2025 sigue siendo
 `HL-xx-25-NNNN` en todas sus revisiones, también si la revisión C se hace en 2027.
 
+Palabras clave: año, año que viene, año que entra, enero, diciembre, dos dígitos, year
+
 ## La secuencia
 <a id="sequence"></a>
 
 `NNNN` empieza en `0001` para cada departamento cada año, y SAP emite el siguiente valor
 libre. Los huecos son normales: un número reservado que luego no se usa no se vuelve a
 emitir. Un número no se reutiliza nunca, ni siquiera el de un diseño cancelado u obsoleto.
+
+Palabras clave: huecos, faltan números, se brincan, se saltan, 0041, 0044, secuencia, gaps
 
 ## ¿Número nuevo o revisión nueva?
 <a id="new-number-or-revision"></a>
@@ -57,6 +65,8 @@ emitir. Un número no se reutiliza nunca, ni siquiera el de un diseño cancelado
 - **Número nuevo:** cambia la función, es otro producto, o la placa nueva no puede
   sustituir a la anterior. Ingeniería de Producto suele pasar el diseño antiguo a
   `OBSOLETE` con el nuevo como sucesor (ver [06-sap-statuses](06-sap-statuses.md)).
+
+Palabras clave: número nuevo, revisión nueva, cuál, en vez de, sustituir, otro producto, nomás, new number
 
 ## Número de material SAP
 <a id="sap-material"></a>
@@ -69,6 +79,8 @@ tiene **18 caracteres con ceros a la izquierda**, en el rango `00000000004000000
 - En SAP y en el intercambio de datos siempre tiene 18 caracteres: `000000000040001234`.
 - Lo asigna SAP junto con el número de diseño. Nunca lo escribas a mano.
 
+Palabras clave: material, número de material, ceros, ceros a la izquierda, 18 caracteres, material sap
+
 ## Proyecto (elemento PEP)
 <a id="wbs"></a>
 
@@ -76,6 +88,8 @@ Formato `P-<AA>-<NNNN>`, por ejemplo `P-26-0108`. Cada diseño imputa sus horas 
 ingeniería a un proyecto. Al reservar un número, SAP usa el proyecto por defecto del
 departamento para ese año (ver [05-departments](05-departments.md#default-projects)).
 Ingeniería de Producto puede mover el diseño a otro proyecto en SAP más adelante.
+
+Palabras clave: proyecto, wbs, P-26, quién asigna, escoger proyecto, project
 
 ## Comprobación rápida
 <a id="quick-check"></a>
@@ -87,3 +101,5 @@ Ingeniería de Producto puede mover el diseño a otro proyecto en SAP más adela
 | `HL-HW-2026-0042` | No | El año lleva dos cifras: `26` |
 | `HL-MECH-26-0003` | No | `MECH` no es un departamento de Ingeniería Electrónica |
 | `hl-emb-26-0007` | No | Solo mayúsculas |
+
+Palabras clave: mal, no vale, inválido, minúsculas, año de cuatro dígitos, comprobar, wrong

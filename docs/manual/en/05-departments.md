@@ -18,6 +18,8 @@ code used in the design number.
 | `EMB` | Embedded Boards | Microcontroller boards: sensor nodes, displays, gateways | A. Kowalski |
 | `TFX` | Test Fixtures | Test jigs, burn-in racks and calibration fixtures for the boards above | R. Navarro |
 
+Keywords: departments, leads, who, HW, PWR, EMB, TFX, departamentos, responsables, quién
+
 ## Which department?
 <a id="choosing"></a>
 
@@ -29,10 +31,14 @@ Choose by the main function of the board:
 - When in doubt, ask the department lead **before** reserving the number. The code is
   part of the number, and a number never changes.
 
+Keywords: which department, pick department, choose, test fixture, power supply, wrong department, change department, move number, qué departamento, elegir departamento, utillaje, fuente, departamento equivocado, cambiar departamento
+
 ## On the title block
 <a id="title-block-format"></a>
 
 The department is shown as code, en dash and English name: `HW – Hardware Design`.
+
+Keywords: department in title block, department name, departamento en el cajetín
 
 ## Default projects
 <a id="default-projects"></a>
@@ -48,3 +54,5 @@ element) for the year:
 | `TFX` | `P-26-0121` |
 
 Product Engineering can move a design to a customer or investment project later.
+
+Keywords: project, default project, P-26-0108, who assigns, proyecto, proyecto por defecto, quién asigna
