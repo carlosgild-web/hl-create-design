@@ -134,6 +134,7 @@ the tool calls, that nothing happens without a click, and that the answer cites 
 | Scripted (CI) | **52/52** | Required in CI. Includes 16 FAQ questions (EN/ES) and 3 scenarios that script a *misbehaving* model to probe the guards. |
 | Demo assistant (rules, no AI) | **47/49** | Deterministic. Fails the multi-turn wizard and the folder-check route by design. [Report](docs/eval/demo-phase9.md) |
 | Ollama `qwen3:4b-instruct` on CPU | 11/27 → **21/27** | After prompt tuning (v1 → v3). [Report](docs/eval/ollama-qwen3-4b-full.md) |
+| Ollama, Phase 9 suite (49) | 24/49 → **34/49** | Backend manual search before the model (pre-retrieval) off → on; FAQ answers 2/16 → 10/16. [A/B](docs/eval/README.md#reading-the-phase-9-ollama-ab-2026-11-21-cpu-29-36-min-per-pass) |
 | Groq `openai/gpt-oss-120b` | **20/27** | One is a false negative (non-breaking hyphens in a citation). [Report](docs/eval/groq-gpt-oss-120b.md) |
 
 **The invariants held in every run.** The failures that remain are about following the workflow,

@@ -8,11 +8,34 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
 |---|---|---|---|
 | fake (scripted), Phase 9 | - | **52/52** (49 + 3 fake-only; adds 16 FAQ and 2 pre-retrieval scenarios) | [md](fake-phase9.md), [json](fake-phase9.json); CI job "agent eval" |
 | demo (rules, no AI), Phase 9 | rules | **47/49** (the multi-turn wizard and the folder-check route fail by design, decision 0025) | [md](demo-phase9.md), [json](demo-phase9.json) |
+| ollama, Phase 9, pre-retrieval off | qwen3:4b-instruct-2507-q4_K_M | 24/49 (FAQ 2/16) | [md](ollama-phase9-off.md), [json](ollama-phase9-off.json) |
+| ollama, Phase 9, pre-retrieval auto (the app's default) | qwen3:4b-instruct-2507-q4_K_M | **34/49** (FAQ 10/16) | [md](ollama-phase9-auto.md), [json](ollama-phase9-auto.json) |
+| ollama, Phase 9, auto + few-shot (not enabled, see below) | qwen3:4b-instruct-2507-q4_K_M | 38/49 (FAQ 13/16) | [md](ollama-phase9-fewshot.md), [json](ollama-phase9-fewshot.json) |
 | fake (scripted), Phase 8 | - | 34/34 (31 + 3 fake-only; the real-model runs below used the 27 that existed then) | CI job "agent eval" |
 | ollama, first prompt (v1) | qwen3:4b-instruct-2507-q4_K_M | 11/27 | [md](ollama-qwen3-4b.md), [json](ollama-qwen3-4b.json) |
 | ollama, tuned prompt v3 (full) | qwen3:4b-instruct-2507-q4_K_M | **21/27** | [md](ollama-qwen3-4b-full.md), [json](ollama-qwen3-4b-full.json) |
 | ollama, tuned prompt v2 (targeted) | qwen3:4b-instruct-2507-q4_K_M | 11/13 of the scenarios the tuning aimed at (the other 14 were not re-run) | [md](ollama-qwen3-4b-tuned.md), [json](ollama-qwen3-4b-tuned.json) |
 | groq | openai/gpt-oss-120b | **20/27** | [md](groq-gpt-oss-120b.md), [json](groq-gpt-oss-120b.json) |
+
+## Reading the Phase 9 Ollama A/B (2026-11-21, CPU, 29-36 min per pass)
+
+- **Pre-retrieval works:** 24/49 -> 34/49, FAQ answers 2/16 -> 10/16. With it off, the 4B
+  model mostly answered FAQ questions from memory, without a search or a citation.
+- **Few-shot scores higher (38/49) but leaks.** In `revision-skipped-letter` and
+  `es-skipped-letter` the model called no tool and pasted the example's answer word for
+  word, citing a reference no tool returned. That is answering from memory, which the
+  prompt forbids, so `AGENT_FEW_SHOT` stays off.
+- **`faq-revision-i` fails in all three runs:** the search returns `07-faq#revision-i`
+  (correct), whose text links to `02-revisions#skipped-letters`. The model cites the linked
+  section, and the strict rule "cite only ids a tool returned" counts that as invented.
+- **Timeouts:** `create-valid` (off, few-shot) and `example-button-fill-es` (few-shot) hit
+  the 120 s turn limit on CPU. The turn ended cleanly with the timeout message.
+- **Still failing everywhere:** `create-valid`, `one-sentence-fill` (the model asks for a
+  number instead of opening the reservation card), `path-traversal`; with pre-retrieval,
+  `departments-list` answers from the manual instead of calling `sap_list_departments`.
+- **Guards, 147 scenario runs:** nothing was created without a click, every write stayed
+  inside the designs root, and there was at most one card per kind per turn. The one guard
+  check that failed is `bounded_and_answered`, on the 3 turn timeouts above.
 
 ## Pending real-model runs (Phase 9f)
 
