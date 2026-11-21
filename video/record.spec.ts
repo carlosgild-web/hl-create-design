@@ -28,7 +28,14 @@ const PYTHON =
   process.env.VIDEO_PYTHON ||
   join(ROOT, 'backend', '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 // A Windows or home path on screen fails the take (acceptance check: no C:\MyData in frames).
-const PATH_RE = /[A-Za-z]:\\|\\Users\\|\/home\/|MyData/
+// Checked on string values, not JSON text: there a newline after "directory:" reads "y:\n".
+const PATH_RE = /(?<![A-Za-z])[A-Za-z]:\\[^\s\\]|\\Users\\|\/home\/|MyData/
+const hasLocalPath = (value: unknown): boolean =>
+  typeof value === 'string'
+    ? PATH_RE.test(value)
+    : value !== null && typeof value === 'object'
+      ? Object.values(value).some(hasLocalPath)
+      : false
 
 type Storyboard = typeof import('./storyboard.json')
 type Row = Storyboard['rows'][number] & {
@@ -272,7 +279,7 @@ class Conductor {
     } else {
       this.fail(`row ${row.id}: unknown payload source "${from}"`)
     }
-    if (PATH_RE.test(JSON.stringify(value))) this.fail(`row ${row.id}: the payload shows a local path`)
+    if (hasLocalPath(value)) this.fail(`row ${row.id}: the payload shows a local path`)
     const label = from === 'event' ? `SSE event: ${ev!.type}` : from === 'request' ? 'POST /api/chat (request body)'
       : from === 'confirm' ? `POST /api/actions/{id}/confirm → ${this.last.confirm?.status}` : from === 'action' ? 'POST /api/actions → 201'
       : from === 'trace' ? `GET /api/runs/${this.traces.at(-1)?.id}` : `video/introspect.py ${String(source.args[0])}`

@@ -20,7 +20,14 @@ const ROOT = resolve(HERE, '..')
 const PYTHON =
   process.env.VIDEO_PYTHON ||
   join(ROOT, 'backend', '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
-const PATH_RE = /[A-Za-z]:\\|\\Users\\|\/home\/|MyData/
+// Checked on string values, not JSON text: there a newline after "directory:" reads "y:\n".
+const PATH_RE = /(?<![A-Za-z])[A-Za-z]:\\[^\s\\]|\\Users\\|\/home\/|MyData/
+const hasLocalPath = (value) =>
+  typeof value === 'string'
+    ? PATH_RE.test(value)
+    : value !== null && typeof value === 'object'
+      ? Object.values(value).some(hasLocalPath)
+      : false
 const TAIL_MS = 1500 // the last subtitle stays this long after its hold
 
 const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'))
@@ -67,7 +74,7 @@ function verify(dir, storyboard, shown) {
     }
     checked++
     if (!isDeepStrictEqual(s.payload, truth)) problems.push(`${s.id}: the payload on screen differs from the captured ${from}`)
-    if (PATH_RE.test(JSON.stringify(s.payload))) problems.push(`${s.id}: the payload shows a local path`)
+    if (hasLocalPath(s.payload)) problems.push(`${s.id}: the payload shows a local path`)
   }
   // The FTS ranking shown (introspect) must be the order the tool returned in the take.
   for (const s of shown.filter((x) => x.source?.from === 'introspect:fts')) {
