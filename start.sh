@@ -22,6 +22,43 @@ open_browser() {
   ) &
 }
 
+# The PID listening on TCP port $1, or nothing (lsof on macOS/Linux, else ss on Linux).
+port_owner() {
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$1" -sTCP:LISTEN -t 2>/dev/null | head -n 1
+  elif command -v ss >/dev/null 2>&1; then
+    ss -ltnpH "sport = :$1" 2>/dev/null | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -n 1
+  fi
+}
+
+# Port $1 must be free, or uvicorn fails with "address already in use". Usually an earlier
+# run is still open: name it and ask before stopping it (Enter = yes; decision 0017 item 24).
+free_port() {
+  pid="$(port_owner "$1")"
+  [ -z "$pid" ] && return 0
+  name="$(ps -p "$pid" -o comm= 2>/dev/null || echo "an unknown process")"
+  echo
+  echo "Port $1 ($2) is already in use by $name (PID $pid)."
+  echo "It is probably an earlier ./start.sh that is still running."
+  if [ ! -t 0 ]; then
+    echo "No terminal to ask on, so nothing was stopped. Stop PID $pid, then run ./start.sh again."
+    return 1
+  fi
+  printf "Stop it and continue? [Y/n] "
+  read -r answer || answer=n
+  case "$answer" in
+    ""|y|Y|yes|YES) ;;
+    *) echo "Not stopped. Close it, or stop PID $pid, then run ./start.sh again."; return 1 ;;
+  esac
+  kill "$pid" 2>/dev/null || true
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    [ -z "$(port_owner "$1")" ] && { echo "  Stopped. Port $1 is free."; return 0; }
+    sleep 1
+  done
+  echo "Port $1 is still in use (PID $pid). Stop it by hand, then run ./start.sh again."
+  return 1
+}
+
 case "$mode" in
   local)
     command -v python3 >/dev/null 2>&1 || { echo "Python 3.11+ is required: https://www.python.org/downloads/"; exit 1; }
@@ -44,6 +81,8 @@ case "$mode" in
     [ -f .env ] || export SAP_TODAY="${SAP_TODAY:-2026-11-17}"
     command -v kicad-cli >/dev/null 2>&1 || grep -q '^KICAD_CLI=' .env 2>/dev/null \
       || echo "Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env."
+    free_port 8000 "the app" || exit 1
+    free_port 8100 "the mock SAP" || exit 1
     # Which model will answer? It checks Groq and Ollama, suggests one and asks (Enter = the
     # suggestion). Questions go to stderr and read the terminal; only the choice is captured.
     echo
