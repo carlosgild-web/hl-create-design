@@ -12,6 +12,9 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   timeout: 20 * 60_000,
+  // The app waits on SAP (a create card checks the values there first, ~5 s) and on events
+  // the recorder holds while a subtitle is read: 5 s is too short for any of them.
+  expect: { timeout: 60_000 },
   reporter: [['list']],
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:8000',
