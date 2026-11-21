@@ -107,6 +107,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="The backend's own manual search before the first model call (decision 0024)",
     )
     ev.add_argument(
+        "--resume",
+        type=Path,
+        metavar="DIR",
+        help="Save each result in DIR as it finishes and skip those already there (long runs)",
+    )
+    ev.add_argument(
         "--few-shot",
         action="store_true",
         help="Ollama only: one example answer in the prompt, for an A/B run (decision 0026)",
@@ -455,14 +461,17 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
             return 1
         client_for, provider, model = harness.real(client), client.provider, client.model
         print(f"{provider}: {model}; {len(scenarios)} scenarios (fake-only ones skipped)")
-    results = harness.run_all(
-        scenarios,
-        client_for,
-        provider=provider,
-        model=model,
-        preretrieval=args.preretrieval,
-        few_shot=args.few_shot,
-    )
+    if args.resume:
+        results = _run_resumable(args, scenarios, client_for, provider, model)
+    else:
+        results = harness.run_all(
+            scenarios,
+            client_for,
+            provider=provider,
+            model=model,
+            preretrieval=args.preretrieval,
+            few_shot=args.few_shot,
+        )
     print(report.console(results))
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
@@ -472,6 +481,40 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
         args.markdown.write_text(report.to_markdown(results), encoding="utf-8")
     passed, total = report.score(results)
     return 0 if passed == total or args.allow_failures else 1
+
+
+def _run_resumable(args: argparse.Namespace, scenarios, client_for, provider: str, model: str):
+    """One scenario at a time, each result saved at once as `DIR/<id>.json`. A stopped run
+    (Ctrl+C, a crash, a reboot) loses at most the scenario in progress; run the same
+    command again and it continues. Results of another provider or model are not reused."""
+    from app.evals import harness
+
+    folder: Path = args.resume
+    folder.mkdir(parents=True, exist_ok=True)
+    results = []
+    for number, sc in enumerate(scenarios, 1):
+        saved = folder / f"{sc.id}.json"
+        if saved.exists():
+            data = json.loads(saved.read_text(encoding="utf-8"))
+            if data.get("provider") == provider and data.get("model") == model:
+                results.append(harness.ScenarioResult.from_dict(data))
+                continue
+        print(f"[{number}/{len(scenarios)}] {sc.id} ...", flush=True)
+        result = harness.run_scenario(
+            sc,
+            client_for,
+            provider=provider,
+            model=model,
+            preretrieval=args.preretrieval,
+            few_shot=args.few_shot,
+        )
+        saved.write_text(
+            json.dumps(result.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        mark = "PASS" if result.passed else "FAIL"
+        print(f"    {mark} in {result.seconds:.0f} s", flush=True)
+        results.append(result)
+    return results
 
 
 if __name__ == "__main__":

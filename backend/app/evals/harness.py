@@ -132,6 +132,22 @@ class ScenarioResult:
             "error": self.error,
         }
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ScenarioResult:
+        """A result saved by `agent-eval --resume` (the inverse of `to_dict`)."""
+        return cls(
+            id=data["id"],
+            title=data["title"],
+            tags=tuple(data.get("tags", ())),
+            provider=data["provider"],
+            model=data["model"],
+            checks=[Check(c["name"], c["ok"], c.get("detail", "")) for c in data["checks"]],
+            tool_calls=list(data.get("tool_calls", [])),
+            answer=data.get("answer", ""),
+            seconds=float(data.get("seconds", 0.0)),
+            error=data.get("error", ""),
+        )
+
 
 ClientFor = Callable[[Turn], LLMClient]
 

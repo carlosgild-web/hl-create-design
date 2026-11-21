@@ -16,7 +16,8 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
 
 ## Pending real-model runs (Phase 9f)
 
-The real-model rows above predate Phase 9 (27 scenarios, no pre-retrieval). To compare on
+The real-model rows above predate Phase 9 (27 scenarios, no pre-retrieval). `--resume DIR` saves
+each result as it finishes and continues a stopped run. To compare on
 the 49-scenario suite (run them in batches with `--only` if memory is short):
 
 ```bash
