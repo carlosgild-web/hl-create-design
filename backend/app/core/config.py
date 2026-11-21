@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    llm_provider: Literal["auto", "fake", "ollama", "groq"] = "auto"
+    llm_provider: Literal["auto", "demo", "ollama", "groq", "fake"] = "auto"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:4b-instruct-2507-q4_K_M"
     ollama_timeout_s: float = Field(default=180.0, gt=0, le=3600)  # per model call

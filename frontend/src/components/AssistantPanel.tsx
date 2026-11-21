@@ -135,7 +135,7 @@ export function AssistantPanel({
                         <div className="flex flex-wrap gap-2">
                           {item.switchTo.map((to) => (
                             <Button key={to} size="sm" variant="outline" onClick={() => onSwitch(to)}>
-                              {t(to === 'ollama' ? 'chat.switch.ollama' : 'chat.switch.fake')}
+                              {t(to === 'ollama' ? 'chat.switch.ollama' : 'chat.switch.demo')}
                             </Button>
                           ))}
                         </div>
@@ -153,7 +153,7 @@ export function AssistantPanel({
                   <p key={item.id} role="status" className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                     {item.by === 'user'
                       ? t('chat.switched.user', { name: item.to === 'ollama' ? `Ollama (${item.model})` : t('chat.demo_model') })
-                      : t(item.to === 'ollama' ? 'chat.switched.ollama' : 'chat.switched.fake', { model: item.model })}
+                      : t(item.to === 'ollama' ? 'chat.switched.ollama' : 'chat.switched.demo', { model: item.model })}
                   </p>
                 )
               case 'stopped':

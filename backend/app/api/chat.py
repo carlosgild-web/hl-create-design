@@ -138,7 +138,7 @@ def cancel_run(run_id: int) -> dict:
 
 
 class SwitchRequest(BaseModel):
-    to: Literal["ollama", "fake"]
+    to: Literal["ollama", "demo"]
 
 
 @router.post("/llm/switch")

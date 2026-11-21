@@ -1,7 +1,8 @@
 """Which model answers: the providers' status, and `LLM_PROVIDER=auto`'s pick (decision 0016).
 
 Order: Groq (a key, and quota for a real turn right now), then Ollama (running, model
-pulled), then the scripted demo model. `check_providers` reports each provider's state;
+pulled), then the rule-based demo assistant (decision 0025). `check_providers` reports each
+provider's state;
 `app.cli llm-check` shows it and asks the person starting the app, while `resolve_auto` (the
 app's own startup, e.g. in Docker) takes the first usable one without asking. The reasons
 for each skipped provider are kept (logged at startup and shown by `/api/health`).
@@ -17,7 +18,7 @@ import httpx
 
 from app.core.config import Settings
 from app.llm.base import LLMClient, Message, ToolSpec
-from app.llm.fake import FakeClient
+from app.llm.demo import DemoClient
 from app.llm.groq import GroqClient, GroqProbe
 from app.llm.ollama import OllamaClient, OllamaProbe
 
@@ -29,9 +30,10 @@ Turn = tuple[list[Message], list[ToolSpec]]
 
 # What to try, and in which order, for each configured provider.
 CHAINS: dict[str, tuple[str, ...]] = {
-    "auto": ("groq", "ollama", "fake"),
-    "groq": ("groq", "ollama", "fake"),
-    "ollama": ("ollama", "fake"),
+    "auto": ("groq", "ollama", "demo"),
+    "groq": ("groq", "ollama", "demo"),
+    "ollama": ("ollama", "demo"),
+    "demo": ("demo",),
     "fake": ("fake",),
 }
 
@@ -46,7 +48,7 @@ class ProviderStatus:
             return "groq"
         if self.ollama and self.ollama.usable:
             return "ollama"
-        return "fake"
+        return "demo"
 
     def skipped_before(self, provider: str) -> tuple[str, ...]:
         """Why each provider ahead of `provider` in the order was not used."""
@@ -163,7 +165,7 @@ def _client(
         return groq_client(settings, groq_transport)
     if provider == "ollama":
         return ollama_client(settings, ollama_transport)
-    return FakeClient()
+    return DemoClient()
 
 
 def current_resolution() -> Resolution | None:

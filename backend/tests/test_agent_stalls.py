@@ -74,12 +74,12 @@ def test_a_stuck_turn_ends_at_the_timeout_and_offers_a_switch(settings, engine, 
             sap,
             manual,
             always_limited(),
-            switch_options=lambda: ["ollama", "fake"],
+            switch_options=lambda: ["ollama", "demo"],
         )
     )
 
     error = next(e.data for e in out if e.type == "error")
-    assert error["code"] == "turn_timeout" and error["can_switch_to"] == ["ollama", "fake"]
+    assert error["code"] == "turn_timeout" and error["can_switch_to"] == ["ollama", "demo"]
     assert any(e.type == "status" for e in out)  # the user saw why it was waiting
     done = out[-1].data
     assert done["status"] == "timeout"
@@ -165,12 +165,12 @@ def test_cancel_over_http_while_the_stream_waits(api, settings, monkeypatch):
 
 
 def test_switch_to_the_demo_model_changes_what_answers(api, settings):
-    response = api.post("/api/llm/switch", json={"to": "fake"})
-    assert response.status_code == 200 and response.json()["provider"] == "fake"
+    response = api.post("/api/llm/switch", json={"to": "demo"})
+    assert response.status_code == 200 and response.json()["provider"] == "demo"
     assert (
-        factory.make_client(settings.model_copy(update={"llm_provider": "groq"})).provider == "fake"
+        factory.make_client(settings.model_copy(update={"llm_provider": "groq"})).provider == "demo"
     )
-    assert api.get("/api/health").json()["llm_provider"] == "fake"
+    assert api.get("/api/health").json()["llm_provider"] == "demo"
 
 
 def test_switch_to_ollama_needs_it_running(api, monkeypatch):
@@ -183,7 +183,8 @@ def test_switch_to_ollama_needs_it_running(api, monkeypatch):
 
 def test_switch_options_skip_the_current_provider(settings, monkeypatch):
     factory.reset_shared()
+    demo = settings.model_copy(update={"llm_provider": "demo"})
     monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("ready", ""))
-    assert factory.switch_options(settings) == ["ollama"]  # settings use the demo model
+    assert factory.switch_options(demo) == ["ollama"]  # the demo is already in use
     monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("not_running", ""))
-    assert factory.switch_options(settings) == []
+    assert factory.switch_options(demo) == []

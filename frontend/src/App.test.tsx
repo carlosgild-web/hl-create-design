@@ -229,3 +229,20 @@ describe('Create Design', () => {
     expect(screen.getByText('Which department?')).toBeInTheDocument()
   })
 })
+
+describe('header: which assistant answers (decision 0025)', () => {
+  it('says when the demo assistant answers, in the UI language', async () => {
+    stubFetch((url) => (url === '/api/health' ? jsonResponse({ status: 'ok', llm_provider: 'demo' }) : undefined), ...baseRoutes)
+    renderWithProviders(<App />)
+    expect(await screen.findByText('Assistant: demo (no AI)')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'ES' }))
+    expect(screen.getByText('Asistente: demostración (sin IA)')).toBeInTheDocument()
+  })
+
+  it('shows nothing for a real model', async () => {
+    stubFetch((url) => (url === '/api/health' ? jsonResponse({ status: 'ok', llm_provider: 'groq' }) : undefined), ...baseRoutes)
+    renderWithProviders(<App />)
+    await screen.findByRole('heading', { name: 'Create Design' })
+    expect(screen.queryByText('Assistant: demo (no AI)')).not.toBeInTheDocument()
+  })
+})

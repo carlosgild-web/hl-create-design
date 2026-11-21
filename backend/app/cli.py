@@ -91,7 +91,9 @@ def build_parser() -> argparse.ArgumentParser:
     ev = commands.add_parser("agent-eval", help="Run the agent scenario suite (PLAN Phase 6)")
     which = ev.add_mutually_exclusive_group(required=True)
     which.add_argument("--fake", action="store_true", help="Scripted model (CI, no LLM needed)")
-    which.add_argument("--provider", choices=("ollama", "groq"), help="Real provider")
+    which.add_argument(
+        "--provider", choices=("ollama", "groq", "demo"), help="Real provider, or the demo"
+    )
     ev.add_argument("--only", action="append", default=[], metavar="ID", help="Run these scenarios")
     ev.add_argument("--json", type=Path, metavar="FILE", help="Write the results as JSON")
     ev.add_argument("--markdown", type=Path, metavar="FILE", help="Write a Markdown report")
@@ -183,20 +185,20 @@ def choose_provider(
     if groq and groq.usable and ask("Use Groq? [Y/n] ", "y") is not False:
         return "groq"
     if ollama is None:
-        return "fake"
+        return "demo"
     if ollama.state == "not_running" and _is_local(settings.ollama_base_url):
         if ask("Ollama is installed but not running. Start it now? [Y/n] ", "y"):
             ollama = start(settings)
             _say(f"  Ollama    {ollama.detail}")
             if ollama.usable:
                 return "ollama"
-        return "fake"
+        return "demo"
     if ollama.usable:
         question = (
             "Use [O]llama (local, slower, needs ~3.5 GB free RAM) or the [D]emo model? [O/d] "
         )
-        return "ollama" if ask(question, "o") is not False else "fake"
-    return "fake"
+        return "ollama" if ask(question, "o") is not False else "demo"
+    return "demo"
 
 
 def run_llm_check(
@@ -211,9 +213,9 @@ def run_llm_check(
     questions and status go to stderr; the chosen name goes to stdout and to `out`, so the
     start scripts can run the app with `LLM_PROVIDER=<name>`."""
     configured = settings.llm_provider
-    if configured == "fake":
-        _say("Assistant: the scripted demo model (LLM_PROVIDER=fake).")
-        provider = "fake"
+    if configured in ("demo", "fake"):
+        _say(f"Assistant: the demo assistant, no real AI (LLM_PROVIDER={configured}).")
+        provider = configured
     else:
         _say("Checking the assistant's model ...")
         status = (check or (lambda s: check_providers(s, turn=probe_turn())))(settings)
@@ -225,7 +227,7 @@ def run_llm_check(
         names = {
             "groq": f"Groq ({settings.groq_model})",
             "ollama": f"Ollama ({settings.ollama_model})",
-            "fake": "the demo model (scripted, no real AI)",
+            "demo": "the demo assistant (rules, no real AI)",
         }
         _say(f"Using {names[provider]}.")
     if out:

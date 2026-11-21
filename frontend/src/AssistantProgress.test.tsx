@@ -67,7 +67,7 @@ describe('assistant progress (decision 0017)', () => {
           ? sseResponse([
               ['conversation', { id: 'c1' }],
               ['run', { id: 7 }],
-              ['error', { code: 'turn_timeout', message: 'x', timeout_s: 120, can_switch_to: ['ollama', 'fake'] }],
+              ['error', { code: 'turn_timeout', message: 'x', timeout_s: 120, can_switch_to: ['ollama', 'demo'] }],
               ['done', { conversation_id: 'c1', run_id: 7, status: 'timeout' }],
             ])
           : undefined,
@@ -83,7 +83,7 @@ describe('assistant progress (decision 0017)', () => {
     expect(await screen.findByText('From now on the assistant answers with Ollama (qwen3).')).toBeInTheDocument()
     const body = calls.find((c) => c.url === '/api/llm/switch')?.init?.body
     expect(JSON.parse(String(body))).toEqual({ to: 'ollama' })
-    expect(screen.getByRole('button', { name: 'Use the demo model' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Use the demo assistant' })).toBeInTheDocument()
   })
 
   it('New conversation clears the chat and starts a new one', async () => {

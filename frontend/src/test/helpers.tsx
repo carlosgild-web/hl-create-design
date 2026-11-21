@@ -114,6 +114,7 @@ export const baseRoutes: Route[] = [
         ])
       : undefined,
   (url) => (url === '/api/designs' ? jsonResponse([]) : undefined),
+  (url) => (url === '/api/health' ? jsonResponse({ status: 'ok', llm_provider: 'fake' }) : undefined),
   (url) =>
     url === '/api/validate' ? jsonResponse({ ok: true, normalized: {}, errors: [], warnings: [] }) : undefined,
 ]

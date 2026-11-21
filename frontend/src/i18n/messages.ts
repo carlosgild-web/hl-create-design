@@ -3,6 +3,7 @@ export type Lang = 'en' | 'es'
 const en = {
   'app.company': 'Hilda & Luna · Electronics Engineering',
   'app.title': 'Create Design',
+  'header.demo': 'Assistant: demo (no AI)',
   'app.tagline': 'Start a KiCad design with the company title block already filled in.',
   'lang.label': 'Language',
   'form.title': 'New design',
@@ -139,9 +140,9 @@ const en = {
   'chat.stopped': 'Stopped. Nothing more was done.',
   'chat.timeout': 'The model did not answer within {seconds} s, so this answer stopped.',
   'chat.switch.ollama': 'Switch to Ollama (local)',
-  'chat.switch.fake': 'Use the demo model',
+  'chat.switch.demo': 'Use the demo assistant',
   'chat.switched.user': 'From now on the assistant answers with {name}.',
-  'chat.demo_model': 'the demo model (scripted)',
+  'chat.demo_model': 'the demo assistant (rules, no AI)',
   'activity.rate_limited': 'Waiting for the {provider} rate limit (about {seconds} s)…',
   'activity.search_design_manual': 'Searching the Design Manual…',
   'activity.validate_design_request': 'Checking the values against the rules…',
@@ -151,8 +152,8 @@ const en = {
   'activity.request_card': 'Preparing a confirmation card…',
   'chat.switched.ollama':
     "Groq's daily quota is used up, so the assistant continues on Ollama ({model}, local and slower) for the rest of this session.",
-  'chat.switched.fake':
-    "Groq's daily quota is used up and Ollama is not available, so the assistant continues on the demo model (scripted, no real AI). Start Ollama and restart the app to get a real model back.",
+  'chat.switched.demo':
+    "Groq's daily quota is used up and Ollama is not available, so the assistant continues as the demo assistant (rules, no real AI). Start Ollama and restart the app to get a real model back.",
   'chat.unreachable': 'The assistant is not reachable. Is the backend running?',
   'sap.card': 'SAP record',
   'sap.material': 'Material',
@@ -257,6 +258,7 @@ export type MessageKey = keyof typeof en
 const es: Record<MessageKey, string> = {
   'app.company': 'Hilda & Luna · Ingeniería Electrónica',
   'app.title': 'Crear diseño',
+  'header.demo': 'Asistente: demostración (sin IA)',
   'app.tagline': 'Inicia un diseño de KiCad con el cajetín de la empresa ya relleno.',
   'lang.label': 'Idioma',
   'form.title': 'Nuevo diseño',
@@ -393,9 +395,9 @@ const es: Record<MessageKey, string> = {
   'chat.stopped': 'Detenido. No se hizo nada más.',
   'chat.timeout': 'El modelo no respondió en {seconds} s, así que esta respuesta se detuvo.',
   'chat.switch.ollama': 'Cambiar a Ollama (local)',
-  'chat.switch.fake': 'Usar el modelo de demostración',
+  'chat.switch.demo': 'Usar el asistente de demostración',
   'chat.switched.user': 'A partir de ahora el asistente responde con {name}.',
-  'chat.demo_model': 'el modelo de demostración (con guion)',
+  'chat.demo_model': 'el asistente de demostración (reglas, sin IA)',
   'activity.rate_limited': 'Esperando al límite de uso de {provider} (unos {seconds} s)…',
   'activity.search_design_manual': 'Buscando en el Manual de Diseño…',
   'activity.validate_design_request': 'Comprobando los valores con las reglas…',
@@ -405,8 +407,8 @@ const es: Record<MessageKey, string> = {
   'activity.request_card': 'Preparando una tarjeta de confirmación…',
   'chat.switched.ollama':
     'Se ha agotado la cuota diaria de Groq, así que el asistente sigue con Ollama ({model}, local y más lento) el resto de la sesión.',
-  'chat.switched.fake':
-    'Se ha agotado la cuota diaria de Groq y Ollama no está disponible, así que el asistente sigue con el modelo de demostración (con guion, sin IA real). Arranca Ollama y reinicia la aplicación para volver a un modelo real.',
+  'chat.switched.demo':
+    'Se ha agotado la cuota diaria de Groq y Ollama no está disponible, así que el asistente sigue en modo demostración (reglas, sin IA real). Arranca Ollama y reinicia la aplicación para volver a un modelo real.',
   'chat.unreachable': 'No se puede contactar con el asistente. ¿Está en marcha el backend?',
   'sap.card': 'Registro SAP',
   'sap.material': 'Material',

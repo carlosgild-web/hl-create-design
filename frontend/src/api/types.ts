@@ -100,7 +100,7 @@ export type SapListDesign = SapDesign & { next_free_revision: string; selectable
 export type FormMode = 'new' | 'existing'
 
 /** A provider the user can move to after a stuck turn (`POST /api/llm/switch`). */
-export type SwitchTarget = 'ollama' | 'fake'
+export type SwitchTarget = 'ollama' | 'demo'
 
 /** One server-sent event of `POST /api/chat`. */
 export type ChatEvent =

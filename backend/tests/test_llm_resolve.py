@@ -234,7 +234,7 @@ def test_no_key_skips_groq_without_calling_it():
         groq_transport=never_called(),
         ollama_transport=nothing_listening(),
     )
-    assert status.groq.state == "no_key" and status.first_usable() == "fake"
+    assert status.groq.state == "no_key" and status.first_usable() == "demo"
 
 
 def test_auto_groq_wins_without_probing_ollama():
@@ -263,7 +263,7 @@ def test_auto_scripted_demo_when_nothing_else_works():
         groq_transport=never_called(),
         ollama_transport=nothing_listening(),
     )
-    assert res.provider == "fake"
+    assert res.provider == "demo"
     assert [s.split(":")[0] for s in res.skipped] == ["groq", "ollama"]
     assert "skipped" in res.describe()
 
@@ -323,7 +323,7 @@ def test_groq_ok_is_suggested_and_enter_accepts_it():
 
 def test_declining_groq_offers_ollama_or_demo():
     assert choose(GROQ_OK, OLLAMA_READY, answers("n", "")) == "ollama"
-    assert choose(GROQ_OK, OLLAMA_READY, answers("n", "d")) == "fake"
+    assert choose(GROQ_OK, OLLAMA_READY, answers("n", "d")) == "demo"
 
 
 def test_groq_used_up_suggests_ollama():
@@ -333,8 +333,8 @@ def test_groq_used_up_suggests_ollama():
 
 
 def test_nothing_available_is_the_demo_without_a_question():
-    assert choose(GROQ_DAILY, OLLAMA_ABSENT, answers()) == "fake"
-    assert choose(GROQ_DAILY, OLLAMA_NO_MODEL, answers()) == "fake"
+    assert choose(GROQ_DAILY, OLLAMA_ABSENT, answers()) == "demo"
+    assert choose(GROQ_DAILY, OLLAMA_NO_MODEL, answers()) == "demo"
 
 
 def test_offers_to_start_a_stopped_ollama():
@@ -346,20 +346,20 @@ def test_offers_to_start_a_stopped_ollama():
 
     assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers(""), start) == "ollama"
     assert started
-    assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers("n")) == "fake"
+    assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers("n")) == "demo"
     failed = lambda s: OllamaProbe("not_running", "did not answer within 30 s")  # noqa: E731
-    assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers("y"), failed) == "fake"
+    assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers("y"), failed) == "demo"
 
 
 def test_no_offer_to_start_a_remote_ollama():
     remote = {"ollama_base_url": "http://gpu-box:11434"}
-    assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers(), **remote) == "fake"
+    assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers(), **remote) == "demo"
 
 
 def test_without_a_terminal_the_suggestion_is_taken_and_nothing_is_started():
     assert choose(GROQ_OK, OLLAMA_READY, answers(None)) == "groq"
     assert choose(GROQ_DAILY, OLLAMA_READY, answers(None)) == "ollama"
-    assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers(None)) == "fake"
+    assert choose(GROQ_DAILY, OLLAMA_STOPPED, answers(None)) == "demo"
 
 
 def test_start_and_wait_polls_until_ollama_answers():
@@ -394,10 +394,10 @@ def test_llm_check_prints_status_and_writes_the_choice(capsys, tmp_path):
     assert cli.run_llm_check(settings(), out, check=lambda s: status, ask=answers("d")) == 0
 
     captured = capsys.readouterr()
-    assert captured.out.strip() == "fake" and out.read_text() == "fake"
+    assert captured.out.strip() == "demo" and out.read_text() == "demo"
     assert "Groq      daily token quota used up" in captured.err
     assert "Ollama    installed, running" in captured.err
-    assert "Using the demo model" in captured.err
+    assert "Using the demo assistant" in captured.err
 
 
 def test_llm_check_with_fake_configured_probes_nothing(capsys):
@@ -479,7 +479,7 @@ def test_fallback_is_ollama_when_ready_else_the_demo(monkeypatch):
     monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("ready", ""))
     assert factory.fallback_client(settings()).provider == "ollama"
     monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("not_running", ""))
-    assert factory.fallback_client(settings()).provider == "fake"
+    assert factory.fallback_client(settings()).provider == "demo"
 
 
 # --- the start-script question waits for the person (decision 0017, item 23) -------------

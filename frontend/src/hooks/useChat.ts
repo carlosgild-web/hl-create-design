@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 
 import { cancelAction, cancelRun, switchProvider } from '@/api/client'
@@ -53,6 +54,7 @@ export function samePayload(a: Record<string, unknown>, b: Record<string, unknow
  * assistant is doing while it works.
  */
 export function useChat({ language, getForm, onFormProposal }: Options) {
+  const queryClient = useQueryClient()
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
   const [actions, setActions] = useState<Record<string, Action>>({})
   const [steps, setSteps] = useState<Step[]>([])
@@ -196,6 +198,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
         case 'notice':
           if (event.data.code === 'provider_switched') {
             push({ kind: 'switched', to: event.data.to, model: event.data.model, by: 'quota' })
+            void queryClient.invalidateQueries({ queryKey: ['health'] })
           }
           break
         case 'done':
@@ -203,7 +206,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
           break
       }
     },
-    [onFormProposal, openCard, push, setConversation],
+    [onFormProposal, openCard, push, queryClient, setConversation],
   )
 
   const send = useCallback(
@@ -271,11 +274,12 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
       try {
         const now = await switchProvider(to)
         push({ kind: 'switched', to: now.provider, model: now.model, by: 'user' })
+        void queryClient.invalidateQueries({ queryKey: ['health'] }) // the header's model badge
       } catch (error) {
         push({ kind: 'error', text: error instanceof Error ? error.message : String(error) })
       }
     },
-    [push],
+    [push, queryClient],
   )
 
   return {

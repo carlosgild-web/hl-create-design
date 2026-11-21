@@ -1,9 +1,14 @@
+import { useQuery } from '@tanstack/react-query'
+
+import { getHealth } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { DemoGuide } from '@/demo-guide/DemoGuide'
 import { useI18n } from '@/i18n'
 
 export function Header() {
   const { t, lang, setLang } = useI18n()
+  const health = useQuery({ queryKey: ['health'], queryFn: getHealth, staleTime: 60_000, retry: false })
+  const demo = health.data?.llm_provider === 'demo'
 
   return (
     <header>
@@ -16,6 +21,12 @@ export function Header() {
             <p className="text-xs text-muted-foreground lg:order-1">{t('app.company')}</p>
           </div>
         </div>
+        <div className="flex items-center gap-3">
+        {demo && (
+          <span role="status" className="rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
+            {t('header.demo')}
+          </span>
+        )}
         <div role="group" aria-label={t('lang.label')} className="flex gap-1">
           {(['en', 'es'] as const).map((code) => (
             <Button
@@ -28,6 +39,7 @@ export function Header() {
               {code.toUpperCase()}
             </Button>
           ))}
+        </div>
         </div>
       </div>
     </header>

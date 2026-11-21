@@ -6,6 +6,7 @@ import threading
 
 from app.core.config import Settings
 from app.llm.base import LLMClient, LLMError
+from app.llm.demo import DemoClient
 from app.llm.fake import FakeClient
 from app.llm.fallback import SwitchingClient
 from app.llm.resolve import check_ollama, groq_client, ollama_client, resolve_auto
@@ -16,8 +17,9 @@ _override: LLMClient | None = None
 
 
 def make_client(settings: Settings, *, fallback: bool = True) -> LLMClient:
-    """`fake` (demo mode), `ollama` (local), `groq` (cloud, decision 0012), or `auto`
-    (the first of groq, ollama, fake that works; decision 0016).
+    """`demo` (the rule-based demo assistant, decision 0025), `ollama` (local), `groq`
+    (cloud, decision 0012), `auto` (the first of groq, ollama, demo that works; decision
+    0016), or `fake` (the scripted test double; tests only).
 
     With `fallback` (the app), Groq is wrapped so that a used-up daily quota moves the rest
     of the session to Ollama or the demo model. One wrapper per process, so once switched,
@@ -39,6 +41,8 @@ def make_client(settings: Settings, *, fallback: bool = True) -> LLMClient:
         key = settings.groq_api_key.get_secret_value() if settings.groq_api_key else ""
         ident = ("groq", key, settings.groq_model, settings.groq_base_url)
         return _shared(ident, lambda: groq_client(settings), settings)
+    if provider == "demo":
+        return DemoClient()
     return FakeClient()
 
 
@@ -55,7 +59,7 @@ def fallback_client(settings: Settings) -> LLMClient:
     """Where a session goes when Groq's quota is gone: Ollama if ready, else the demo."""
     if check_ollama(settings).usable:
         return ollama_client(settings)
-    return FakeClient()
+    return DemoClient()
 
 
 class SwitchUnavailable(LLMError):
@@ -69,8 +73,8 @@ def switch_options(settings: Settings) -> list[str]:
     options = []
     if current != "ollama" and check_ollama(settings).usable:
         options.append("ollama")
-    if current != "fake":
-        options.append("fake")
+    if current != "demo":
+        options.append("demo")
     return options
 
 
@@ -82,8 +86,8 @@ def switch_to(settings: Settings, provider: str) -> LLMClient:
         if not check_ollama(settings).usable:
             raise SwitchUnavailable("Ollama is not running with the model pulled.")
         client: LLMClient = ollama_client(settings)
-    elif provider == "fake":
-        client = FakeClient()
+    elif provider == "demo":
+        client = DemoClient()
     else:
         raise SwitchUnavailable(f"Cannot switch to '{provider}'.")
     with _lock:
