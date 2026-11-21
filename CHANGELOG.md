@@ -59,6 +59,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
     rendered with its lists, tables, bold and code (no raw Markdown, no HTML).
   - README screenshots and GIF regenerated with real KiCad, plus a cited manual answer
     and its passage.
+  - SAP texts and card failures in the UI language (decision 0027): the mock answers in
+    the `sap-language` the backend sends; the UI words our part from `failure.<kind>`.
   - 16 FAQ eval scenarios (EN and ES; `cite_any`, `language`), `agent-eval --provider
     demo`, `--preretrieval` and `--few-shot`.
   - `start.cmd` and `start.sh` offer to stop a process that holds port 8000 or 8100.

@@ -319,6 +319,8 @@ linked sections now count as returned (0026 items 7-8). **Pending:** Groq run an
 measurement after the quota reset (commands in `docs/eval/README.md`); the user's `.env`
 duplicate `LLM_PROVIDER`. **README screenshots and GIF regenerated** (2026-11-21, real KiCad;
 2 new shots: a cited manual answer and its passage, now rendered as formatted text).
+SAP refusal and card failure texts in Spanish (decision 0027). The duplicate `LLM_PROVIDER`
+in `.env` is gone.
 
 1. **FAQ scenarios** in `evals/scenarios.py`: about 15 grouped scenarios (numbers, revisions,
    statuses, name/designer, files/KiCad, cards/app), each in EN and ES, from
