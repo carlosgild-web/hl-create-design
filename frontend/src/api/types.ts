@@ -7,7 +7,8 @@ export type FormValues = Record<FormField, string>
 
 export type Department = { code: string; name: string; name_es?: string }
 
-export type Issue = { field: string; code: string; message: string; ref: string }
+/** A rule result. `message` is English; the UI renders `code` + `params` (lib/issues.ts). */
+export type Issue = { field: string; code: string; message: string; ref: string; params?: Record<string, string> }
 
 /** `POST /api/validate`: the same check as the assistant's validate tool. */
 export type Validation = {

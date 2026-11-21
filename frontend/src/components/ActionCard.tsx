@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react'
 
 import { cancelAction, confirmAction } from '@/api/client'
 import { FORM_FIELDS, type Action, type Department } from '@/api/types'
+import { issueText } from '@/lib/issues'
 import { departmentName, FIELD_LABELS } from '@/lib/fields'
 import { Button } from '@/components/ui/button'
 import { useI18n } from '@/i18n'
@@ -124,7 +125,7 @@ export function ActionCard({ action, stale = false, departments = [], onChange, 
             {result.warnings?.map((w) => (
               <p key={w.code} className="text-xs text-foreground/80">
                       <span aria-hidden>⚠ </span>
-                {w.message} [{w.ref}]
+                {issueText(lang, w)} [{w.ref}]
               </p>
             ))}
             {action.kind === 'reserve_number' ? (
@@ -156,7 +157,7 @@ export function ActionCard({ action, stale = false, departments = [], onChange, 
             {result.message && <p>{result.message}</p>}
             {result.errors?.map((e) => (
               <p key={e.code + e.field} className="text-xs">
-                {e.message} <span className="text-muted-foreground">[{e.ref}]</span>
+                {issueText(lang, e)} <span className="text-muted-foreground">[{e.ref}]</span>
               </p>
             ))}
             {result.ref && <p className="text-xs text-muted-foreground">[{result.ref}]</p>}

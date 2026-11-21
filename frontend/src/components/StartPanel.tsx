@@ -254,7 +254,7 @@ function FromExisting({
             {t('start.ai_selected', { number: selected.design_number })}
           </p>
         )}
-        <SapCard design={selected} notes={statusNotes.map((n) => ({ message: n.message, ref: n.ref }))} />
+        <SapCard design={selected} notes={statusNotes} />
         <Button
           size="sm"
           variant="outline"

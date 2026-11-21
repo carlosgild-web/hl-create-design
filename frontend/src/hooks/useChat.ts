@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 
 import { cancelAction, cancelRun, switchProvider } from '@/api/client'
 import { streamChat } from '@/api/sse'
-import { FORM_FIELDS, type Action, type ChatEvent, type FormValues, type SapDesign, type SwitchTarget } from '@/api/types'
+import { FORM_FIELDS, type Action, type ChatEvent, type FormValues, type Issue, type SapDesign, type SwitchTarget } from '@/api/types'
 import type { Lang } from '@/i18n'
 
 export type TimelineItem =
@@ -11,7 +11,7 @@ export type TimelineItem =
   | { id: number; kind: 'error'; text: string; code?: string; timeoutS?: number; switchTo?: SwitchTarget[] }
   | { id: number; kind: 'switched'; to: string; model: string; by: 'quota' | 'user' }
   | { id: number; kind: 'stopped' }
-  | { id: number; kind: 'sap'; design: SapDesign; notes: { message: string; ref: string }[] }
+  | { id: number; kind: 'sap'; design: SapDesign; notes: Issue[] }
   | { id: number; kind: 'action'; actionId: string; epoch: number }
   | { id: number; kind: 'divider' }
 
@@ -165,7 +165,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
           const result = event.data.result as {
             found?: boolean
             design?: SapDesign
-            status_notes?: { message: string; ref: string }[]
+            status_notes?: Issue[]
           }
           if (event.data.name === 'sap_get_design' && result.found && result.design) {
             push({ kind: 'sap', design: result.design, notes: result.status_notes ?? [] })
