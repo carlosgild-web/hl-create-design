@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { getManualPassage } from '@/api/client'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ManualText } from '@/components/ManualText'
 import { useI18n } from '@/i18n'
 import { normalizeRefs } from '@/lib/issues'
 
@@ -38,8 +39,8 @@ export function ManualRef({ source }: { source: string }) {
               {t('manual.source', { document: passage.data?.document ?? source.split('#')[0], source })}
             </DialogDescription>
           </DialogHeader>
-          <div className="overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap">
-            {passage.isPending ? t('manual.loading') : passage.isError ? t('manual.missing') : passage.data.text}
+          <div className="overflow-y-auto text-sm leading-relaxed">
+            {passage.isPending ? t('manual.loading') : passage.isError ? t('manual.missing') : <ManualText text={passage.data.text} />}
           </div>
         </DialogContent>
       </Dialog>
