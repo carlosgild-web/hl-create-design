@@ -405,7 +405,10 @@ def test_llm_check_with_fake_configured_probes_nothing(capsys):
         raise AssertionError("no probes")
 
     cli.run_llm_check(settings(llm_provider="fake"), check=no_check, ask=answers())
-    assert capsys.readouterr().out.strip() == "fake"
+    out = capsys.readouterr()
+    assert out.out.strip() == "fake"
+    # says plainly that this is the test model and how to get Groq/Ollama checked
+    assert "TEST model" in out.err and "LLM_PROVIDER=auto" in out.err
 
 
 def test_ask_terminal_without_a_tty_returns_none(monkeypatch):

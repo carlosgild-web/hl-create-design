@@ -224,8 +224,15 @@ def run_llm_check(
     questions and status go to stderr; the chosen name goes to stdout and to `out`, so the
     start scripts can run the app with `LLM_PROVIDER=<name>`."""
     configured = settings.llm_provider
-    if configured in ("demo", "fake"):
-        _say(f"Assistant: the demo assistant, no real AI (LLM_PROVIDER={configured}).")
+    if configured == "demo":
+        _say("Assistant: the demo assistant, rules and no real AI (LLM_PROVIDER=demo).")
+        _say("  Groq and Ollama are not checked. Set LLM_PROVIDER=auto in .env to check them.")
+        provider = configured
+    elif configured == "fake":
+        # The scripted test double (decision 0025): it only answers with a notice.
+        _say("Assistant: the scripted TEST model (LLM_PROVIDER=fake), not the demo assistant.")
+        _say("  Groq and Ollama are not checked. In .env set LLM_PROVIDER=auto to check them,")
+        _say("  or LLM_PROVIDER=demo for the demo assistant.")
         provider = configured
     else:
         _say("Checking the assistant's model ...")
