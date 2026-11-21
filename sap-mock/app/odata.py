@@ -13,6 +13,8 @@ from datetime import UTC, date, datetime
 
 from fastapi.responses import JSONResponse
 
+from app.messages import localize
+
 SERVICE_NAME = "ZHL_PLM_DESIGN_SRV"
 SERVICE_ROOT = f"/sap/opu/odata/sap/{SERVICE_NAME}"
 
@@ -33,24 +35,30 @@ class SapError(Exception):
     """An error answered with the SAP Gateway error body."""
 
     def __init__(
-        self, status: int, code: str, message: str, headers: Mapping[str, str] | None = None
+        self,
+        status: int,
+        code: str,
+        message: str,
+        headers: Mapping[str, str] | None = None,
+        params: Mapping[str, object] | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
         self.headers = dict(headers or {})
+        self.params = dict(params or {})  # for the text in the caller's language
 
 
 def is_service_path(path: str) -> bool:
     return path == SERVICE_ROOT or path.startswith(SERVICE_ROOT + "/")
 
 
-def error_body(code: str, message: str) -> dict:
+def error_body(code: str, message: str, language: str = "en") -> dict:
     return {
         "error": {
             "code": code,
-            "message": {"lang": "en", "value": message},
+            "message": {"lang": language, "value": message},
             "innererror": {
                 "transactionid": uuid.uuid4().hex.upper(),
                 "timestamp": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
@@ -63,9 +71,19 @@ def error_body(code: str, message: str) -> dict:
 
 
 def error_response(
-    status: int, code: str, message: str, headers: Mapping[str, str] | None = None
+    status: int,
+    code: str,
+    message: str,
+    headers: Mapping[str, str] | None = None,
+    *,
+    language: str = "en",
+    params: Mapping[str, object] | None = None,
 ) -> JSONResponse:
-    return JSONResponse(error_body(code, message), status_code=status, headers=headers)
+    """The SAP error body; `message` in the caller's logon language when the catalog has
+    `code` (decision 0027). `lang` says which language the text really is."""
+    text = localize(code, message, language, params)
+    lang = language if text != message or language == "en" else "en"
+    return JSONResponse(error_body(code, text, lang), status_code=status, headers=headers)
 
 
 # --- values --------------------------------------------------------------------------

@@ -158,6 +158,17 @@ The codes are invented for the mock (message classes `ZHL_GW` for the gateway la
 | 400 | `ZHL_PLM/021` | New revision: that revision already exists |
 | 400 | `ZHL_PLM/022` | New revision: not the next free letter (the message names it) |
 
+**Language.** Like SAP Gateway, the texts come in the logon language: the `sap-language`
+URL parameter or header (`ES`/`EN`, or SAP's one-letter `S`/`E`), else the first
+`Accept-Language` entry, else English. `message.lang` says which one you got. The texts of
+every code above except `ZHL_GW/005` and `ZHL_GW/006` (technical request errors) exist in
+English and Spanish (`app/messages.py`, decision 0027):
+
+```bash
+curl -s -u demo:demo -H "sap-language: ES"   "http://localhost:8100/sap/opu/odata/sap/ZHL_PLM_DESIGN_SRV/DesignSet('HL-HW-26-9999')"
+# ... "message": {"lang": "es", "value": "El diseño HL-HW-26-9999 no existe"} ...
+```
+
 ## What the mock leaves out
 
 Only the subset that Create Design needs. Compared with a real SAP Gateway:

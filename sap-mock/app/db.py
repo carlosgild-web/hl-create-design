@@ -13,6 +13,8 @@ from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 
+from app.messages import text
+
 SEED_DIR = Path(__file__).resolve().parents[1] / "seed"
 
 FIRST_REVISION = "A"
@@ -81,12 +83,15 @@ FILTERABLE_COLUMNS = frozenset({"department", "status", "design_number"})
 
 
 class ReservationError(Exception):
-    """SAP refused to reserve a number; `code` and `message` go to the client."""
+    """SAP refused to reserve a number; `code`, `message` and `params` (for the text in
+    the caller's language, `app/messages.py`) go to the client."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(self, code: str, **params: object) -> None:
+        message = text(code, "en", params)
         super().__init__(message)
         self.code = code
         self.message = message
+        self.params = params
 
 
 class Database:
@@ -250,20 +255,14 @@ class Database:
         with self.transaction() as conn:
             known = conn.execute("SELECT 1 FROM departments WHERE code = ?", (department,))
             if known.fetchone() is None:
-                raise ReservationError(
-                    "ZHL_PLM/010", f"Department '{department}' does not exist in SAP"
-                )
+                raise ReservationError("ZHL_PLM/010", department=department)
 
             wbs = conn.execute(
                 "SELECT wbs FROM default_wbs WHERE department = ? AND year = ?",
                 (department, year),
             ).fetchone()
             if wbs is None:
-                raise ReservationError(
-                    "ZHL_PLM/011",
-                    f"No default project (WBS) for department {department} in {year};"
-                    " contact Product Engineering",
-                )
+                raise ReservationError("ZHL_PLM/011", department=department, year=year)
 
             row = conn.execute(
                 "SELECT last_seq FROM number_ranges WHERE department = ? AND year = ?",
@@ -271,9 +270,7 @@ class Database:
             ).fetchone()
             seq = (row["last_seq"] if row else 0) + 1
             if seq > SEQUENCE_MAX:
-                raise ReservationError(
-                    "ZHL_PLM/012", f"Number range for {department} {year} is exhausted"
-                )
+                raise ReservationError("ZHL_PLM/012", department=department, year=year)
             conn.execute(
                 "INSERT INTO number_ranges (department, year, last_seq) VALUES (?, ?, ?)"
                 " ON CONFLICT (department, year) DO UPDATE SET last_seq = excluded.last_seq",
@@ -285,9 +282,7 @@ class Database:
                 + 1
             )
             if material > MATERIAL_MAX:
-                raise ReservationError(
-                    "ZHL_PLM/013", "Material number range for electronic assemblies is exhausted"
-                )
+                raise ReservationError("ZHL_PLM/013")
             conn.execute("UPDATE material_range SET last_material = ? WHERE id = 1", (material,))
 
             number = f"HL-{department}-{year % 100:02d}-{seq:04d}"
@@ -319,12 +314,9 @@ class Database:
                 "SELECT status FROM designs WHERE design_number = ?", (design_number,)
             ).fetchone()
             if design is None:
-                raise ReservationError("ZHL_PLM/001", f"Design {design_number} does not exist")
+                raise ReservationError("ZHL_PLM/001", design=design_number)
             if design["status"] not in REVISABLE_STATUSES:
-                raise ReservationError(
-                    "ZHL_PLM/020",
-                    f"Design {design_number} is {design['status']}; no new revision allowed",
-                )
+                raise ReservationError("ZHL_PLM/020", design=design_number, status=design["status"])
             existing = [
                 r["rev"]
                 for r in conn.execute(
@@ -332,15 +324,11 @@ class Database:
                 )
             ]
             if rev in existing:
-                raise ReservationError(
-                    "ZHL_PLM/021", f"Revision {rev} of {design_number} already exists"
-                )
+                raise ReservationError("ZHL_PLM/021", revision=rev, design=design_number)
             expected = next_revision(existing)
             if rev != expected:
                 raise ReservationError(
-                    "ZHL_PLM/022",
-                    f"Revision {rev} is not the next revision of {design_number}; expected "
-                    f"{expected}",
+                    "ZHL_PLM/022", revision=rev, design=design_number, expected=expected
                 )
             conn.execute(
                 "INSERT INTO revisions (design_number, rev, created_on, created_by)"

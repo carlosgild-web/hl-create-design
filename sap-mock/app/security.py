@@ -17,6 +17,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import Request, Response
 
 from app.config import Settings
+from app.messages import request_language
 from app.odata import CSRF_FAILED, LOGON_FAILED, error_response, is_service_path
 
 SESSION_COOKIE = "SAP_SESSIONID_HLM_100"
@@ -90,13 +91,18 @@ async def gateway(
             LOGON_FAILED,
             "Logon failed: wrong user or password",
             headers={"WWW-Authenticate": REALM},
+            language=request_language(request),
         )
 
     session_id = request.cookies.get(SESSION_COOKIE)
     sent_token = request.headers.get(CSRF_HEADER)
     if request.method in MODIFYING_METHODS and not store.is_valid(session_id, user, sent_token):
         return error_response(
-            403, CSRF_FAILED, "CSRF token validation failed", headers={CSRF_HEADER: "Required"}
+            403,
+            CSRF_FAILED,
+            "CSRF token validation failed",
+            headers={CSRF_HEADER: "Required"},
+            language=request_language(request),
         )
 
     response = await call_next(request)
