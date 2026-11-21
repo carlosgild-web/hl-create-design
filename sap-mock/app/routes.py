@@ -77,6 +77,16 @@ class DesignCreate(BaseModel):
     CreatedBy: str = Field(min_length=1, max_length=40)
 
 
+class RevisionCreate(BaseModel):
+    """Body of `POST RevisionSet`: a new revision of an existing design."""
+
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    DesignNumber: str = Field(min_length=1, max_length=14)
+    Revision: str = Field(min_length=1, max_length=2)
+    CreatedBy: str = Field(min_length=1, max_length=40)
+
+
 # --- service document and metadata ----------------------------------------------------
 
 
@@ -159,6 +169,27 @@ def reserve_design(
     except ReservationError as exc:
         raise SapError(400, exc.code, exc.message) from exc
     entity = design_entity(_design_or_404(db, number), service_url(request))
+    response.headers["Location"] = entity["__metadata"]["uri"]
+    return {"d": entity}
+
+
+@router.post("/RevisionSet", status_code=201)
+def add_revision(
+    request: Request,
+    response: Response,
+    payload: RevisionCreate,
+    db: DbDep,
+    settings: SettingsDep,
+) -> dict:
+    """Record the next revision of a design (only the next free letter; not for BLOCKED or
+    OBSOLETE designs). Not idempotent: the same revision twice is refused."""
+    try:
+        db.add_revision(payload.DesignNumber, payload.Revision, payload.CreatedBy, settings.today())
+    except ReservationError as exc:
+        status = 404 if exc.code == DESIGN_NOT_FOUND else 400
+        raise SapError(status, exc.code, exc.message) from exc
+    row = db.get_revision(payload.DesignNumber, payload.Revision)
+    entity = revision_entity(row, service_url(request))
     response.headers["Location"] = entity["__metadata"]["uri"]
     return {"d": entity}
 

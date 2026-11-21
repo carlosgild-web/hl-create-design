@@ -16,6 +16,8 @@ from pathlib import Path
 SEED_DIR = Path(__file__).resolve().parents[1] / "seed"
 
 FIRST_REVISION = "A"
+REVISION_LETTERS = "ABCDEFGHJKLMNPRTUVWY"  # I, O, Q, S, X and Z are never used
+REVISABLE_STATUSES = frozenset({"IN_WORK", "RELEASED"})
 SEQUENCE_MAX = 9_999  # NNNN in HL-<DEPT>-<YY>-<NNNN>
 MATERIAL_MAX = 49_999_999  # end of the electronic assemblies range
 
@@ -66,11 +68,12 @@ CREATE TABLE IF NOT EXISTS material_range (
 );
 """
 
-# Revision letters sort alphabetically in issue order (skipped letters don't change that).
+# Revisions run A..Y, then AA, AB...: within one length they sort alphabetically in issue
+# order (skipped letters don't change that), and a longer one is always later.
 _DESIGN_SELECT = """
 SELECT d.*,
-       (SELECT MAX(r.rev) FROM revisions r WHERE r.design_number = d.design_number)
-           AS current_revision
+       (SELECT r.rev FROM revisions r WHERE r.design_number = d.design_number
+        ORDER BY LENGTH(r.rev) DESC, r.rev DESC LIMIT 1) AS current_revision
 FROM designs d
 """
 
@@ -307,6 +310,60 @@ class Database:
                 (number, FIRST_REVISION, today.isoformat(), created_by),
             )
         return number
+
+    def add_revision(self, design_number: str, rev: str, created_by: str, today: date) -> None:
+        """Record a new revision of a design. Only the next free letter, and only while the
+        design is IN_WORK or RELEASED. Raises `ReservationError`."""
+        with self.transaction() as conn:
+            design = conn.execute(
+                "SELECT status FROM designs WHERE design_number = ?", (design_number,)
+            ).fetchone()
+            if design is None:
+                raise ReservationError("ZHL_PLM/001", f"Design {design_number} does not exist")
+            if design["status"] not in REVISABLE_STATUSES:
+                raise ReservationError(
+                    "ZHL_PLM/020",
+                    f"Design {design_number} is {design['status']}; no new revision allowed",
+                )
+            existing = [
+                r["rev"]
+                for r in conn.execute(
+                    "SELECT rev FROM revisions WHERE design_number = ?", (design_number,)
+                )
+            ]
+            if rev in existing:
+                raise ReservationError(
+                    "ZHL_PLM/021", f"Revision {rev} of {design_number} already exists"
+                )
+            expected = next_revision(existing)
+            if rev != expected:
+                raise ReservationError(
+                    "ZHL_PLM/022",
+                    f"Revision {rev} is not the next revision of {design_number}; expected "
+                    f"{expected}",
+                )
+            conn.execute(
+                "INSERT INTO revisions (design_number, rev, created_on, created_by)"
+                " VALUES (?, ?, ?, ?)",
+                (design_number, rev, today.isoformat(), created_by),
+            )
+
+
+def next_revision(existing: Iterable[str]) -> str:
+    """The revision after the latest one: A..Y, then AA..YY."""
+    n = len(REVISION_LETTERS)
+
+    def index(rev: str) -> int:
+        if len(rev) == 1:
+            return REVISION_LETTERS.index(rev)
+        return n * (1 + REVISION_LETTERS.index(rev[0])) + REVISION_LETTERS.index(rev[1])
+
+    known = [index(r) for r in existing if r and all(c in REVISION_LETTERS for c in r)]
+    following = max(known) + 1 if known else 0
+    if following < n:
+        return REVISION_LETTERS[following]
+    first, second = divmod(following - n, n)
+    return REVISION_LETTERS[first] + REVISION_LETTERS[second]
 
 
 def _load_json(path: Path) -> dict:
