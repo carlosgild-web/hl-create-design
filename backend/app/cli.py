@@ -7,7 +7,7 @@
   `POST /api/actions/{id}/confirm`); `cancel <action_id>` dismisses it.
 
 Exit codes: 0 done, 1 refused by a rule, SAP, the file system or the model,
-2 bad arguments, 3 kicad-cli failed (nothing was kept).
+2 bad arguments, 3 kicad-cli made no PDF (the project was kept without it; decision 0023).
 """
 
 from __future__ import annotations
@@ -25,7 +25,6 @@ from app.agent.service import AgentDeps, chat_turn, probe_turn
 from app.core.config import MANUAL_DIR, Settings, get_settings
 from app.db.session import get_engine
 from app.designs import DesignValidationError, create_design
-from app.kicad.exporter import ExportError
 from app.kicad.renderer import DesignFolderExistsError
 from app.llm.base import LLMClient, LLMError, Message
 from app.llm.factory import make_client
@@ -257,13 +256,6 @@ def run_create_design(args: argparse.Namespace, settings: Settings) -> int:
     except DesignFolderExistsError as exc:
         print(f"error {exc} (manual: 04-folder-structure#revision-folders)", file=sys.stderr)
         return 1
-    except ExportError as exc:
-        print(f"error {exc}", file=sys.stderr)
-        if exc.log:
-            print(exc.log, file=sys.stderr)
-        print("Nothing was kept. Fix KICAD_CLI or use --no-export.", file=sys.stderr)
-        return 3
-
     req = created.request
     print(f"Created {req.design_number} rev {req.revision}: {req.name}")
     print(f"  folder:    {created.project.folder}")
@@ -274,6 +266,9 @@ def run_create_design(args: argparse.Namespace, settings: Settings) -> int:
     for warning in created.warnings:
         print(_issue_line("warning", warning))
     print(f"  audit id:  {created.audit_id}")
+    if any(w.code == "pdf_not_exported" for w in created.warnings):
+        print("No PDF: fix KICAD_CLI, or use --no-export.", file=sys.stderr)
+        return 3
     return 0
 
 

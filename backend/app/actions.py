@@ -22,7 +22,7 @@ from app.core.config import Settings
 from app.db import store
 from app.db.session import write_audit
 from app.designs import DesignValidationError, create_design
-from app.kicad.exporter import ExportError, Runner
+from app.kicad.exporter import Runner
 from app.kicad.renderer import DesignFolderExistsError
 from app.sap.client import SapClient, SapError
 from app.standards import validators as v
@@ -46,7 +46,7 @@ class ActionNotPending(RuntimeError):
 class ActionOutcome:
     action: store.ActionRecord
     ok: bool
-    error_kind: str | None = None  # validation | sap_unavailable | sap | export | conflict
+    error_kind: str | None = None  # validation | sap_unavailable | sap | conflict | internal
 
 
 def _issue_dict(issue: v.Issue) -> dict[str, Any]:
@@ -183,6 +183,7 @@ def _create(
             sap=record,
             require_sap=True,
             audit_details={"action_id": action.id},
+            record_revision=sap.add_revision,
         )
     except DesignValidationError as exc:
         return _validation_failure(list(exc.report.errors))
@@ -195,12 +196,8 @@ def _create(
             "message": f"{exc} Nothing was overwritten.",
             "ref": "04-folder-structure#revision-folders",
         }
-    except ExportError as exc:
-        return {
-            "ok": False,
-            "error_kind": "export",
-            "message": f"The PDF export failed, so nothing was kept: {exc}",
-        }
+    except SapError as exc:  # SAP refused the new revision: nothing was written
+        return _sap_failure(exc)
     req = created.request
     return {
         "ok": True,

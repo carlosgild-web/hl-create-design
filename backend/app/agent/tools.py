@@ -315,7 +315,10 @@ def request_reserve_number(args: ReserveArgs, ctx: ToolContext) -> ToolResult:
     errors = [_issue(e) for c in checks.values() for e in c.errors]
     if errors:
         return ToolResult({"ok": False, "errors": errors, "note": "No card was opened."})
-    payload = {name: check.value for name, check in checks.items()}
+    payload: dict[str, Any] = {name: check.value for name, check in checks.items()}
+    warnings = [w for c in checks.values() for w in c.warnings]
+    warnings += v.check_name_unique(payload["name"], "", sap_names_for(ctx.sap)())
+    payload["warnings"] = [_issue(w) for w in warnings]  # shown on the card (decision 0023)
     return _open_card(
         "reserve_number",
         payload,

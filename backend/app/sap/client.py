@@ -187,7 +187,17 @@ class SapClient:
         """Reserve the next design number of `department`. SAP issues the number, the
         material and the WBS, and records revision A. Not idempotent."""
         body = {"Department": department, "Name": name, "CreatedBy": created_by}
-        url = f"{SERVICE_ROOT}/DesignSet"
+        return _design(self._post(f"{SERVICE_ROOT}/DesignSet", body)["d"])
+
+    def add_revision(self, design_number: str, revision: str, created_by: str) -> None:
+        """Record a new revision of a design in SAP. SAP accepts only the next free letter
+        and refuses BLOCKED and OBSOLETE designs. Not idempotent."""
+        body = {"DesignNumber": design_number, "Revision": revision, "CreatedBy": created_by}
+        self._post(f"{SERVICE_ROOT}/RevisionSet", body)
+
+    def _post(self, url: str, body: dict[str, Any]) -> dict[str, Any]:
+        """A modifying request with the CSRF token; one retry with a fresh token if SAP
+        says the token expired. Never repeated otherwise: the write is not idempotent."""
         for refreshed in (False, True):
             token = self._csrf_token(refresh=refreshed)
             response = self._send(
@@ -195,8 +205,7 @@ class SapClient:
             )
             if response.status_code == 403 and _csrf_required(response) and not refreshed:
                 continue
-            data = _json_or_raise(response)
-            return _design(data["d"])
+            return _json_or_raise(response)
         raise AssertionError("unreachable")  # pragma: no cover
 
     # --- transport -------------------------------------------------------------------

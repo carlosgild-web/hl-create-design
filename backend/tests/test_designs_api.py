@@ -41,7 +41,19 @@ def test_proposing_from_the_form_executes_nothing(api, settings, fake_sap):
     assert action["status"] == "pending"
     assert not settings.designs_root.exists() or not any(settings.designs_root.iterdir())
     assert fake_sap.reservations == []
+    assert fake_sap.revisions_added == []
+    assert fake_sap.posts == []  # the card's check only reads SAP
     assert audit_rows(deps.engine_dep(settings)) == []
+
+
+def test_the_card_carries_the_warnings_before_confirm(api):
+    reserve = {"department": "HW", "name": "Prueba", "designer": "C. Velazquez"}
+    action = api.post("/api/actions", json={"kind": "reserve_number", "payload": reserve}).json()
+    assert [w["code"] for w in action["payload"]["warnings"]] == ["name_looks_spanish"]
+
+    released = {"department": "PWR", "design_number": "HL-PWR-25-0007", "designer": "C. Velazquez"}
+    card = api.post("/api/actions", json={"kind": "create_design", "payload": released}).json()
+    assert "status_released_needs_eco" in [w["code"] for w in card["payload"]["warnings"]]
 
 
 def test_form_action_goes_through_the_same_gate(api, settings):

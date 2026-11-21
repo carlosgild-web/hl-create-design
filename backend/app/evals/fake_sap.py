@@ -14,6 +14,7 @@ from urllib.parse import unquote
 import httpx
 
 from app.sap.client import SERVICE_ROOT, SapClient
+from app.standards.validators import next_revision
 
 USER, PASSWORD = "demo", "demo"
 COOKIE = "SAP_SESSIONID_HLM_100"
@@ -97,6 +98,7 @@ class FakeSap:
         self.slow_next = 0  # time out this many requests (no answer within the client timeout)
         self.requests: list[httpx.Request] = []
         self.reservations: list[dict] = []
+        self.revisions_added: list[dict] = []  # bodies of POST RevisionSet
 
     # --- helpers for tests -----------------------------------------------------------
 
@@ -187,6 +189,8 @@ class FakeSap:
             return self._list(request)
         if rest == "/DesignSet" and request.method == "POST":
             return self._reserve(json.loads(request.content))
+        if rest == "/RevisionSet" and request.method == "POST":
+            return self._add_revision(json.loads(request.content))
         return self._error(404, "ZHL_GW/006", "Resource not found")
 
     def _list(self, request: httpx.Request) -> httpx.Response:
@@ -222,6 +226,27 @@ class FakeSap:
         self.designs[number] = design
         self.reservations.append(body)
         return self._ok({"d": self._entity(design, expand=False)}, status=201)
+
+    def _add_revision(self, body: dict) -> httpx.Response:
+        """`POST RevisionSet` like the mock SAP: only the next free letter, never for a
+        BLOCKED or OBSOLETE design."""
+        number, rev = body.get("DesignNumber", ""), body.get("Revision", "")
+        design = self.designs.get(number)
+        if design is None:
+            return self._error(404, "ZHL_PLM/001", f"Design {number} does not exist")
+        if design["Status"] not in ("IN_WORK", "RELEASED"):
+            return self._error(400, "ZHL_PLM/020", f"Design {number} is {design['Status']}")
+        if rev in design["_revs"]:
+            return self._error(400, "ZHL_PLM/021", f"Revision {rev} of {number} already exists")
+        expected = next_revision(design["_revs"])
+        if rev != expected:
+            message = f"Revision {rev} is not next; expected {expected}"
+            return self._error(400, "ZHL_PLM/022", message)
+        design["_revs"].append(rev)
+        design["CurrentRevision"] = rev
+        self.revisions_added.append(body)
+        entity = {"DesignNumber": number, "Revision": rev, "CreatedBy": body.get("CreatedBy", "")}
+        return self._ok({"d": entity}, status=201)
 
     @staticmethod
     def _entity(design: dict, expand: bool) -> dict:

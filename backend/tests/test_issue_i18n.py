@@ -13,11 +13,15 @@ import re
 import pytest
 
 from app.core.config import REPO_ROOT
+from app.designs import pdf_not_exported
+from app.kicad.exporter import ExportError
 from app.standards import validators as v
 
 MESSAGES = (REPO_ROOT / "frontend" / "src" / "i18n" / "messages.ts").read_text(encoding="utf-8")
-VALIDATORS = (REPO_ROOT / "backend" / "app" / "standards" / "validators.py").read_text(
-    encoding="utf-8"
+# The modules that build user-facing issues.
+SOURCES = "".join(
+    (REPO_ROOT / "backend" / "app" / path).read_text(encoding="utf-8")
+    for path in ("standards/validators.py", "designs.py")
 )
 _ENTRY_RE = re.compile(r"'(issue\.[a-z_.]+)': '((?:[^'\\]|\\.)*)'")
 _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
@@ -35,7 +39,7 @@ TEMPLATES = {
 }
 # `Issue("field", "code", ...)`, also `Issue("field", "code_a" if x else "code_b", ...)`.
 _CODE_RE = re.compile(r'Issue\(\s*"[a-z_]+",\s*"([a-z_]+)"(?:\s+if \w+ else "([a-z_]+)")?')
-CODES = {code for pair in _CODE_RE.findall(VALIDATORS) for code in pair if code}
+CODES = {code for pair in _CODE_RE.findall(SOURCES) for code in pair if code}
 
 
 def _key(issue: v.Issue) -> str:
@@ -75,6 +79,7 @@ def produced() -> list[v.Issue]:
         v.validate_design_name("Copy Stand Controller"),
         v.validate_design_name("Prueba"),
         v.check_name_matches_sap(v.validate_design_name("Other Name"), "Bead Drill Controller"),
+        v.check_name_matches_sap(v.validate_design_name("Other"), "Kiln Rack", reserved=True),
         v.validate_description("bell\x07here"),
         v.validate_description("${COMMENT1}"),
         v.validate_description("x" * 61),
@@ -90,13 +95,16 @@ def produced() -> list[v.Issue]:
         "Bead Drill Controller", "", [("HL-HW-26-0042", "Bead Drill Controller")]
     )
     issues.append(v.UnsafePathError("outside").issue)
+    missing = ExportError("kicad-cli not found")
+    missing.__cause__ = FileNotFoundError("kicad-cli")
+    issues += [pdf_not_exported(missing), pdf_not_exported(ExportError("exit code 1"))]
     return issues
 
 
 ISSUES = produced()
 
 
-def test_the_battery_covers_every_code_in_the_validators():
+def test_the_battery_covers_every_code_the_backend_builds():
     assert CODES, "no codes found in validators.py"
     assert {i.code for i in ISSUES} == CODES
 

@@ -207,3 +207,106 @@ def test_outcome_is_added_to_the_conversation(settings, engine, sap, conversatio
     assert event["role"] == "event"
     assert event["event"]["outcome"] == "done"
     assert event["event"]["folder"] == "HW/HL-HW-26-0042/C"
+
+
+# --- revisions are recorded in SAP, SAP first (decision 0023, Q3/Q4) --------------------
+
+
+def test_a_new_revision_is_recorded_in_sap_before_the_folder(
+    settings, engine, sap, fake_sap, conversation
+):
+    action = open_action(engine, conversation, "create_design", **CREATE)
+
+    outcome = confirm(action.id, settings, engine, sap)
+
+    assert outcome.ok, outcome.action.result
+    assert fake_sap.revisions_added == [
+        {"DesignNumber": "HL-HW-26-0042", "Revision": "C", "CreatedBy": "C. Velazquez"}
+    ]
+    assert sap.get_design("HL-HW-26-0042").revisions[-1] == "C"
+    [row] = audit_rows(engine)
+    assert row.details["sap_revision_recorded"] is True
+
+
+def test_revision_a_of_a_reserved_number_is_not_recorded_again(
+    settings, engine, sap, fake_sap, conversation
+):
+    reserve = open_action(
+        engine,
+        conversation,
+        "reserve_number",
+        department="HW",
+        name="Bead Counter",
+        designer="C. Velazquez",
+    )
+    number = confirm(reserve.id, settings, engine, sap).action.result["design_number"]
+    create = open_action(
+        engine,
+        conversation,
+        "create_design",
+        **{**CREATE, "design_number": number, "revision": "A", "name": "Bead Counter"},
+    )
+
+    assert confirm(create.id, settings, engine, sap).ok
+    assert fake_sap.revisions_added == []
+
+
+def test_sap_refusing_the_revision_writes_nothing(
+    settings, engine, sap, fake_sap, conversation, monkeypatch
+):
+    from app.sap.client import SapError
+
+    def refuse(*args):
+        raise SapError("SAP backend system temporarily unavailable", status=503)
+
+    monkeypatch.setattr(sap, "add_revision", refuse)
+    action = open_action(engine, conversation, "create_design", **CREATE)
+
+    outcome = confirm(action.id, settings, engine, sap)
+
+    assert not outcome.ok and outcome.error_kind == "sap_unavailable"
+    assert not (settings.designs_root / "HW" / "HL-HW-26-0042" / "C").exists()
+    assert audit_rows(engine) == []
+
+
+def test_an_existing_folder_is_refused_before_sap_is_written(
+    settings, engine, sap, fake_sap, conversation, monkeypatch
+):
+    (settings.designs_root / "HW" / "HL-HW-26-0042" / "C").mkdir(parents=True)
+    monkeypatch.setattr(
+        "app.designs.v.revisions_on_disk", lambda *a: []
+    )  # a race: the scan missed it
+    action = open_action(engine, conversation, "create_design", **CREATE)
+
+    outcome = confirm(action.id, settings, engine, sap)
+
+    assert outcome.error_kind == "conflict"
+    assert fake_sap.revisions_added == []
+
+
+def test_a_deleted_revision_folder_never_frees_its_letter(settings, engine, sap, conversation):
+    import shutil
+
+    from app.designs import next_free_revision
+
+    action = open_action(engine, conversation, "create_design", **CREATE)
+    assert confirm(action.id, settings, engine, sap).ok
+    shutil.rmtree(settings.designs_root / "HW" / "HL-HW-26-0042" / "C")  # e.g. the TTL cleanup
+
+    record = sap.get_design("HL-HW-26-0042")
+    assert next_free_revision(record, settings.designs_root) == "D"
+
+
+def test_without_kicad_the_design_is_created_without_a_pdf(settings, engine, sap, conversation):
+    def missing(command, **kw):
+        raise FileNotFoundError(command[0])
+
+    action = open_action(engine, conversation, "create_design", **CREATE)
+
+    outcome = confirm_action(action.id, settings=settings, engine=engine, sap=sap, runner=missing)
+
+    assert outcome.ok, outcome.action.result
+    result = outcome.action.result
+    assert result["pdf"] is False and result["folder"] == "HW/HL-HW-26-0042/C"
+    [warning] = [w for w in result["warnings"] if w["code"] == "pdf_not_exported"]
+    assert warning["params"] == {"variant": "not_installed"}

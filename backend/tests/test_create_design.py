@@ -101,11 +101,36 @@ def test_path_traversal_is_refused(settings, tmp_path, changes):
     assert sorted(p.name for p in tmp_path.iterdir()) == []
 
 
-def test_export_failure_keeps_nothing(settings):
-    with pytest.raises(ExportError):
-        create_design(request(), settings=settings, today=TODAY, runner=FakeKicadCli(returncode=1))
+def test_a_failed_export_keeps_the_project_without_a_pdf(settings):
+    created = create_design(
+        request(), settings=settings, today=TODAY, runner=FakeKicadCli(returncode=1)
+    )
+    assert created.export is None
+    folder = settings.designs_root / "HW" / "HL-HW-26-0042" / "A"
+    assert (folder / "HL-HW-26-0042_A.kicad_pro").is_file()
+    [warning] = [w for w in created.warnings if w.code == "pdf_not_exported"]
+    assert warning.params["variant"] == "failed" and warning.ref == "08-using-create-design#no-pdf"
+    [row] = audit_rows(get_engine(settings.data_dir))
+    assert row.details["pdf"] is False and "pdf_not_exported" in row.details["warnings"]
+
+
+def test_a_missing_kicad_cli_is_named_as_such(settings):
+    def missing(command, **kw):
+        raise FileNotFoundError(command[0])
+
+    created = create_design(request(), settings=settings, today=TODAY, runner=missing)
+    [warning] = [w for w in created.warnings if w.code == "pdf_not_exported"]
+    assert warning.params == {"variant": "not_installed"}
+
+
+def test_an_audit_failure_removes_the_folder(settings, monkeypatch):
+    def broken(*a, **k):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr("app.designs.write_audit", broken)
+    with pytest.raises(RuntimeError):
+        create_design(request(), settings=settings, today=TODAY, export=False)
     assert not (settings.designs_root / "HW" / "HL-HW-26-0042" / "A").exists()
-    assert audit_rows(get_engine(settings.data_dir)) == []
 
 
 def test_existing_folder_is_never_overwritten(settings, monkeypatch):
@@ -153,13 +178,15 @@ def test_cli_explains_errors_with_manual_references(settings, capsys):
     assert "(manual: 02-revisions#skipped-letters)" in err
 
 
-def test_cli_reports_a_missing_kicad_cli(settings, capsys, monkeypatch):
+def test_cli_keeps_the_project_and_reports_a_missing_pdf(settings, capsys, monkeypatch):
     monkeypatch.setattr(
         "app.designs.export_schematic",
         lambda *a, **k: (_ for _ in ()).throw(ExportError("kicad-cli not found")),
     )
     assert cli.main(ARGS, settings=settings) == 3
-    assert "Nothing was kept" in capsys.readouterr().err
+    out = capsys.readouterr()
+    assert "Created HL-HW-26-0042" in out.out and "pdf_not_exported" not in out.err
+    assert "No PDF" in out.err
 
 
 def test_cli_requires_the_fields(capsys):

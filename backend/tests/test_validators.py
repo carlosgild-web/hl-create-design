@@ -565,3 +565,12 @@ def test_issues_carry_params_for_the_ui_and_to_dict_drops_empty_params():
 def test_malformed_numbers_name_their_variant(number, variant):
     [issue] = v.validate_design_number(number).errors
     assert issue.params["variant"] == variant
+
+
+def test_a_just_reserved_number_explains_that_it_keeps_its_reserved_name():
+    check = v.check_name_matches_sap(
+        v.validate_design_name("Kiln Burn-In Fixture"), "Kiln Burn-In Rack", reserved=True
+    )
+    [issue] = check.errors
+    assert issue.params == {"expected": "Kiln Burn-In Rack", "variant": "reserved"}
+    assert "reserved with the name" in issue.message and "new revision" not in issue.message

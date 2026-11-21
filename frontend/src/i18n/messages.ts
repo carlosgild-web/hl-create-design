@@ -232,6 +232,7 @@ const en = {
   'issue.name_looks_spanish': 'The name looks Spanish. Design names are in English, because they go to SAP and to supplier documents; Spanish text can go in the description.',
   'issue.name_exists_in_sap': '{number} in SAP already has the name “{name}”. If the new board can replace it, make a new revision of that number instead.',
   'issue.name_differs_from_sap': 'This design is called “{expected}” in SAP, and a new revision keeps that name. For a different name, ask for a new design number.',
+  'issue.name_differs_from_sap.reserved': 'This number was reserved with the name “{expected}”, and a design keeps its SAP name. Use that name, or reserve a new number for the new name.',
   'issue.description_characters': 'The description is one line of plain text, without tabs or control characters.',
   'issue.description_variable': 'The description can’t contain “${”: KiCad would read it as a text variable.',
   'issue.description_length': 'The description has at most {max} characters; it has {length}.',
@@ -242,6 +243,9 @@ const en = {
   'issue.project_format': 'The project (WBS element) has the format P-<YY>-<NNNN>, for example P-26-0108.',
   'issue.date_format': 'Write the date in ISO 8601 format, YYYY-MM-DD: 2026-11-17.',
   'issue.path_outside_root': 'This path would leave the designs root; every design stays inside it.',
+  'issue.pdf_not_exported': 'The project was created without a PDF or preview.',
+  'issue.pdf_not_exported.not_installed': 'The project was created without a PDF or preview: kicad-cli (KiCad 9) is not installed or KICAD_CLI is wrong. Open the project in KiCad, or ask your administrator to install KiCad 9.',
+  'issue.pdf_not_exported.failed': 'The project was created, but the PDF export failed: {detail}',
 } as const
 
 export type MessageKey = keyof typeof en
@@ -477,6 +481,7 @@ const es: Record<MessageKey, string> = {
   'issue.name_looks_spanish': 'El nombre parece estar en español. Los nombres de diseño van en inglés porque llegan a SAP y a documentos de proveedores; el texto en español puede ir en la descripción.',
   'issue.name_exists_in_sap': '{number} ya tiene en SAP el nombre «{name}». Si la placa nueva puede sustituirla, haz una revisión nueva de ese número.',
   'issue.name_differs_from_sap': 'Este diseño se llama «{expected}» en SAP, y una revisión nueva conserva ese nombre. Para otro nombre, pide un número de diseño nuevo.',
+  'issue.name_differs_from_sap.reserved': 'Este número se reservó con el nombre «{expected}», y un diseño conserva su nombre de SAP. Usa ese nombre o reserva un número nuevo para el nombre nuevo.',
   'issue.description_characters': 'La descripción es una línea de texto, sin tabuladores ni caracteres de control.',
   'issue.description_variable': 'La descripción no puede llevar «${»: KiCad lo leería como una variable de texto.',
   'issue.description_length': 'La descripción tiene como máximo {max} caracteres; tiene {length}.',
@@ -487,6 +492,9 @@ const es: Record<MessageKey, string> = {
   'issue.project_format': 'El proyecto (elemento PEP) tiene el formato P-<AA>-<NNNN>, por ejemplo P-26-0108.',
   'issue.date_format': 'Escribe la fecha en formato ISO 8601, AAAA-MM-DD: 2026-11-17.',
   'issue.path_outside_root': 'Esta ruta saldría de la raíz de diseños; todos los diseños se quedan dentro.',
+  'issue.pdf_not_exported': 'El proyecto se creó sin PDF ni vista previa.',
+  'issue.pdf_not_exported.not_installed': 'El proyecto se creó sin PDF ni vista previa: kicad-cli (KiCad 9) no está instalado o KICAD_CLI está mal. Abre el proyecto en KiCad o pide al administrador que instale KiCad 9.',
+  'issue.pdf_not_exported.failed': 'El proyecto se creó, pero falló la exportación del PDF: {detail}',
 }
 
 export const messages: Record<Lang, Record<MessageKey, string>> = { en, es }

@@ -63,15 +63,23 @@ def validate(body: ValidateRequest, settings: SettingsDep, sap_factory: SapFacto
 
 
 @router.post("/actions", status_code=201, dependencies=[RateLimited])
-def propose_action(body: ProposeAction, engine: EngineDep) -> dict[str, Any]:
+def propose_action(
+    body: ProposeAction, engine: EngineDep, settings: SettingsDep, sap_factory: SapFactoryDep
+) -> dict[str, Any]:
     """The user's own form opens a pending action. Nothing is executed here. The values
-    are stored as they will be written (title case, capitals), so the card shows that."""
+    are stored as they will be written (title case, capitals), so the card shows that,
+    with the warnings of the same read-only check the form runs (decision 0023): the
+    user sees them before Confirm. The rules are checked again at confirm."""
     conversation_id = body.conversation_id
     if conversation_id is None:
         conversation_id = store.create_conversation(engine)
     elif store.get_messages(engine, conversation_id) is None:
         raise HTTPException(404, "Conversation not found")
-    payload = normalize_payload({k[:40]: val[:FIELD_MAX] for k, val in body.payload.items()})
+    raw = {k[:40]: val[:FIELD_MAX] for k, val in body.payload.items() if k != "warnings"}
+    payload: dict[str, Any] = normalize_payload(raw)
+    with sap_factory() as sap:
+        checked = check_fields(raw, settings.designs_root, sap_lookup_for(sap), sap_names_for(sap))
+    payload["warnings"] = checked["warnings"]
     action = store.create_action(
         engine, conversation_id=conversation_id, run_id=None, kind=body.kind, payload=payload
     )

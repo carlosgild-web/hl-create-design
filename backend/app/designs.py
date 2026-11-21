@@ -1,10 +1,14 @@
-"""Create a design revision: validate, render the KiCad project, export the PDF, audit.
+"""Create a design revision: validate, record it in SAP, render the KiCad project, export
+the PDF, audit.
 
 This is the only code path that creates design files. It runs behind the confirmation
 gate (`POST /api/actions/{id}/confirm`, invariant 2); the developer CLI calls it too.
 
-Either the whole revision is created (project, PDF and SVG, audit row) or nothing is:
-a failure after the folder was created removes that folder again.
+Order (decision 0023): the rules, then "the folder doesn't exist yet", then the revision
+in SAP (through the caller's `record_revision`), then the folder. If SAP refuses, nothing
+is on disk. If the PDF export fails, the project is kept without a PDF and a
+`pdf_not_exported` warning says why (KiCad is optional). Any other failure after the
+folder was written removes it again, so every folder has its audit row (invariant 8).
 """
 
 from __future__ import annotations
@@ -21,8 +25,14 @@ from sqlalchemy import Engine
 
 from app.core.config import Settings
 from app.db.session import get_engine, write_audit
-from app.kicad.exporter import ExportResult, Runner, export_schematic
-from app.kicad.renderer import TEMPLATE_DIR, RenderedProject, TitleBlock, render_project
+from app.kicad.exporter import ExportError, ExportResult, Runner, export_schematic
+from app.kicad.renderer import (
+    TEMPLATE_DIR,
+    DesignFolderExistsError,
+    RenderedProject,
+    TitleBlock,
+    render_project,
+)
 from app.sap.client import SapDesign
 from app.standards import validators as v
 from app.standards.validators import DesignRequest, Issue, ValidationReport
@@ -34,6 +44,29 @@ class DesignValidationError(ValueError):
     def __init__(self, report: ValidationReport) -> None:
         super().__init__("; ".join(e.message for e in report.errors))
         self.report = report
+
+
+# Records a new revision in SAP for `create_design`: (design number, revision, designer).
+# The caller passes `SapClient.add_revision`; this module never calls SAP (invariant 4).
+RecordRevision = Callable[[str, str, str], None]
+
+
+def pdf_not_exported(exc: ExportError) -> Issue:
+    """The warning when the project was created but `kicad-cli` made no PDF."""
+    missing = isinstance(exc.__cause__, FileNotFoundError)
+    return Issue(
+        "pdf",
+        "pdf_not_exported",
+        (
+            "The project was created without a PDF or preview: kicad-cli (KiCad 9) is not "
+            "installed or KICAD_CLI is wrong. Open the project in KiCad, or ask your "
+            "administrator to install KiCad 9."
+            if missing
+            else f"The project was created, but the PDF export failed: {exc}"
+        ),
+        "08-using-create-design#no-pdf",
+        {"variant": "not_installed"} if missing else {"variant": "failed", "detail": str(exc)},
+    )
 
 
 @dataclass(frozen=True)
@@ -88,6 +121,7 @@ def check_design_request(
         block_reason=sap.block_reason or None,
         successor=sap.successor or None,
         sap_name=sap.name,
+        sap_reserved=tuple(sap.revisions) == (v.FIRST_REVISION,) and not on_disk,
     )
 
 
@@ -236,13 +270,17 @@ def create_design(
     sap: SapDesign | None = None,
     require_sap: bool = False,
     audit_details: dict[str, Any] | None = None,
+    record_revision: RecordRevision | None = None,
 ) -> CreatedDesign:
-    """Create one revision folder from the company template. Raises on any failure.
+    """Create one revision folder from the company template.
 
     `sap` is the design's SAP record, looked up by the caller through `SapClient`
-    (this module never calls SAP). Raises `DesignValidationError` (rules),
-    `UnsafePathError` (path outside DESIGNS_ROOT), `DesignFolderExistsError` (never
-    overwrites) or `ExportError` (kicad-cli).
+    (this module never calls SAP). With `record_revision`, a revision SAP doesn't know yet
+    is recorded there before anything is written (revision A of a reserved number is
+    already in SAP). Raises `DesignValidationError` (rules), `UnsafePathError` (path
+    outside DESIGNS_ROOT), `DesignFolderExistsError` (never overwrites) or whatever
+    `record_revision` raises (`SapError`); in all of these nothing is on disk. A failed
+    PDF export is not raised: it becomes a `pdf_not_exported` warning.
     """
     if not request.issue_date:
         request = replace(request, issue_date=(today or date.today()).isoformat())
@@ -268,18 +306,26 @@ def create_design(
         description=req.description,
     )
 
+    if folder.exists():
+        raise DesignFolderExistsError(f"{folder} already exists; nothing was changed")
+    recorded = record_revision is not None and sap is not None and req.revision not in sap.revisions
+    if recorded:
+        record_revision(req.design_number, req.revision, req.designer)
+
     project = render_project(folder, stem, block, template_dir)
+    warnings = report.warnings
     try:
-        exported = (
-            export_schematic(
-                project.schematic_file,
-                project.output_dir,
-                kicad_cli=settings.kicad_cli,
-                runner=runner,
-            )
-            if export
-            else None
-        )
+        exported: ExportResult | None = None
+        if export:
+            try:
+                exported = export_schematic(
+                    project.schematic_file,
+                    project.output_dir,
+                    kicad_cli=settings.kicad_cli,
+                    runner=runner,
+                )
+            except ExportError as exc:
+                warnings = (*warnings, pdf_not_exported(exc))
         audit_id = write_audit(
             engine or get_engine(settings.data_dir),
             action="design_created",
@@ -295,12 +341,13 @@ def create_design(
                 "project": req.project,
                 "issue_date": str(req.issue_date),
                 "pdf": exported is not None,
-                "warnings": [w.code for w in report.warnings],
+                "warnings": [w.code for w in warnings],
                 "sap_status": sap.status if sap else None,
+                "sap_revision_recorded": recorded,
                 **(audit_details or {}),
             },
         )
-    except BaseException:
+    except BaseException:  # no folder without its audit row (invariant 8)
         shutil.rmtree(project.folder, ignore_errors=True)
         raise
 
@@ -308,6 +355,6 @@ def create_design(
         request=req,
         project=project,
         export=exported,
-        warnings=report.warnings,
+        warnings=warnings,
         audit_id=audit_id,
     )
