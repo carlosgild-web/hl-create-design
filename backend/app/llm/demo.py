@@ -176,13 +176,30 @@ def extract_fields(text: str) -> dict[str, str]:
         fields["name"] = quoted.group(1).strip()
     elif labelled := _NAME_LABEL_RE.search(text):
         fields["name"] = labelled.group(1).strip()
-    elif for_name := _NUMBER_FOR_RE.search(text):
-        fields["name"] = for_name.group(1)
+    elif for_name := _number_for_name(text):
+        fields["name"] = for_name
     elif board := _BOARD_FOR_RE.search(text):
         fields["name"] = f"{board.group(2)} machine {board.group(1)}".title()
     elif name := _name_segment(text, designer.group(1) if designer else ""):
         fields["name"] = name
     return fields
+
+
+def _number_for_name(text: str) -> str:
+    """The name in "a number for Bead Drill Controller"; "" when the words after "for" are
+    a department ("a new number for HW, Bead Drill Controller, …")."""
+    match = _NUMBER_FOR_RE.search(text)
+    if not match:
+        return ""
+    words = match.group(1)
+    departments = {n.lower() for n in (*DEPARTMENTS.values(), *DEPARTMENTS_ES.values())}
+    if (
+        words.upper() in DEPARTMENTS
+        or words.lower() in departments
+        or all(w in _DEPARTMENT_WORDS for w in words.lower().split())
+    ):
+        return ""
+    return words
 
 
 def _name_segment(text: str, designer: str) -> str:

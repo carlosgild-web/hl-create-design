@@ -75,6 +75,23 @@ def test_answers_are_in_the_ui_language_and_say_they_come_from_the_demo(ask):
             },
         ),
         ("Placa de potencia, «Kiln Heater Driver», J. C. de la Torre", {"department": "PWR"}),
+        # a department after "number for" is not the name (the live check, finding D1)
+        (
+            "Reserve a new number for HW, Bead Drill Controller, designer C. Velazquez",
+            {"department": "HW", "name": "Bead Drill Controller", "designer": "C. Velazquez"},
+        ),
+        (
+            "Reserve a number for Power Electronics, Kiln Heater Driver, designer C. Velazquez",
+            {"department": "PWR", "name": "Kiln Heater Driver"},
+        ),
+        (
+            "Reserve a number for Hardware, Bead Drill Controller, designer C. Velazquez",
+            {"department": "HW", "name": "Bead Drill Controller"},
+        ),
+        (
+            "Reserve a Hardware number for Bead Polisher Controller, designer C. Velazquez.",
+            {"department": "HW", "name": "Bead Polisher Controller", "designer": "C. Velazquez"},
+        ),
     ],
 )
 def test_a_sentence_fills_the_form(text, fields):
