@@ -124,9 +124,10 @@ No. Una letra que se creó alguna vez queda usada; la siguiente es `D`.
 Ref: 02-revisions#never-reuse
 
 ### La lista de SAP dice «última B → rev E». ¿Por qué no C?
-Las revisiones C y D ya se crearon en Create Design. La siguiente letra libre cuenta tanto las
-revisiones que conoce SAP como las carpetas de revisión que existen, y una letra nunca se
-reutiliza.
+Las revisiones C y D existen como carpetas pero no en SAP (se crearon antes de que Create Design
+registrara las revisiones en SAP). La siguiente letra libre cuenta ambas, y una letra nunca se
+reutiliza. Las revisiones que se crean ahora se registran en SAP al confirmar, así que la lista
+las muestra como la última.
 Ref: 08-using-create-design#next-free-revision, 02-revisions#never-reuse
 
 ### La carpeta de la revisión ya existe. ¿Qué hago?
@@ -270,9 +271,9 @@ proyecto…*). También puedes descargar el proyecto en .zip.
 Ref: 08-using-create-design#open-in-kicad
 
 ### No hay PDF ni vista previa.
-El PDF necesita `kicad-cli` (KiCad 9). Sin él, el diseño no se crea: no se guarda nada y un
-número reservado sigue reservado. Avisa al administrador, que instala KiCad 9 o configura
-`KICAD_CLI` si KiCad no está en el PATH.
+El PDF necesita `kicad-cli` (KiCad 9). Sin él, el diseño se crea igual, sin PDF ni vista
+previa, y la tarjeta explica por qué. Abre el proyecto en KiCad y avisa al administrador, que
+instala KiCad 9 o configura `KICAD_CLI` si KiCad no está en el PATH.
 Ref: 08-using-create-design#no-pdf
 
 ### ¿Puedo editar el cajetín en la Configuración de página de KiCad?

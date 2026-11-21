@@ -35,7 +35,8 @@ Palabras clave: diseño nuevo, diseño existente, revisión nueva, número nuevo
 
 Para un **Diseño nuevo**, rellena Departamento, Nombre del diseño (en inglés) y Diseñador
 (`C. Velazquez`), y pulsa **Obtener número SAP**. SAP da el número, el material y el
-proyecto. La descripción es opcional.
+proyecto, y el departamento y el nombre quedan bloqueados con lo que registró SAP
+(**Deshacer** los libera). La descripción es opcional.
 
 Para una revisión nueva, elige el diseño en la lista de SAP. Solo añades el diseñador y, si
 quieres, una descripción. Después pulsa **Crear diseño** y confirma la tarjeta.
@@ -89,10 +90,11 @@ Palabras clave: deshacer, liberar, liberar número, devolver, cancelar reserva, 
 ## La siguiente revisión libre
 <a id="next-free-revision"></a>
 
-La lista de SAP muestra la última revisión que conoce SAP y la siguiente libre, por ejemplo
-«última B → rev E». La siguiente letra libre cuenta las revisiones de SAP y las carpetas de
-revisión que ya existen, así que las revisiones C y D creadas aquí cuentan aunque SAP solo
-muestre la B. Una letra nunca se reutiliza (ver [02-revisions](02-revisions.md#never-reuse)).
+La lista de SAP muestra la última revisión y la siguiente libre, por ejemplo «última D → rev
+E». Create Design registra cada revisión nueva en SAP al confirmarla, antes de escribir la
+carpeta, así que una revisión cuenta aunque luego se borre su carpeta. La siguiente letra
+libre también salta las carpetas de revisión que existan sin registro en SAP. Una letra nunca
+se reutiliza (ver [02-revisions](02-revisions.md#never-reuse)).
 
 Palabras clave: última, siguiente revisión, se salta, se brinca, rev E, por qué no, letra, lista, latest, next revision
 
@@ -118,10 +120,10 @@ Palabras clave: abrir en kicad, no funcionó, no abre, no se abrió, falla, bot�
 ## No hay PDF ni vista previa
 <a id="no-pdf"></a>
 
-El PDF y la vista previa los genera `kicad-cli` (KiCad 9). Si falta o falla, el diseño no se
-crea: Create Design no guarda nada, avisa de que falló la exportación del PDF y un número
-reservado sigue reservado. Pide al administrador que instale KiCad 9, o que configure
-`KICAD_CLI` si KiCad no está en el PATH, y crea el diseño otra vez.
+El PDF y la vista previa los genera `kicad-cli` (KiCad 9). Si falta o falla, el diseño se
+crea igual: el proyecto de KiCad está en su carpeta y la tarjeta explica por qué no hay PDF.
+Abre el proyecto en KiCad 9 como siempre. Para tener PDF, pide al administrador que instale
+KiCad 9, o que configure `KICAD_CLI` si KiCad no está en el PATH.
 
 Palabras clave: pdf, vista previa, exportación, falló, kicad-cli, no encuentra, falta, svg, export failed, not found
 

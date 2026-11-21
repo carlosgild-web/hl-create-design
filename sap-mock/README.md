@@ -51,6 +51,7 @@ Service root: `/sap/opu/odata/sap/ZHL_PLM_DESIGN_SRV`. All of it needs Basic aut
 | `GET /RevisionSet(DesignNumber='…',Revision='B')` | One revision |
 | `GET /DepartmentSet`, `GET /DepartmentSet('HW')` | Departments with this year's default project (WBS) |
 | `POST /DesignSet` | Reserve the next number. Needs the CSRF token |
+| `POST /RevisionSet` | Record the next revision of a design (`DesignNumber`, `Revision`, `CreatedBy`). Needs the CSRF token |
 | `GET /health` | Liveness probe (outside the service, no auth) |
 
 **Payloads** follow OData v2 JSON: `{"d": {...}}` for an entity, `{"d": {"results": [...]}}`
@@ -107,6 +108,11 @@ TOKEN=$(curl -s -u demo:demo -c jar.txt -D - -o /dev/null -H "x-csrf-token: Fetc
 curl -s -i -u demo:demo -b jar.txt -X POST "$SAP/DesignSet" \
   -H "x-csrf-token: $TOKEN" -H "Content-Type: application/json" \
   -d '{"Department": "HW", "Name": "Bead Drill Controller", "CreatedBy": "C. Velazquez"}'
+
+# 3. Record the next revision of a design (only the next free letter): 201 Created
+curl -s -i -u demo:demo -b jar.txt -X POST "$SAP/RevisionSet" \
+  -H "x-csrf-token: $TOKEN" -H "Content-Type: application/json" \
+  -d '{"DesignNumber": "HL-HW-24-0007", "Revision": "J", "CreatedBy": "C. Velazquez"}'
 ```
 
 And the failures:
@@ -148,6 +154,9 @@ The codes are invented for the mock (message classes `ZHL_GW` for the gateway la
 | 400 | `ZHL_PLM/011` | Reserve: no default project for the department this year |
 | 400 | `ZHL_PLM/012` | Reserve: the number range for the department and year is exhausted |
 | 400 | `ZHL_PLM/013` | Reserve: the material range is exhausted |
+| 400 | `ZHL_PLM/020` | New revision: the design is BLOCKED or OBSOLETE |
+| 400 | `ZHL_PLM/021` | New revision: that revision already exists |
+| 400 | `ZHL_PLM/022` | New revision: not the next free letter (the message names it) |
 
 ## What the mock leaves out
 

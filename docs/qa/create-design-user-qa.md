@@ -119,8 +119,9 @@ No. A letter that was ever created stays used; the next one is `D`.
 Ref: 02-revisions#never-reuse
 
 ### The SAP list says "latest B → rev E". Why not C?
-Revisions C and D were already created in Create Design. The next free letter counts both
-the revisions SAP knows and the revision folders that exist, and a letter is never reused.
+Revisions C and D exist as folders but not in SAP (created before Create Design recorded
+revisions in SAP). The next free letter counts both, and a letter is never reused. Revisions
+created now are recorded in SAP when you confirm, so the list shows them as the latest.
 Ref: 08-using-create-design#next-free-revision, 02-revisions#never-reuse
 
 ### The revision folder already exists. What now?
@@ -258,9 +259,9 @@ download the project as a zip.
 Ref: 08-using-create-design#open-in-kicad
 
 ### There's no PDF or preview.
-The PDF needs `kicad-cli` (KiCad 9). Without it the design is not created: nothing is kept,
-and a reserved number stays reserved. Tell your administrator, who installs KiCad 9 or sets
-`KICAD_CLI` if KiCad isn't on the PATH.
+The PDF needs `kicad-cli` (KiCad 9). Without it the design is still created, without the PDF
+and the preview, and the card says why. Open the project in KiCad, and tell your administrator,
+who installs KiCad 9 or sets `KICAD_CLI` if KiCad isn't on the PATH.
 Ref: 08-using-create-design#no-pdf
 
 ### Can I edit the title block in KiCad's Page Settings?

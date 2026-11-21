@@ -34,7 +34,8 @@ Keywords: new design, existing design, new revision, new number, which one, choo
 
 For a **New design**, fill in Department, Design name (in English) and Designer
 (`C. Velazquez`), then click **Get SAP number**. SAP gives the number, the material and the
-project. The description is optional.
+project, and department and name are then locked to what SAP recorded (**Undo** frees them).
+The description is optional.
 
 For a new revision, pick the design in the SAP list. You only add the designer and, if you
 want, a description. Then click **Create design** and confirm the card.
@@ -88,10 +89,11 @@ Keywords: undo, release, release number, free, give back, cancel reservation, de
 ## The next free revision
 <a id="next-free-revision"></a>
 
-The SAP list shows the latest revision SAP knows and the next free one, for example "latest
-B → rev E". The next free letter counts both the revisions in SAP and the revision folders
-that already exist, so revisions C and D created here count even if SAP shows only B. A
-letter is never reused (see [02-revisions](02-revisions.md#never-reuse)).
+The SAP list shows the latest revision and the next free one, for example "latest D → rev
+E". Create Design records every new revision in SAP when you confirm it, before it writes the
+folder, so a revision counts even if its folder is deleted later. The next free letter also
+skips revision folders that exist without a SAP record. A letter is never reused (see
+[02-revisions](02-revisions.md#never-reuse)).
 
 Keywords: latest, next revision, skipped C, skips, rev E, why not, letter, list, última, siguiente revisión, se salta, por qué no, letra, lista
 
@@ -118,9 +120,9 @@ Keywords: open in kicad, didn't work, does not open, failed, button, zip, downlo
 <a id="no-pdf"></a>
 
 The PDF and the preview are made by `kicad-cli` (KiCad 9). If it is missing or fails, the
-design is not created: Create Design keeps nothing, says that the PDF export failed, and a
-reserved number stays reserved. Ask your administrator to install KiCad 9, or to set
-`KICAD_CLI` if KiCad isn't on the PATH, then create the design again.
+design is still created: the KiCad project is in its folder and the card says why there is no
+PDF. Open the project in KiCad 9 as usual. For PDFs, ask your administrator to install KiCad
+9, or to set `KICAD_CLI` if KiCad isn't on the PATH.
 
 Keywords: pdf, preview, export failed, kicad-cli, not found, missing, svg, exportación, vista previa, falló, no encuentra, falta
 
