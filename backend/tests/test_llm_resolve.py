@@ -14,7 +14,7 @@ from app.llm.base import LLMError, QuotaExhausted
 from app.llm.factory import make_client, reset_shared
 from app.llm.fake import FakeClient, say
 from app.llm.fallback import SwitchingClient
-from app.llm.groq import GroqClient, GroqProbe
+from app.llm.groq import DahlClient, GroqClient, GroqProbe
 from app.llm.ollama import OllamaClient, OllamaProbe
 from app.llm.resolve import (
     ProviderStatus,
@@ -244,7 +244,7 @@ def test_auto_groq_wins_without_probing_ollama():
         groq_transport=groq_says(200, json=OK_BODY),
         ollama_transport=never_called(),
     )
-    assert res.provider == "groq" and res.skipped == ()
+    assert res.provider == "groq" and res.skipped == ("dahl: no DAHL_API_KEY",)
 
 
 def test_auto_ollama_when_groq_quota_is_used_up():
@@ -254,7 +254,8 @@ def test_auto_ollama_when_groq_quota_is_used_up():
         ollama_transport=ollama_has(MODEL),
     )
     assert res.provider == "ollama"
-    assert len(res.skipped) == 1 and res.skipped[0].startswith("groq: daily token quota")
+    assert [s.split(":")[0] for s in res.skipped] == ["dahl", "groq"]
+    assert res.skipped[1].startswith("groq: daily token quota")
 
 
 def test_auto_scripted_demo_when_nothing_else_works():
@@ -264,8 +265,67 @@ def test_auto_scripted_demo_when_nothing_else_works():
         ollama_transport=nothing_listening(),
     )
     assert res.provider == "demo"
-    assert [s.split(":")[0] for s in res.skipped] == ["groq", "ollama"]
+    assert [s.split(":")[0] for s in res.skipped] == ["dahl", "groq", "ollama"]
     assert "skipped" in res.describe()
+
+
+# --- Dahl: first in the chain (decision 0029) -------------------------------------------
+
+NO_CREDIT = {"error": {"message": "insufficient balance"}}
+
+
+def test_auto_dahl_wins_without_probing_groq_or_ollama():
+    res = resolve_auto(
+        settings(dahl_api_key="dk_t", groq_api_key="gsk_t"),
+        probe_turn(),
+        dahl_transport=groq_says(200, json=OK_BODY),
+        groq_transport=never_called(),
+        ollama_transport=never_called(),
+    )
+    assert isinstance(res.client, DahlClient) and res.provider == "dahl" and res.skipped == ()
+
+
+def test_auto_groq_when_dahl_has_no_credit():
+    res = resolve_auto(
+        settings(dahl_api_key="dk_t", groq_api_key="gsk_t"),
+        dahl_transport=groq_says(402, json=NO_CREDIT),
+        groq_transport=groq_says(200, json=OK_BODY),
+        ollama_transport=never_called(),
+    )
+    assert res.provider == "groq"
+    assert res.skipped == ("dahl: no credit left on the account",)
+
+
+def test_dahl_probe_states():
+    def probe(transport):
+        return DahlClient("dk_t", "m", transport=transport).probe()
+
+    assert probe(groq_says(200, json=OK_BODY)).usable
+    assert probe(groq_says(402, json=NO_CREDIT)).state == "no_credit"
+    bad = probe(groq_says(401, json={}))
+    assert bad.state == "bad_key" and "DAHL_API_KEY" in bad.detail
+    # "at concurrency capacity" with a short Retry-After: wait and retry, still usable
+    busy = probe(groq_says(429, headers={"retry-after": "10"}, json={"error": {"message": "x"}}))
+    assert busy.state == "per_minute" and busy.usable
+
+
+def test_check_providers_lists_dahl_first():
+    status = check_providers(
+        settings(dahl_api_key="dk_t", groq_api_key="gsk_t"),
+        dahl_transport=groq_says(200, json=OK_BODY),
+        groq_transport=groq_says(200, json=OK_BODY),
+        ollama_transport=ollama_has(MODEL),
+    )
+    assert status.dahl.usable and status.groq.usable and status.ollama.usable
+    assert status.first_usable() == "dahl"
+    groq_only = check_providers(
+        settings(groq_api_key="gsk_t"),
+        "groq",
+        dahl_transport=never_called(),
+        groq_transport=groq_says(200, json=OK_BODY),
+        ollama_transport=nothing_listening(),
+    )
+    assert groq_only.dahl is None  # not in LLM_PROVIDER=groq's chain
 
 
 def test_resolution_is_cached_and_used_by_the_factory():
@@ -311,8 +371,22 @@ def must_not_start(settings):
     raise AssertionError("Ollama must not be started")
 
 
-def choose(groq, ollama, ask, start=must_not_start, **kw):
-    return cli.choose_provider(ProviderStatus(groq, ollama), settings(**kw), ask, start)
+def choose(groq, ollama, ask, start=must_not_start, dahl=None, **kw):
+    return cli.choose_provider(ProviderStatus(groq, ollama, dahl), settings(**kw), ask, start)
+
+
+DAHL_OK = GroqProbe("ok", "quota available (glm)")
+
+
+def test_dahl_is_asked_first_then_groq():
+    ask = answers("")
+    assert choose(GROQ_OK, OLLAMA_READY, ask, dahl=DAHL_OK) == "dahl"
+    assert ask.asked == ["Use Dahl? [Y/n] "]
+    ask = answers("n", "")
+    assert choose(GROQ_OK, OLLAMA_READY, ask, dahl=DAHL_OK) == "groq"
+    assert ask.asked == ["Use Dahl? [Y/n] ", "Use Groq? [Y/n] "]
+    no_credit = GroqProbe("no_credit", "no credit left on the account")
+    assert choose(GROQ_OK, OLLAMA_READY, answers(""), dahl=no_credit) == "groq"
 
 
 def test_groq_ok_is_suggested_and_enter_accepts_it():
@@ -474,6 +548,29 @@ def test_factory_wraps_groq_once_per_process_and_evals_opt_out():
     first = make_client(s)
     assert isinstance(first, SwitchingClient) and make_client(s) is first
     assert isinstance(make_client(s, fallback=False), GroqClient)
+
+
+def test_dahl_402_is_quota_exhausted_and_the_factory_wraps_it():
+    with pytest.raises(QuotaExhausted, match="no credit"):
+        DahlClient("dk_t", "m", transport=groq_says(402, json=NO_CREDIT)).chat([], [])
+    s = settings(llm_provider="dahl", dahl_api_key="dk_t")
+    first = make_client(s)
+    assert isinstance(first, SwitchingClient) and first.provider == "dahl"
+    assert isinstance(make_client(s, fallback=False), DahlClient)
+
+
+def test_fallback_after_dahl_is_groq_then_ollama_then_demo(monkeypatch):
+    from app.llm import factory
+
+    monkeypatch.setattr(factory, "check_groq", lambda s: GroqProbe("ok", ""))
+    monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("ready", ""))
+    s = settings(groq_api_key="gsk_t")
+    assert factory.fallback_client(s, "dahl").provider == "groq"
+    assert factory.fallback_client(s, "groq").provider == "ollama"  # never back to Groq
+    monkeypatch.setattr(factory, "check_groq", lambda s: GroqProbe("daily", ""))
+    assert factory.fallback_client(s, "dahl").provider == "ollama"
+    monkeypatch.setattr(factory, "check_ollama", lambda s: OllamaProbe("not_running", ""))
+    assert factory.fallback_client(s, "dahl").provider == "demo"
 
 
 def test_fallback_is_ollama_when_ready_else_the_demo(monkeypatch):

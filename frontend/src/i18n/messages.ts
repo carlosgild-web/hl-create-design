@@ -154,10 +154,12 @@ const en = {
   'activity.check_design_folder': 'Checking the design folder…',
   'activity.propose_form_values': 'Filling in the form…',
   'activity.request_card': 'Preparing a confirmation card…',
+  'chat.switched.groq':
+    "{from}'s quota or credit is used up, so the assistant continues on Groq ({model}) for the rest of this session.",
   'chat.switched.ollama':
-    "Groq's daily quota is used up, so the assistant continues on Ollama ({model}, local and slower) for the rest of this session.",
+    "{from}'s quota or credit is used up, so the assistant continues on Ollama ({model}, local and slower) for the rest of this session.",
   'chat.switched.demo':
-    "Groq's daily quota is used up and Ollama is not available, so the assistant continues as the demo assistant (rules, no real AI). Start Ollama and restart the app to get a real model back.",
+    "{from}'s quota or credit is used up and Ollama is not available, so the assistant continues as the demo assistant (rules, no real AI). Start Ollama and restart the app to get a real model back.",
   'chat.unreachable': 'The assistant is not reachable. Is the backend running?',
   'sap.card': 'SAP record',
   'sap.material': 'Material',
@@ -421,10 +423,12 @@ const es: Record<MessageKey, string> = {
   'activity.check_design_folder': 'Comprobando la carpeta del diseño…',
   'activity.propose_form_values': 'Rellenando el formulario…',
   'activity.request_card': 'Preparando una tarjeta de confirmación…',
+  'chat.switched.groq':
+    'Se ha agotado la cuota o el crédito de {from}, así que el asistente sigue con Groq ({model}) el resto de la sesión.',
   'chat.switched.ollama':
-    'Se ha agotado la cuota diaria de Groq, así que el asistente sigue con Ollama ({model}, local y más lento) el resto de la sesión.',
+    'Se ha agotado la cuota o el crédito de {from}, así que el asistente sigue con Ollama ({model}, local y más lento) el resto de la sesión.',
   'chat.switched.demo':
-    'Se ha agotado la cuota diaria de Groq y Ollama no está disponible, así que el asistente sigue en modo demostración (reglas, sin IA real). Arranca Ollama y reinicia la aplicación para volver a un modelo real.',
+    'Se ha agotado la cuota o el crédito de {from} y Ollama no está disponible, así que el asistente sigue en modo demostración (reglas, sin IA real). Arranca Ollama y reinicia la aplicación para volver a un modelo real.',
   'chat.unreachable': 'No se puede contactar con el asistente. ¿Está en marcha el backend?',
   'sap.card': 'Registro SAP',
   'sap.material': 'Material',

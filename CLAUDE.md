@@ -17,7 +17,7 @@ so code quality, tests, README and the "clone and run" experience matter.
 | Layer | Choice |
 |---|---|
 | External tool | KiCad 9: `.kicad_pro` text variables, custom `.kicad_wks` drawing sheet, `kicad-cli` |
-| LLM | `LLMClient` interface: `OllamaClient` (native tools), `GroqClient` (OpenAI-compatible, decision 0012), `FakeClient`; chosen by `LLM_PROVIDER` (`auto` probes groq, then ollama, then fake at startup; decision 0016) |
+| LLM | `LLMClient` interface: `OllamaClient` (native tools), `DahlClient` and `GroqClient` (OpenAI-compatible, decisions 0029 and 0012), `DemoClient`, `FakeClient`; chosen by `LLM_PROVIDER` (`auto` probes dahl, then groq, then ollama, then the demo at startup; decisions 0016, 0029) |
 | Agent | Own bounded tool loop, no agent framework (same approach as luna-hybrid-agent) |
 | Manual search | SQLite FTS5 over `docs/manual/` (no embeddings, so the cloud demo needs no Ollama) |
 | Mock SAP | Separate FastAPI service `sap-mock/`, OData v2 payloads, basic auth + CSRF token, own SQLite |
@@ -62,7 +62,8 @@ npm run lint && npm test && npm run build
 ## Rules
 
 - All config from environment variables via `core/config.py`; keep `.env.example` updated
-  (`LLM_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_BASE_URL`,
+  (`LLM_PROVIDER`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `DAHL_API_KEY`, `DAHL_MODEL`, `DAHL_BASE_URL`,
+  `GROQ_API_KEY`, `GROQ_MODEL`, `GROQ_BASE_URL`,
   `SAP_BASE_URL`, `SAP_USER`, `SAP_PASSWORD`, `KICAD_CLI`, `DESIGNS_ROOT`, `DATA_DIR`, `AGENT_MAX_ITERATIONS`).
 - Persistent data lives under `DATA_DIR` (gitignored). Use `pathlib`; no hardcoded Windows paths.
 - Tests and CI use `FakeClient` and never need Ollama, an API key or KiCad (the KiCad export test

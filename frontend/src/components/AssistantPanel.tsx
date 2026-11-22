@@ -43,11 +43,22 @@ const TOOL_LABELS: Record<string, MessageKey> = {
   request_create_design: 'activity.request_card',
 }
 
+/** How a provider is named in the chat (the backend sends its id). */
+const PROVIDER_NAMES: Record<string, string> = { dahl: 'Dahl', groq: 'Groq', ollama: 'Ollama' }
+const providerName = (id: string | undefined) => (id ? (PROVIDER_NAMES[id] ?? id) : '')
+
+/** The notice when a cloud provider's quota or credit ran out and the session moved on. */
+function switchedKey(to: string) {
+  if (to === 'ollama') return 'chat.switched.ollama' as const
+  if (to === 'groq') return 'chat.switched.groq' as const
+  return 'chat.switched.demo' as const
+}
+
 function activityText(activity: Activity | null | undefined, t: Translate): string {
   if (!activity || activity.kind === 'thinking') return t('chat.working')
   if (activity.kind === 'tool') return t(TOOL_LABELS[activity.name] ?? 'chat.working')
   return t('activity.rate_limited', {
-    provider: activity.provider === 'groq' ? 'Groq' : activity.provider,
+    provider: providerName(activity.provider),
     seconds: Math.ceil(activity.waitS),
   })
 }
@@ -154,7 +165,7 @@ export function AssistantPanel({
                   <p key={item.id} role="status" className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                     {item.by === 'user'
                       ? t('chat.switched.user', { name: item.to === 'ollama' ? `Ollama (${item.model})` : t('chat.demo_model') })
-                      : t(item.to === 'ollama' ? 'chat.switched.ollama' : 'chat.switched.demo', { model: item.model })}
+                      : t(switchedKey(item.to), { from: providerName(item.from) || 'Groq', model: item.model })}
                   </p>
                 )
               case 'stopped':

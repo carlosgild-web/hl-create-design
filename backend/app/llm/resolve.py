@@ -1,11 +1,11 @@
 """Which model answers: the providers' status, and `LLM_PROVIDER=auto`'s pick (decision 0016).
 
-Order: Groq (a key, and quota for a real turn right now), then Ollama (running, model
-pulled), then the rule-based demo assistant (decision 0025). `check_providers` reports each
-provider's state;
-`app.cli llm-check` shows it and asks the person starting the app, while `resolve_auto` (the
-app's own startup, e.g. in Docker) takes the first usable one without asking. The reasons
-for each skipped provider are kept (logged at startup and shown by `/api/health`).
+Order: Dahl, then Groq (each: a key, and room for a real turn right now; decision 0029),
+then Ollama (running, model pulled), then the rule-based demo assistant (decision 0025).
+`check_providers` reports each provider's state; `app.cli llm-check` shows it and asks the
+person starting the app, while `resolve_auto` (the app's own startup, e.g. in Docker) takes
+the first usable one without asking. The reasons for each skipped provider are kept (logged
+at startup and shown by `/api/health`).
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import httpx
 from app.core.config import Settings
 from app.llm.base import LLMClient, Message, ToolSpec
 from app.llm.demo import DemoClient
-from app.llm.groq import GroqClient, GroqProbe
+from app.llm.groq import DahlClient, GroqClient, GroqProbe
 from app.llm.ollama import OllamaClient, OllamaProbe
 
 log = logging.getLogger("app.llm")
@@ -30,7 +30,8 @@ Turn = tuple[list[Message], list[ToolSpec]]
 
 # What to try, and in which order, for each configured provider.
 CHAINS: dict[str, tuple[str, ...]] = {
-    "auto": ("groq", "ollama", "demo"),
+    "auto": ("dahl", "groq", "ollama", "demo"),
+    "dahl": ("dahl", "groq", "ollama", "demo"),
     "groq": ("groq", "ollama", "demo"),
     "ollama": ("ollama", "demo"),
     "demo": ("demo",),
@@ -42,18 +43,21 @@ CHAINS: dict[str, tuple[str, ...]] = {
 class ProviderStatus:
     groq: GroqProbe | None  # None: not in the chain, not checked
     ollama: OllamaProbe | None
+    dahl: GroqProbe | None = None
+
+    def _in_order(self) -> tuple[tuple[str, GroqProbe | OllamaProbe | None], ...]:
+        return (("dahl", self.dahl), ("groq", self.groq), ("ollama", self.ollama))
 
     def first_usable(self) -> str:
-        if self.groq and self.groq.usable:
-            return "groq"
-        if self.ollama and self.ollama.usable:
-            return "ollama"
+        for name, probe in self._in_order():
+            if probe and probe.usable:
+                return name
         return "demo"
 
     def skipped_before(self, provider: str) -> tuple[str, ...]:
         """Why each provider ahead of `provider` in the order was not used."""
         reasons = []
-        for name, probe in (("groq", self.groq), ("ollama", self.ollama)):
+        for name, probe in self._in_order():
             if name == provider:
                 break
             if probe is not None:
@@ -65,6 +69,13 @@ def groq_client(settings: Settings, transport: httpx.BaseTransport | None = None
     key = settings.groq_api_key.get_secret_value() if settings.groq_api_key else ""
     return GroqClient(
         key, settings.groq_model, base_url=settings.groq_base_url, transport=transport
+    )
+
+
+def dahl_client(settings: Settings, transport: httpx.BaseTransport | None = None) -> DahlClient:
+    key = settings.dahl_api_key.get_secret_value() if settings.dahl_api_key else ""
+    return DahlClient(
+        key, settings.dahl_model, base_url=settings.dahl_base_url, transport=transport
     )
 
 
@@ -89,6 +100,18 @@ def check_groq(
         client.close()
 
 
+def check_dahl(
+    settings: Settings, turn: Turn | None = None, transport: httpx.BaseTransport | None = None
+) -> GroqProbe:
+    if not (settings.dahl_api_key and settings.dahl_api_key.get_secret_value()):
+        return GroqProbe("no_key", "no DAHL_API_KEY")
+    client = dahl_client(settings, transport)
+    try:
+        return client.probe(*(turn or (None, None)))
+    finally:
+        client.close()
+
+
 def check_ollama(settings: Settings, transport: httpx.BaseTransport | None = None) -> OllamaProbe:
     client = ollama_client(settings, transport)
     try:
@@ -104,13 +127,15 @@ def check_providers(
     *,
     groq_transport: httpx.BaseTransport | None = None,
     ollama_transport: httpx.BaseTransport | None = None,
+    dahl_transport: httpx.BaseTransport | None = None,
 ) -> ProviderStatus:
-    """Probe the providers in the configured chain. Ollama is checked even when Groq is
-    usable, so the start script can offer it as the alternative."""
+    """Probe the providers in the configured chain. All of them are checked, even when the
+    first is usable, so the start script can offer the others as alternatives."""
     order = CHAINS[configured or settings.llm_provider]
+    dahl = check_dahl(settings, turn, dahl_transport) if "dahl" in order else None
     groq = check_groq(settings, turn, groq_transport) if "groq" in order else None
     ollama = check_ollama(settings, ollama_transport) if "ollama" in order else None
-    return ProviderStatus(groq, ollama)
+    return ProviderStatus(groq, ollama, dahl)
 
 
 @dataclass(frozen=True)
@@ -137,20 +162,26 @@ def resolve_auto(
     *,
     groq_transport: httpx.BaseTransport | None = None,
     ollama_transport: httpx.BaseTransport | None = None,
+    dahl_transport: httpx.BaseTransport | None = None,
 ) -> Resolution:
     """Resolve once and reuse (the probes cost a request each). Use `reset_auto()` to redo it."""
     global _cached
     with _lock:
         if _cached is None:
-            # Ollama is only probed when Groq is not usable: no question to ask here.
-            groq = check_groq(settings, turn, groq_transport)
-            ollama = None if groq.usable else check_ollama(settings, ollama_transport)
-            status = ProviderStatus(groq, ollama)
+            # Each provider is only probed when the ones before it are not usable: no
+            # question to ask here.
+            dahl = check_dahl(settings, turn, dahl_transport)
+            groq = None if dahl.usable else check_groq(settings, turn, groq_transport)
+            ahead = dahl.usable or (groq is not None and groq.usable)
+            ollama = None if ahead else check_ollama(settings, ollama_transport)
+            status = ProviderStatus(groq, ollama, dahl)
             provider = status.first_usable()
-            _cached = Resolution(
-                _client(provider, settings, groq_transport, ollama_transport),
-                status.skipped_before(provider),
+            client = (
+                dahl_client(settings, dahl_transport)
+                if provider == "dahl"
+                else _client(provider, settings, groq_transport, ollama_transport)
             )
+            _cached = Resolution(client, status.skipped_before(provider))
             log.info("LLM provider (auto): %s", _cached.describe())
         return _cached
 

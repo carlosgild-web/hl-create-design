@@ -84,7 +84,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     check = commands.add_parser(
         "llm-check",
-        help="Check Groq and Ollama, suggest a model, ask which to use, and print it",
+        help="Check Dahl, Groq and Ollama, suggest a model, ask which to use, and print it",
     )
     check.add_argument("--out", type=Path, metavar="FILE", help="Also write the choice here")
 
@@ -92,7 +92,7 @@ def build_parser() -> argparse.ArgumentParser:
     which = ev.add_mutually_exclusive_group(required=True)
     which.add_argument("--fake", action="store_true", help="Scripted model (CI, no LLM needed)")
     which.add_argument(
-        "--provider", choices=("ollama", "groq", "demo"), help="Real provider, or the demo"
+        "--provider", choices=("ollama", "groq", "dahl", "demo"), help="Real provider, or the demo"
     )
     ev.add_argument("--only", action="append", default=[], metavar="ID", help="Run these scenarios")
     ev.add_argument("--json", type=Path, metavar="FILE", help="Write the results as JSON")
@@ -192,7 +192,9 @@ def choose_provider(
 ) -> str:
     """Suggest the best provider and let the person pick. Without a terminal (`ask` returns
     None) the suggestion is taken, and Ollama is never started."""
-    groq, ollama = status.groq, status.ollama
+    dahl, groq, ollama = status.dahl, status.groq, status.ollama
+    if dahl and dahl.usable and ask("Use Dahl? [Y/n] ", "y") is not False:
+        return "dahl"
     if groq and groq.usable and ask("Use Groq? [Y/n] ", "y") is not False:
         return "groq"
     if ollama is None:
@@ -226,23 +228,27 @@ def run_llm_check(
     configured = settings.llm_provider
     if configured == "demo":
         _say("Assistant: the demo assistant, rules and no real AI (LLM_PROVIDER=demo).")
-        _say("  Groq and Ollama are not checked. Set LLM_PROVIDER=auto in .env to check them.")
+        _say("  Dahl, Groq and Ollama are not checked. Set LLM_PROVIDER=auto in .env to check")
+        _say("  them.")
         provider = configured
     elif configured == "fake":
         # The scripted test double (decision 0025): it only answers with a notice.
         _say("Assistant: the scripted TEST model (LLM_PROVIDER=fake), not the demo assistant.")
-        _say("  Groq and Ollama are not checked. In .env set LLM_PROVIDER=auto to check them,")
-        _say("  or LLM_PROVIDER=demo for the demo assistant.")
+        _say("  Dahl, Groq and Ollama are not checked. To check them, set LLM_PROVIDER=auto")
+        _say("  in .env, or LLM_PROVIDER=demo for the demo assistant.")
         provider = configured
     else:
         _say("Checking the assistant's model ...")
         status = (check or (lambda s: check_providers(s, turn=probe_turn())))(settings)
+        if status.dahl:
+            _say(f"  Dahl      {status.dahl.detail}")
         if status.groq:
             _say(f"  Groq      {status.groq.detail}")
         if status.ollama:
             _say(f"  Ollama    {status.ollama.detail}")
         provider = choose_provider(status, settings, ask, start)
         names = {
+            "dahl": f"Dahl ({settings.dahl_model})",
             "groq": f"Groq ({settings.groq_model})",
             "ollama": f"Ollama ({settings.ollama_model})",
             "demo": "the demo assistant (rules, no real AI)",

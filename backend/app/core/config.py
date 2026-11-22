@@ -24,13 +24,18 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    llm_provider: Literal["auto", "demo", "ollama", "groq", "fake"] = "auto"
+    llm_provider: Literal["auto", "demo", "ollama", "groq", "dahl", "fake"] = "auto"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:4b-instruct-2507-q4_K_M"
     ollama_timeout_s: float = Field(default=180.0, gt=0, le=3600)  # per model call
     groq_api_key: SecretStr | None = None
     groq_model: str = "openai/gpt-oss-120b"
     groq_base_url: str = "https://api.groq.com/openai/v1"
+    # Dahl inference: OpenAI-compatible, first in the auto chain (decision 0029). GLM-5.3
+    # Flash was the one model of the three that answered a real turn with a native tool call.
+    dahl_api_key: SecretStr | None = None
+    dahl_model: str = "zai-org/GLM-5.3-Flash"
+    dahl_base_url: str = "https://inference.dahl.global/v1"
 
     # Mock SAP
     sap_base_url: str = "http://localhost:8100"

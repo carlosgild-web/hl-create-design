@@ -252,7 +252,30 @@ describe('Create Design', () => {
     await user.click(screen.getByRole('button', { name: 'Guide me step by step' }))
 
     expect(await screen.findByText(/continues on Ollama \(qwen3, local and slower\)/)).toBeInTheDocument()
+    expect(screen.getByText(/^Groq's quota or credit is used up/)).toBeInTheDocument()
     expect(screen.getByText('Which department?')).toBeInTheDocument()
+  })
+
+  it('names Dahl when its credit ran out and the session moved to Groq (decision 0029)', async () => {
+    stubFetch(
+      (url) =>
+        url === '/api/chat'
+          ? sseResponse([
+              ['conversation', { id: 'c1' }],
+              ['notice', { code: 'provider_switched', from: 'dahl', to: 'groq', model: 'gpt-oss', reason: 'no credit' }],
+              ['message', { role: 'assistant', content: 'Which department?' }],
+              ['done', { conversation_id: 'c1', run_id: 9, status: 'answered' }],
+            ])
+          : undefined,
+      ...baseRoutes,
+    )
+    renderWithProviders(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Guide me step by step' }))
+
+    expect(
+      await screen.findByText("Dahl's quota or credit is used up, so the assistant continues on Groq (gpt-oss) for the rest of this session."),
+    ).toBeInTheDocument()
   })
 })
 

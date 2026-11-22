@@ -83,7 +83,7 @@ case "$mode" in
       || echo "Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env."
     free_port 8000 "the app" || exit 1
     free_port 8100 "the mock SAP" || exit 1
-    # Which model will answer? It checks Groq and Ollama, suggests one and asks (Enter = the
+    # Which model will answer? It checks Dahl, Groq and Ollama, suggests one and asks (Enter = the
     # suggestion). Questions go to stderr and read the terminal; only the choice is captured.
     echo
     provider="$(cd backend && .venv/bin/python -m app.cli llm-check)" || provider=""

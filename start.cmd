@@ -40,7 +40,7 @@ rem Both ports must be free, or uvicorn fails with "[Errno 10048] ... only one u
 rem socket address". Usually an earlier run is still open; offer to stop it (Enter = yes).
 call :freeport 8000 "the app" || exit /b 1
 call :freeport 8100 "the mock SAP" || exit /b 1
-rem Which model will answer? It checks Groq and Ollama, suggests one and asks (Enter = suggestion).
+rem Which model will answer? It checks Dahl, Groq and Ollama, suggests one and asks (Enter = suggestion).
 rem Run in this console (not in for /f) so the question can read the keyboard.
 echo.
 set "LLM_CHOICE=%TEMP%\hl-create-design-llm.txt"

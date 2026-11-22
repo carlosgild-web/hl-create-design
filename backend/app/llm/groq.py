@@ -1,8 +1,9 @@
-"""The cloud provider: Groq's OpenAI-compatible `/chat/completions` with native `tools`
-(decision 0012).
+"""The cloud providers: OpenAI-compatible `/chat/completions` with native `tools`.
 
-Plain `httpx`, no vendor SDK. The key comes from `GROQ_API_KEY`; errors that the person
-running the tool can fix (no key, rate limit, unknown model) say what to do.
+`GroqClient` (decision 0012) and `DahlClient` (decision 0029) are the same client with
+another name, key, model and URL. Plain `httpx`, no vendor SDK. The key comes from
+`GROQ_API_KEY` / `DAHL_API_KEY`; errors that the person running the tool can fix (no key,
+rate limit, no credit, unknown model) say what to do.
 """
 
 from __future__ import annotations
@@ -49,7 +50,12 @@ _WAIT_PART_RE = re.compile(r"([\d.]+)(ms|h|m|s)")
 _LIMIT_RE = re.compile(r"\((TPM|RPM|TPD|RPD)\)", re.IGNORECASE)
 _USAGE_RE = re.compile(r"Limit (\d+), Used (\d+)", re.IGNORECASE)
 
-GroqState = Literal["ok", "per_minute", "daily", "no_key", "bad_key", "unreachable", "error"]
+GroqState = Literal[
+    "ok", "per_minute", "daily", "no_credit", "no_key", "bad_key", "unreachable", "error"
+]
+# HTTP 402: the account's credit is used up (Dahl). Like a daily limit: no retry, and the
+# app moves to the next provider (decision 0029).
+PAYMENT_REQUIRED = 402
 
 
 @dataclass(frozen=True)
@@ -87,6 +93,9 @@ class GroqProbe:
 
 class GroqClient(LLMClient):
     provider = "groq"
+    label = "Groq"  # in messages to the person running the app
+    key_env = "GROQ_API_KEY"
+    model_env = "GROQ_MODEL"
 
     def __init__(
         self,
@@ -99,7 +108,7 @@ class GroqClient(LLMClient):
         sleep: Callable[[float], None] | None = None,  # tests; default: interruptible wait
     ) -> None:
         if not api_key:
-            raise LLMError("LLM_PROVIDER=groq needs GROQ_API_KEY. Set it in .env.")
+            raise LLMError(f"LLM_PROVIDER={self.provider} needs {self.key_env}. Set it in .env.")
         self.model = model
         self._sleep = sleep
         self._base_url = base_url.rstrip("/")
@@ -135,18 +144,21 @@ class GroqClient(LLMClient):
         try:
             response = self._post(body)
         except httpx.TimeoutException as exc:
-            raise LLMError(f"Groq took too long to answer ({exc}).") from exc
+            raise LLMError(f"{self.label} took too long to answer ({exc}).") from exc
         except httpx.HTTPError as exc:
-            raise LLMError(f"Groq is not reachable at {self._base_url}: {exc}") from exc
+            raise LLMError(f"{self.label} is not reachable at {self._base_url}: {exc}") from exc
         if not response.is_success:
-            if response.status_code == 429 and rate_limit(response).scope == "day":
+            used_up = response.status_code == PAYMENT_REQUIRED or (
+                response.status_code == 429 and rate_limit(response).scope == "day"
+            )
+            if used_up:
                 raise QuotaExhausted(self._error_text(response))
             raise LLMError(self._error_text(response))
 
         data = response.json()
         choices = data.get("choices") or []
         if not choices:
-            raise LLMError(f"Groq returned no answer for {self.model}.")
+            raise LLMError(f"{self.label} returned no answer for {self.model}.")
         message = choices[0].get("message") or {}
         calls = [_call(c) for c in message.get("tool_calls") or ()]
         usage = data.get("usage") or {}
@@ -165,11 +177,12 @@ class GroqClient(LLMClient):
             response = self._http.post("/chat/completions", json=body)
             ms = (time.perf_counter() - started) * 1000
             if response.status_code != 429:
-                _log_call(self.model, response, ms)
+                _log_call(self.provider, self.model, response, ms)
                 return response
             limit = rate_limit(response)
             log.warning(
-                "groq %s: 429 %s limit, wait %s s (%.0f ms)",
+                "%s %s: 429 %s limit, wait %s s (%.0f ms)",
+                self.provider,
                 self.model,
                 limit.scope,
                 f"{limit.wait:.1f}" if limit.wait is not None else "?",
@@ -186,7 +199,7 @@ class GroqClient(LLMClient):
     def probe(
         self, messages: list[Message] | None = None, tools: list[ToolSpec] | None = None
     ) -> GroqProbe:
-        """Can Groq serve a real turn right now? Send `messages` and `tools` (the size of a
+        """Can the provider serve a real turn right now? Send `messages` and `tools` (the size of a
         first chat turn: system prompt and tool specs) with a tiny `max_tokens`, no retries.
         Without them it sends a one-word ping, which says little about the token limits."""
         body = self._body(messages or [Message("user", "ping")], tools or [])
@@ -194,16 +207,19 @@ class GroqClient(LLMClient):
         try:
             response = self._http.post("/chat/completions", json=body, timeout=PROBE_TIMEOUT_S)
         except httpx.TimeoutException:
-            return GroqProbe("unreachable", "Groq did not answer in time")
+            return GroqProbe("unreachable", f"{self.label} did not answer in time")
         except httpx.HTTPError as exc:
-            return GroqProbe("unreachable", f"Groq is not reachable ({type(exc).__name__})")
+            name = type(exc).__name__
+            return GroqProbe("unreachable", f"{self.label} is not reachable ({name})")
         if response.is_success:
             return GroqProbe("ok", f"quota available ({self.model})")
         if response.status_code == 429:
             limit = rate_limit(response)
             return GroqProbe("per_minute" if limit.scope == "minute" else "daily", limit.describe())
+        if response.status_code == PAYMENT_REQUIRED:
+            return GroqProbe("no_credit", "no credit left on the account")
         if response.status_code in (401, 403):
-            return GroqProbe("bad_key", "the API key was rejected (check GROQ_API_KEY)")
+            return GroqProbe("bad_key", f"the API key was rejected (check {self.key_env})")
         return GroqProbe("error", self._error_text(response))
 
     def close(self) -> None:
@@ -216,24 +232,41 @@ class GroqClient(LLMClient):
             reason = response.text
         reason = reason.strip()
         status = response.status_code
+        name = self.label
+        if status == PAYMENT_REQUIRED:
+            return (
+                f"{name} has no credit left for {self.model}. "
+                f"Restart with start.cmd to use another model. ({reason})"
+            )
         if status == 429:
             limit = rate_limit(response)
             if limit.scope == "minute":
                 retry = f" Retry in about {limit.wait:.0f} s." if limit.wait else ""
                 return (
-                    f"Groq rate limit reached for {self.model}: {limit.describe()}.{retry} "
+                    f"{name} rate limit reached for {self.model}: {limit.describe()}.{retry} "
                     f"({reason})"
                 )
             return (
-                f"Groq rate limit reached for {self.model}: {limit.describe()}. "
+                f"{name} rate limit reached for {self.model}: {limit.describe()}. "
                 "Restart with start.cmd to use Ollama or the demo model. "
                 f"({reason})"
             )
         if status in (401, 403):
-            return "Groq rejected the API key. Check GROQ_API_KEY."
+            return f"{name} rejected the API key. Check {self.key_env}."
         if status == 404 or "model" in reason.lower() and status == 400:
-            return f"Groq has no usable model '{self.model}'. Check GROQ_MODEL. ({reason})"
-        return f"Groq error {status} for {self.model}: {reason}"
+            return f"{name} has no usable model '{self.model}'. Check {self.model_env}. ({reason})"
+        return f"{name} error {status} for {self.model}: {reason}"
+
+
+class DahlClient(GroqClient):
+    """Dahl inference (inference.dahl.global): OpenAI-compatible, so the same client
+    (decision 0029). It answers 429 when a model is at capacity, with a short Retry-After
+    that the client waits out, and 402 when the account's credit is used up."""
+
+    provider = "dahl"
+    label = "Dahl"
+    key_env = "DAHL_API_KEY"
+    model_env = "DAHL_MODEL"
 
 
 def _human(seconds: float) -> str:
@@ -243,7 +276,7 @@ def _human(seconds: float) -> str:
     return f"{minutes // 60} h {minutes % 60} min"
 
 
-def _log_call(model: str, response: httpx.Response, ms: float) -> None:
+def _log_call(provider: str, model: str, response: httpx.Response, ms: float) -> None:
     tokens = ""
     if response.is_success:
         try:
@@ -253,7 +286,7 @@ def _log_call(model: str, response: httpx.Response, ms: float) -> None:
             )
         except ValueError:
             pass
-    log.info("groq %s: HTTP %d in %.0f ms%s", model, response.status_code, ms, tokens)
+    log.info("%s %s: HTTP %d in %.0f ms%s", provider, model, response.status_code, ms, tokens)
 
 
 def rate_limit(response: httpx.Response) -> RateLimit:
@@ -312,7 +345,7 @@ def _call(raw: dict[str, Any]) -> ToolCall | None:
     name = function.get("name")
     if not name:
         return None
-    return ToolCall(raw.get("id") or f"groq_{name}", name, _arguments(function.get("arguments")))
+    return ToolCall(raw.get("id") or f"call_{name}", name, _arguments(function.get("arguments")))
 
 
 def _arguments(raw: Any) -> dict[str, Any]:

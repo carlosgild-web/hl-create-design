@@ -10,7 +10,7 @@ export type TimelineItem =
   | { id: number; kind: 'user'; text: string }
   | { id: number; kind: 'assistant'; text: string }
   | { id: number; kind: 'error'; text: string; code?: string; timeoutS?: number; switchTo?: SwitchTarget[] }
-  | { id: number; kind: 'switched'; to: string; model: string; by: 'quota' | 'user' }
+  | { id: number; kind: 'switched'; from?: string; to: string; model: string; by: 'quota' | 'user' }
   | { id: number; kind: 'stopped' }
   | { id: number; kind: 'sap'; design: SapDesign; notes: Issue[] }
   | { id: number; kind: 'action'; actionId: string; epoch: number }
@@ -197,7 +197,7 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
           break
         case 'notice':
           if (event.data.code === 'provider_switched') {
-            push({ kind: 'switched', to: event.data.to, model: event.data.model, by: 'quota' })
+            push({ kind: 'switched', from: event.data.from, to: event.data.to, model: event.data.model, by: 'quota' })
             void queryClient.invalidateQueries({ queryKey: ['health'] })
           }
           break
