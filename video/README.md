@@ -24,7 +24,7 @@ clip in, with a cut to the title block. Leave the screen alone for those ~20 s.
 
 The Demo video:
 
-1. Start the app: `start.cmd`, answer `n` (no Groq), then `d` (demo).
+1. Start the app: `start.cmd`, answer `n` to Dahl and to Groq, then `d` (demo).
 2. `npm run video:demo` writes these files to `out/demo/`:
    - `take.webm` and `video.mp4`;
    - `subtitles.en.srt`;
