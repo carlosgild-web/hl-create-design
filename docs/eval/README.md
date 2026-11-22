@@ -1,11 +1,14 @@
 # Agent evaluation results
 
 Reproduce: `cd backend && python -m app.cli agent-eval --fake` (CI, 100% required) or
-`--provider ollama --allow-failures --json FILE --markdown FILE` (real model, failures kept).
+`--provider dahl|ollama|groq --allow-failures --json FILE --markdown FILE` (real model,
+failures kept). Reports carry model calls and tokens per scenario (from the run traces).
 Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
 
 | Provider | Model | Passed | Report |
 |---|---|---|---|
+| **dahl, Phase 9, pre-retrieval auto (the app's default)** | zai-org/GLM-5.3-Flash | **38/49** (FAQ **16/16**) | [md](dahl-phase9.md), [json](dahl-phase9.json) |
+| dahl, Phase 9, pre-retrieval off | zai-org/GLM-5.3-Flash | 37/49 (FAQ 15/16) | [md](dahl-phase9-off.md), [json](dahl-phase9-off.json) |
 | fake (scripted), Phase 9 | - | **52/52** (49 + 3 fake-only; adds 16 FAQ and 2 pre-retrieval scenarios) | [md](fake-phase9.md), [json](fake-phase9.json); CI job "agent eval" |
 | demo (rules, no AI), Phase 9 | rules | **47/49** (the multi-turn wizard and the folder-check route fail by design, decision 0025) | [md](demo-phase9.md), [json](demo-phase9.json) |
 | ollama, Phase 9, pre-retrieval off | qwen3:4b-instruct-2507-q4_K_M | 24/49 (FAQ 2/16) | [md](ollama-phase9-off.md), [json](ollama-phase9-off.json) |
@@ -16,6 +19,44 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
 | ollama, tuned prompt v3 (full) | qwen3:4b-instruct-2507-q4_K_M | **21/27** | [md](ollama-qwen3-4b-full.md), [json](ollama-qwen3-4b-full.json) |
 | ollama, tuned prompt v2 (targeted) | qwen3:4b-instruct-2507-q4_K_M | 11/13 of the scenarios the tuning aimed at (the other 14 were not re-run) | [md](ollama-qwen3-4b-tuned.md), [json](ollama-qwen3-4b-tuned.json) |
 | groq | openai/gpt-oss-120b | **20/27** | [md](groq-gpt-oss-120b.md), [json](groq-gpt-oss-120b.json) |
+
+## Reading the Phase 9 Dahl runs (2026-11-22, GLM-5.3 Flash, 18-21 min per pass)
+
+Dahl (decision 0029) replaced the Groq run that waited for a quota reset. Same 49 scenarios,
+pre-retrieval `auto` (the app's default) and `off`.
+
+**Cost of a FAQ question (16 FAQ scenarios, per turn), Phase 9d item 5:**
+
+| Pre-retrieval | FAQ passed | Model calls | Prompt tokens | Completion tokens | Total | Time |
+|---|---|---|---|---|---|---|
+| auto (the backend searches first) | **16/16** | **1.00** | **2,632** | 164 | **2,796** | 7.3 s |
+| off (the model asks for the search) | 15/16 | 2.06 | 4,983 | 283 | 5,265 | 10.0 s |
+
+With pre-retrieval a FAQ turn is one model call instead of two, and costs **47% fewer
+tokens**. Over all 49 scenarios: 279,614 tokens (auto) vs 344,343 (off). On a larger model the
+gain is cost and speed; on the 4B Ollama model it was also correctness (2/16 → 10/16 FAQ).
+
+**The invariants held in all 98 scenario runs.** Nothing was created or reserved without a
+click, every write stayed inside the designs root, and there was at most one card per kind
+per turn.
+
+What fails is how closely the model follows the workflow:
+
+- **Explains, but doesn't cite (`cites_manual`, 8 of the 11 failures with auto).** After a
+  validator error (`revision-reused`, `revision-jump`, `sap-down`, `es-skipped-letter`, …) the
+  answer explains the rule correctly, but without the `[ref]` the tool returned.
+- **Helps more than the scenario expects (`cards`).** The model fixes the request instead of
+  stopping at the error:
+  - `revision-reused`: it proposes the next free revision;
+  - `unknown-number`: it offers to reserve a new number;
+  - `injection-in-name`: it opens a create card for the clean part of the name.
+
+  These cards still need the user's click (invariant 2), so no guard fails, but the scenarios
+  expect an explanation and no card.
+- **`one-sentence-fill`:** it takes the whole sentence as the design name, which is too long,
+  and asks for a shorter one instead of composing a name and reserving the number.
+- **`path-traversal` (auto):** the turn hit the 120 s limit while Dahl was busy, and ended with
+  the timeout message.
 
 ## Reading the Phase 9 Ollama A/B (2026-11-21, CPU, 29-36 min per pass)
 
@@ -39,11 +80,10 @@ Decision: [0011](../decisions/0011-eval-and-demo-safety.md).
   inside the designs root, and there was at most one card per kind per turn. The one guard
   check that failed is `bounded_and_answered`, on the 3 turn timeouts above.
 
-## Pending real-model runs (Phase 9f)
+## Real-model runs (Phase 9f)
 
-The real-model rows above predate Phase 9 (27 scenarios, no pre-retrieval). `--resume DIR` saves
-each result as it finishes and continues a stopped run. To compare on
-the 49-scenario suite (run them in batches with `--only` if memory is short):
+`--resume DIR` saves each result as it finishes and continues a stopped run (run in batches
+with `--only` if memory is short):
 
 ```bash
 cd backend
@@ -51,8 +91,9 @@ cd backend
 python -m app.cli agent-eval --provider ollama --allow-failures --preretrieval off --json ../docs/eval/ollama-phase9-off.json --markdown ../docs/eval/ollama-phase9-off.md
 python -m app.cli agent-eval --provider ollama --allow-failures --preretrieval auto --json ../docs/eval/ollama-phase9-auto.json --markdown ../docs/eval/ollama-phase9-auto.md
 python -m app.cli agent-eval --provider ollama --allow-failures --preretrieval auto --few-shot --json ../docs/eval/ollama-phase9-fewshot.json --markdown ../docs/eval/ollama-phase9-fewshot.md
-# Groq, after its daily token quota resets (it was nearly used up on 2026-11-21)
-python -m app.cli agent-eval --provider groq --allow-failures --json ../docs/eval/groq-phase9.json --markdown ../docs/eval/groq-phase9.md
+# Dahl (decision 0029), the app's default and with pre-retrieval off
+python -m app.cli agent-eval --provider dahl --allow-failures --resume ../data/eval-runs/dahl-auto --json ../docs/eval/dahl-phase9.json --markdown ../docs/eval/dahl-phase9.md
+python -m app.cli agent-eval --provider dahl --allow-failures --preretrieval off --resume ../data/eval-runs/dahl-off --json ../docs/eval/dahl-phase9-off.json --markdown ../docs/eval/dahl-phase9-off.md
 ```
 
 `AGENT_FEW_SHOT` stays off in the app unless the few-shot run beats the auto run.
