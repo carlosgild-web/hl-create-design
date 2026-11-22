@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url'
 
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
+import { captureEditor } from './kicad.mjs'
 import { resolve as resolveLine, ROOT } from './lines.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -227,6 +228,12 @@ class Conductor {
     await this.pendingTrace
     await this.chain
     this.check()
+  }
+
+  /** The result of the last confirmed card of `kind`, as the app received it. */
+  lastConfirm(kind: string): any {
+    const ev = [...this.events].reverse().find((e) => e.type === 'confirm' && e.data?.kind === kind)
+    return ev?.data?.result ?? this.fail(`no confirmed ${kind} card in the take`)
   }
 
   async idle() {
@@ -539,11 +546,19 @@ test('demo take @demo', async ({ browser, baseURL, request }) => {
     await until(conductor.idle())
     await assertNoPaths(page, 'preview dialog')
     await sleep(2500)
-    if (process.env.VIDEO_OPEN_KICAD !== '0') {
+    const openKicad = process.env.VIDEO_OPEN_KICAD !== '0'
+    if (openKicad) {
       await app.getByRole('button', { name: 'Open in KiCad' }).click()
       await expect(app.getByText(/schematic editor is opening with the design/)).toBeVisible({ timeout: 30_000 })
     }
     await conductor.step('open_kicad')
+    if (openKicad) {
+      // The KiCad ending (decision 0030): the schematic editor the click opened, recorded on
+      // the desktop; compose.mjs puts it here in place of these browser frames.
+      const created = conductor.lastConfirm('create_design')
+      const stem = `${created.design_number}_${created.revision}`
+      await conductor.until(captureEditor({ stem, outDir, now: () => conductor.now() }), 120_000, 'KiCad')
+    }
 
     // Scenes 5-7: the trace of the reserve run, the comparison, the end card
     for (const name of ['trace', 'compare', 'close']) await conductor.step(name)
