@@ -38,8 +38,20 @@ const hasLocalPath = (value: unknown): boolean =>
       ? Object.values(value).some(hasLocalPath)
       : false
 
-type Storyboard = typeof import('./storyboard.json')
-type Row = Storyboard['rows'][number] & {
+type Storyboard = {
+  video: string
+  provider: string
+  model?: string
+  banner: string
+  mode?: 'strict' | 'flexible'
+  hold?: number
+  sentences: Record<string, string>
+  rows: Row[]
+}
+type Row = {
+  id: string
+  scene: number
+  subtitle: string
   turn?: string
   on: { step?: string; event?: string; name?: string; auto?: boolean; code?: string; kind?: string; phase?: string; follow?: boolean }
   payload?: { from: string; pick?: string }
@@ -49,7 +61,8 @@ type Row = Storyboard['rows'][number] & {
 }
 type Captured = { type: string; data: any; status?: number; t_ms: number; turn: string | null; index: number }
 
-const storyboard: Storyboard = JSON.parse(readFileSync(join(HERE, 'storyboard.json'), 'utf8'))
+const loadBoard = (name: string): Storyboard => JSON.parse(readFileSync(join(HERE, name), 'utf8'))
+const storyboard = loadBoard('storyboard.json')
 const CHAT_TYPES = new Set(['request', 'conversation', 'run', 'tool_call', 'tool_result', 'form_proposal', 'pending_action', 'thinking', 'message', 'notice', 'status', 'error', 'done'])
 
 // ---------------------------------------------------------------- capture (all frames)
@@ -138,9 +151,9 @@ function pick(value: any, path?: string) {
   return value
 }
 
-function holdMs(row: Row) {
+function holdMs(row: Row, factor = 1) {
   const chars = (row.subtitle || '').length
-  return Math.min(Math.max(1400 + chars * 48, 2800), 8500) + (row.payload ? 1800 : 0)
+  return Math.round((Math.min(Math.max(1400 + chars * 48, 2800), 8500) + (row.payload ? 1800 : 0)) * factor)
 }
 
 function introspect(...args: string[]) {
@@ -148,10 +161,18 @@ function introspect(...args: string[]) {
   return JSON.parse(out)
 }
 
-/** Rows are walked in order: a step row by the spec, an event row by its captured event. */
+/**
+ * Strict (the demo): rows are walked in order, a step row by the spec, an event row by its
+ * captured event, and a row out of order fails the take. Flexible (a real model, decision
+ * 0028 item 6): each row is shown at most once, on the first event that matches it; an
+ * unexpected tool call or error gets a generic row built from the event; a row that never
+ * matched is reported, not failed.
+ */
 class Conductor {
   rows: Row[]
   cursor = 0
+  shownIds = new Set<string>()
+  generic = 0
   t0 = 0
   turn: string | null = null
   turnText = ''
@@ -172,11 +193,12 @@ class Conductor {
     private page: Page,
     private api: APIRequestContext,
     private outDir: string,
+    readonly board: Storyboard = storyboard,
   ) {
     this.failed = new Promise<never>((_, reject) => (this.reject = reject))
     this.failed.catch(() => {}) // observed through until()
     let turn: string | undefined
-    this.rows = (storyboard.rows as Row[]).map((row) => {
+    this.rows = board.rows.map((row) => {
       const typed = row.on.step?.startsWith('typed:') ? row.on.step.slice(6) : undefined
       turn = typed ?? turn
       return { ...row, turn: row.turn ?? (row.on.event && CHAT_TYPES.has(row.on.event) ? turn : undefined) }
@@ -293,19 +315,25 @@ class Conductor {
     return { label, note: path ? `.${path}` : 'captured', value, source }
   }
 
+  get flexible() {
+    return this.board.mode === 'flexible'
+  }
+
   private async show(row: Row, ev?: Captured) {
+    this.shownIds.add(row.id)
     const callouts = (row.callouts ?? []).map(([file, symbol]) => resolveLine(file, symbol))
     const payload = this.payloadFor(row, ev)
     const slideData = row.slide ? this.slideData(row.slide) : undefined
     const cue = { id: row.id, subtitle: row.subtitle, layer: row.layer, callouts, payload, slide: row.slide, slideData }
     await this.page.evaluate((c) => (window as any).stage.show(c), cue)
-    const hold = holdMs(row)
+    const hold = holdMs(row, this.board.hold)
     this.shown.push({ id: row.id, t_ms: this.now(), hold_ms: hold, subtitle: row.subtitle, payload: payload?.value, source: payload?.source })
     await sleep(hold)
   }
 
   private slideData(name: string) {
     if (name === 'invariants' || name === 'close') return { invariants: invariants(), hot: [2, 3, 6] }
+    if (name === 'end') return { repo: process.env.VIDEO_REPO_URL || 'github.com/carlosgild-web/hl-create-design' }
     if (name === 'trace') {
       const run = this.traces.at(-1) ?? this.fail('trace slide: no trace saved')
       const steps = (run.trace?.steps ?? []) as any[]
@@ -328,6 +356,7 @@ class Conductor {
     try {
       await this.chain
       if (this.failure) return
+      if (this.flexible) return await this.onEventFlexible(ev)
       const before: Row[] = []
       const after: Row[] = []
       while (this.matches(this.rows[this.cursor], ev)) {
@@ -351,9 +380,54 @@ class Conductor {
     }
   }
 
+  /** A row and the follow rows after it, in storyboard order. */
+  private withFollows(row: Row): Row[] {
+    const i = this.rows.indexOf(row)
+    const group = [row]
+    for (let j = i + 1; this.rows[j]?.on.follow; j++) group.push(this.rows[j])
+    return group
+  }
+
+  /** A row for what the storyboard did not foresee: the event says what happened. */
+  private genericRow(ev: Captured): Row | null {
+    const d = ev.data ?? {}
+    const id = () => `g${++this.generic}`
+    if (ev.type === 'tool_call' && !d.auto) {
+      const known = this.rows.some((r) => r.turn === ev.turn && r.on.event === 'tool_call' && r.on.name === d.name)
+      if (known) return null
+      return { id: id(), scene: 0, subtitle: `The model called ${d.name}. The tool, not the model, does the work.`, layer: 'Tools', on: { event: 'tool_call' }, payload: { from: 'event', pick: 'arguments' } }
+    }
+    if (ev.type === 'tool_result' && (d.result?.errors ?? []).length) {
+      const codes = d.result.errors.map((e: any) => e.code).join(', ')
+      return { id: id(), scene: 0, subtitle: `The validators answered: ${codes}. The model can only explain it.`, layer: 'Validators', on: { event: 'tool_result' }, payload: { from: 'event', pick: 'result.errors' } }
+    }
+    if (ev.type === 'error') {
+      return { id: id(), scene: 0, subtitle: `The turn ended with an error: ${String(d.message ?? '').slice(0, 70)}`, layer: 'Agent loop', on: { event: 'error' }, payload: { from: 'event' } }
+    }
+    return null
+  }
+
+  private async onEventFlexible(ev: Captured) {
+    const unshown = this.rows.filter((r) => !this.shownIds.has(r.id) && this.matches(r, ev))
+    const head = (phase: 'before' | 'after') =>
+      unshown.find((r) => (phase === 'before') === (r.on.phase === 'before'))
+    const before = head('before') ? this.withFollows(head('before')!) : []
+    let after = head('after') ? this.withFollows(head('after')!) : []
+    if (!before.length && !after.length) {
+      const generic = this.genericRow(ev)
+      if (generic) after = [generic]
+    }
+    for (const row of before) await this.show(row, ev)
+    if (ev.type === 'done') this.onDone(ev)
+    this.chain = (async () => {
+      await sleep(250)
+      for (const row of after) await this.show(row, ev)
+    })().catch((err) => this.setFailure(err))
+  }
+
   private onDone(ev: Captured) {
     const waiting = this.rows[this.cursor]
-    if (waiting?.on.event && waiting.turn === ev.turn && waiting.on.event !== 'done')
+    if (!this.flexible && waiting?.on.event && waiting.turn === ev.turn && waiting.on.event !== 'done')
       this.fail(`row ${waiting.id}: the run ended without a "${waiting.on.event}" event`)
     const runId = ev.data.run_id
     const n = this.traces.length + 1
@@ -370,6 +444,11 @@ class Conductor {
   /** The spec reached `name`: show its row (and follows), if the storyboard has one. */
   async step(name: string) {
     await this.idle()
+    if (this.flexible) {
+      const row = this.rows.find((r) => r.on.step === name && !this.shownIds.has(r.id))
+      if (row) for (const r of this.withFollows(row)) await this.show(r)
+      return
+    }
     const row = this.rows[this.cursor]
     if (row?.on.step === name) {
       for (const r of this.take()) await this.show(r)
@@ -379,8 +458,14 @@ class Conductor {
     if (later > this.cursor) this.fail(`step "${name}" reached before row ${row?.id} (${JSON.stringify(row?.on)})`)
   }
 
+  /** Rows that never matched (flexible mode): reported in the take's notes, not failed. */
+  missing() {
+    return this.rows.filter((r) => !this.shownIds.has(r.id)).map((r) => r.id)
+  }
+
   finish() {
     this.check()
+    if (this.flexible) return
     if (this.cursor !== this.rows.length) this.fail(`rows not shown: ${this.rows.slice(this.cursor).map((r) => r.id).join(', ')}`)
   }
 }
@@ -396,7 +481,10 @@ function invariants(): string[] {
 // ---------------------------------------------------------------- shared setup
 
 async function guard(api: APIRequestContext, provider: string) {
-  const hint = 'Start the app with start.cmd, answer n (no Groq), then d (demo), and run this again.'
+  const hint =
+    provider === 'dahl'
+      ? 'Start the app with start.cmd and answer Y to "Use Dahl?", then run this again.'
+      : 'Start the app with start.cmd, answer n to the cloud models, then d (demo), and run this again.'
   let health: any
   try {
     const response = await api.get('/api/health', { timeout: 5_000 })
@@ -565,13 +653,98 @@ test('demo take @demo', async ({ browser, baseURL, request }) => {
     await sleep(1500)
     conductor.finish()
   } finally {
-    writeFileSync(join(outDir, 'events.json'), JSON.stringify(conductor.events, null, 2))
-    writeFileSync(join(outDir, 'shown.json'), JSON.stringify(conductor.shown, null, 2))
-    const video = page.video()
-    await context.close()
-    if (video) {
-      await video.saveAs(join(outDir, 'take.webm.part'))
-      renameSync(join(outDir, 'take.webm.part'), join(outDir, 'take.webm'))
-    }
+    await saveTake(conductor, page, context, outDir, 'storyboard.json')
+  }
+})
+
+/** What cues.mjs and compose.mjs read: the capture, the rows shown, and the video. */
+async function saveTake(conductor: Conductor, page: Page, context: import('@playwright/test').BrowserContext, outDir: string, board: string) {
+  writeFileSync(join(outDir, 'events.json'), JSON.stringify(conductor.events, null, 2))
+  writeFileSync(join(outDir, 'shown.json'), JSON.stringify(conductor.shown, null, 2))
+  const take = { storyboard: board, mode: conductor.board.mode ?? 'strict', missing: conductor.missing(), failure: conductor.failure?.message ?? null }
+  writeFileSync(join(outDir, 'take.json'), JSON.stringify(take, null, 2))
+  const video = page.video()
+  await context.close()
+  if (video) {
+    await video.saveAs(join(outDir, 'take.webm.part'))
+    renameSync(join(outDir, 'take.webm.part'), join(outDir, 'take.webm'))
+  }
+}
+
+test('dahl take @dahl', async ({ browser, baseURL, request }) => {
+  test.setTimeout(30 * 60_000)
+  const board = loadBoard('storyboard-dahl.json')
+  const outDir = join(HERE, 'out', 'dahl')
+  mkdirSync(outDir, { recursive: true })
+  const health = await guard(request, board.provider)
+  const name = process.env.VIDEO_DESIGN_NAME || 'Bead Grader Controller'
+  const S = Object.fromEntries(Object.entries(board.sentences).map(([k, v]) => [k, v.replace('{name}', name)]))
+
+  let conductor!: Conductor
+  const { context, page, app, t0 } = await openStage(browser, baseURL!, outDir, (e) => conductor.onEvent(e))
+  conductor = new Conductor(page, context.request, outDir, board)
+  conductor.t0 = t0
+  const until = <T>(p: Promise<T>) => conductor.until(p)
+
+  const ask = async (key: string) => {
+    const input = app.getByLabel(/describe your design/i)
+    await input.click()
+    conductor.beginTurn(key, S[key])
+    await input.pressSequentially(S[key], { delay: 35 })
+    await conductor.step(`typed:${key}`)
+    await app.getByRole('button', { name: 'Send' }).click()
+    await conductor.until(conductor.waitTurn(), TURN_TIMEOUT_MS, `turn "${key}"`)
+    const model = conductor.traces.at(-1)?.model
+    if (board.model && model !== board.model) throw new Error(`the run used model "${model}", the banner says "${board.model}"`)
+  }
+
+  try {
+    await page.evaluate((b) => (window as any).stage.init(b), { banner: board.banner, provider: `provider ${health.llm_provider}` })
+    await conductor.step('hook')
+
+    // A rule question: pre-retrieval, then the real model's cited answer
+    await loadApp(page)
+    await page.evaluate(() => (window as any).stage.hideSlide())
+    await ask('question')
+    await sleep(1500)
+
+    // A new design in one sentence: the model fills the form and opens the reservation card
+    await ask('reserve')
+    const reserveCard = app.getByRole('region', { name: 'Reserve a new SAP number?' }).last()
+    await expect(reserveCard, 'the model did not open the reservation card: record the take again').toBeVisible({ timeout: 5_000 })
+    await sleep(1200)
+    await reserveCard.getByRole('button', { name: 'Confirm' }).click()
+    await expect(app.getByLabel('Design number')).toHaveValue(/^HL-HW-\d{2}-\d{4}$/)
+    await until(conductor.idle())
+
+    // Create the design from the form: a second card, a second click
+    const description = app.getByLabel(/^Description/)
+    await description.click()
+    await description.pressSequentially(S.description, { delay: 35 })
+    await app.getByRole('button', { name: 'Create design', exact: true }).click()
+    const createCard = app.getByRole('region', { name: 'Create this design?' }).last()
+    await expect(createCard).toBeVisible()
+    await until(conductor.idle())
+    await createCard.getByRole('button', { name: 'Confirm' }).click()
+    const preview = app.getByRole('dialog').getByRole('img')
+    await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0), { timeout: 180_000 }).toBe(true)
+    await until(conductor.idle())
+    await assertNoPaths(page, 'preview dialog')
+    await sleep(1500)
+
+    // Open in KiCad: the schematic editor, recorded on the desktop (decision 0030)
+    await app.getByRole('button', { name: 'Open in KiCad' }).click()
+    await expect(app.getByText(/schematic editor is opening with the design/)).toBeVisible({ timeout: 30_000 })
+    await conductor.step('open_kicad')
+    const created = conductor.lastConfirm('create_design')
+    await conductor.until(captureEditor({ stem: `${created.design_number}_${created.revision}`, outDir, now: () => conductor.now() }), 120_000, 'KiCad')
+
+    await conductor.step('end')
+    await sleep(1000)
+    conductor.finish()
+    const missing = conductor.missing()
+    if (missing.length) console.warn(`rows that never matched (kept out of the video): ${missing.join(', ')}`)
+  } finally {
+    await saveTake(conductor, page, context, outDir, 'storyboard-dahl.json')
   }
 })

@@ -4,10 +4,12 @@
   "type": "module",
   "description": "Records the explainer video from the running app (decision 0028).",
   "scripts": {
-    "video:check": "node lines.mjs --check storyboard.json",
+    "video:check": "node lines.mjs --check storyboard.json && node lines.mjs --check storyboard-dahl.json",
     "video:smoke": "playwright test --grep @smoke",
     "video:demo": "playwright test --grep @demo && node cues.mjs out/demo && node compose.mjs out/demo",
-    "video:verify": "node cues.mjs out/demo --verify"
+    "video:dahl": "playwright test --grep @dahl && node cues.mjs out/dahl && node compose.mjs out/dahl --cut-gaps --readme",
+    "video:verify": "node cues.mjs out/demo --verify",
+    "video:verify-dahl": "node cues.mjs out/dahl --verify"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",

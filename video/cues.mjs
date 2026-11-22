@@ -1,7 +1,9 @@
 /**
  * After a take: shown rows -> cues.json (start/end per subtitle), and the checks that make
  * the video trustworthy (decision 0028):
- *   - every storyboard row was shown, once, in order (the demo is deterministic);
+ *   - strict mode (the demo, deterministic): every storyboard row was shown, once, in order;
+ *     flexible mode (a real model): every row shown is a storyboard row or a generic one, and
+ *     the rows that never matched are listed;
  *   - every payload on screen equals the captured data it names (events.json,
  *     trace-turn-N.json, or a fresh run of introspect.py);
  *   - no payload shows a local path.
@@ -11,7 +13,7 @@
  */
 import { execFileSync } from 'node:child_process'
 import { isDeepStrictEqual } from 'node:util'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -47,11 +49,19 @@ export function buildCues(shown) {
   }))
 }
 
-function verify(dir, storyboard, shown) {
+function verify(dir, storyboard, shown, mode) {
   const problems = []
+  const notes = []
   const expected = storyboard.rows.map((r) => r.id)
   const got = shown.map((s) => s.id)
-  if (!isDeepStrictEqual(got, expected)) {
+  if (mode === 'flexible') {
+    const unknown = got.filter((id) => !expected.includes(id) && !/^g\d+$/.test(id))
+    if (unknown.length) problems.push(`rows not in the storyboard: ${unknown.join(', ')}`)
+    const missing = expected.filter((id) => !got.includes(id))
+    if (missing.length) notes.push(`never matched (not in the video): ${missing.join(', ')}`)
+    const generic = got.filter((id) => /^g\d+$/.test(id))
+    if (generic.length) notes.push(`generic rows for unforeseen events: ${generic.length}`)
+  } else if (!isDeepStrictEqual(got, expected)) {
     const missing = expected.filter((id) => !got.includes(id))
     problems.push(`rows: expected ${expected.length} in storyboard order, got ${got.length}` + (missing.length ? `; missing ${missing.join(', ')}` : '; order differs'))
   }
@@ -83,7 +93,7 @@ function verify(dir, storyboard, shown) {
     const ranked = s.payload.ranked.map((r) => r.source).slice(0, returned.length)
     if (!returned.length || !isDeepStrictEqual(ranked, returned)) problems.push(`${s.id}: FTS ranking ${ranked} differs from the tool result ${returned}`)
   }
-  return { problems, checked }
+  return { problems, checked, notes }
 }
 
 const [dirArg, flag] = process.argv.slice(2)
@@ -92,15 +102,20 @@ if (!dirArg) {
   process.exit(2)
 }
 const dir = resolve(HERE, dirArg)
-const storyboard = readJson(join(HERE, 'storyboard.json'))
+// take.json (written by the take) names its storyboard and mode; older takes: the demo's.
+const take = existsSync(join(dir, 'take.json')) ? readJson(join(dir, 'take.json')) : {}
+const storyboard = readJson(join(HERE, take.storyboard ?? 'storyboard.json'))
+const mode = take.mode ?? 'strict'
 const shown = readJson(join(dir, 'shown.json'))
 if (flag !== '--verify') {
   writeFileSync(join(dir, 'cues.json'), JSON.stringify(buildCues(shown), null, 2))
   console.log(`cues.json: ${shown.length} cues`)
 }
-const { problems, checked } = verify(dir, storyboard, shown)
+const { problems, checked, notes } = verify(dir, storyboard, shown, mode)
+for (const note of notes) console.log(`note: ${note}`)
 if (problems.length) {
   console.error(problems.map((p) => `FAIL ${p}`).join('\n'))
   process.exit(1)
 }
-console.log(`ok: ${shown.length} rows in storyboard order; ${checked} payloads equal the capture; no local paths`)
+const order = mode === 'flexible' ? 'shown (flexible mode)' : 'in storyboard order'
+console.log(`ok: ${shown.length} rows ${order}; ${checked} payloads equal the capture; no local paths`)

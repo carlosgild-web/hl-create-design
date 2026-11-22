@@ -82,6 +82,13 @@
         <tr><td>Result</td><td>ChatTurn</td><td>ChatTurn (a call written as text is parsed)</td><td>ChatTurn</td></tr>
         <tr class="same"><td>Pre-retrieval, tools, validators, gate, trace, SSE, UI</td><td>identical</td><td>identical</td><td>identical</td></tr>
       </table>`,
+    hook: () => `
+      <h1>Create Design</h1>
+      <p class="lead">An engineer describes a board in plain words. A real model guides; plain code checks every rule, SAP issues the number, and KiCad gets a project with the company title block filled in.</p>`,
+    end: (d) => `
+      <h1>The AI guides. The code decides.</h1>
+      <p class="lead" style="margin-bottom:34px">And the engineer clicks. Every step is traced.</p>
+      <p class="lead">${esc(d.repo || '')}</p>`,
     close: (d) => `
       <h1>The AI guides. The code decides.</h1>
       <p class="lead" style="margin-bottom:34px">And the user clicks.</p>
