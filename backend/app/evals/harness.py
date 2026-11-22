@@ -26,6 +26,7 @@ from sqlalchemy import Engine
 from app.actions import cancel_action, confirm_action
 from app.agent.service import AgentDeps, chat_turn
 from app.core.config import MANUAL_DIR, Settings
+from app.db import store
 from app.db.session import audit_rows, get_engine
 from app.evals.fake_kicad import FakeKicadCli
 from app.evals.fake_sap import FakeSap
@@ -110,6 +111,11 @@ class ScenarioResult:
     answer: str
     seconds: float
     error: str = ""
+    # From the stored traces of the scenario's runs: what the model calls cost (0 when the
+    # provider does not report usage, as the fake and demo models).
+    model_calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
     @property
     def passed(self) -> bool:
@@ -132,6 +138,9 @@ class ScenarioResult:
             "answer": self.answer,
             "seconds": round(self.seconds, 2),
             "error": self.error,
+            "model_calls": self.model_calls,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
         }
 
     @classmethod
@@ -148,6 +157,9 @@ class ScenarioResult:
             answer=data.get("answer", ""),
             seconds=float(data.get("seconds", 0.0)),
             error=data.get("error", ""),
+            model_calls=int(data.get("model_calls", 0)),
+            prompt_tokens=int(data.get("prompt_tokens", 0)),
+            completion_tokens=int(data.get("completion_tokens", 0)),
         )
 
 
@@ -187,6 +199,9 @@ class Observed:
     errors: list[str] = field(default_factory=list)
     confirmed_ok: list[str] = field(default_factory=list)  # kinds whose confirm succeeded
     script_left: int = 0
+    model_calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
     @property
     def codes(self) -> set[str]:
@@ -207,6 +222,16 @@ class Observed:
                 if key == "text" and isinstance(value, str):
                     refs |= {f"{doc}#{anchor}" for doc, anchor in _MANUAL_LINK.findall(value)}
         return refs
+
+
+def _add_usage(seen: Observed, engine: Engine, run_id: int | None) -> None:
+    """Add the run's model calls and tokens, from its stored trace (invariant 6)."""
+    run = store.get_run(engine, run_id) if run_id is not None else None
+    for step in (run or {}).get("trace", {}).get("steps", []):
+        if step.get("type") == "model_call":
+            seen.model_calls += 1
+            seen.prompt_tokens += int(step.get("prompt_tokens") or 0)
+            seen.completion_tokens += int(step.get("completion_tokens") or 0)
 
 
 def _play_turn(
@@ -248,6 +273,7 @@ def _play_turn(
             seen.errors.append(data["message"])
         elif event.type == "done":
             seen.statuses.append(data["status"])
+            _add_usage(seen, deps.engine, data.get("run_id"))
     if isinstance(client, FakeClient):
         seen.script_left += client.remaining
 
@@ -475,6 +501,9 @@ def run_scenario(
         answer=seen.answer,
         seconds=time.perf_counter() - started,
         error=error,
+        model_calls=seen.model_calls,
+        prompt_tokens=seen.prompt_tokens,
+        completion_tokens=seen.completion_tokens,
     )
 
 

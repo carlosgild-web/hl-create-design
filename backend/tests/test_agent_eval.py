@@ -213,3 +213,24 @@ def test_a_section_linked_from_a_returned_passage_counts_as_returned():
         }
     )
     assert seen.returned_refs == {"07-faq#revision-i", "02-revisions#skipped-letters"}
+
+
+def test_a_result_counts_model_calls_and_tokens_from_the_traces():
+    """The report's cost columns come from the stored traces (decision 0029, 9d item 5)."""
+    from app.llm.base import ChatTurn
+
+    turns = [
+        ChatTurn(
+            content="",
+            tool_calls=call("sap_list_departments").tool_calls,
+            prompt_tokens=1200,
+            completion_tokens=30,
+        ),
+        ChatTurn(content="HW, PWR, EMB and TFX.", prompt_tokens=1500, completion_tokens=12),
+    ]
+    sc = Scenario("t", "t", (Turn("Which departments are there?", turns),), Expect())
+    result = run(sc)
+    assert (result.model_calls, result.prompt_tokens, result.completion_tokens) == (2, 2700, 42)
+    again = harness.ScenarioResult.from_dict(json.loads(json.dumps(result.to_dict())))
+    assert again.prompt_tokens == 2700 and again.model_calls == 2
+    assert "Tokens: 2,700 prompt + 42 completion" in report.to_markdown([result])

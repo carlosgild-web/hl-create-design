@@ -49,15 +49,26 @@ def to_markdown(results: list[ScenarioResult]) -> str:
         f"Run on {date.today().isoformat()}. **{passed}/{total}** scenarios passed.",
         "",
     ]
+    prompt = sum(r.prompt_tokens for r in results)
+    completion = sum(r.completion_tokens for r in results)
+    if prompt or completion:
+        calls = sum(r.model_calls for r in results)
+        out += [
+            f"Model calls: {calls}. Tokens: {prompt:,} prompt + {completion:,} completion.",
+            "",
+        ]
     failing = Counter(c.name for r in results for c in r.failures)
     if failing:
         out += ["Failed checks: " + ", ".join(f"`{n}` ×{k}" for n, k in failing.most_common()), ""]
-    out += ["| Scenario | Result | Tools called | Time |", "|---|---|---|---|"]
+    out += [
+        "| Scenario | Result | Tools called | Time | Tokens |",
+        "|---|---|---|---|---|",
+    ]
     for r in results:
         tools = ", ".join(r.tool_calls) or "-"
-        out.append(
-            f"| `{r.id}` {r.title} | {'✅' if r.passed else '❌'} | {tools} | {r.seconds:.1f}s |"
-        )
+        tokens = f"{r.prompt_tokens + r.completion_tokens:,}" if r.model_calls else "-"
+        mark = "✅" if r.passed else "❌"
+        out.append(f"| `{r.id}` {r.title} | {mark} | {tools} | {r.seconds:.1f}s | {tokens} |")
     bad = [r for r in results if not r.passed]
     if bad:
         out += ["", "## Failures", ""]
