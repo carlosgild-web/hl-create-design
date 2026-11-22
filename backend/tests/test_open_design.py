@@ -1,4 +1,4 @@
-"""Open in KiCad, the project zip and the file locations (decision 0019)."""
+"""Open in KiCad, the project zip and the file locations (decisions 0019 and 0030)."""
 
 from __future__ import annotations
 
@@ -19,11 +19,13 @@ BASE = "/api/designs/HW/HL-HW-26-0042/C"
 EXE = ".exe" if sys.platform == "win32" else ""
 
 
-def fake_install(tmp_path, gui: bool = True) -> str:
-    """A KiCad bin folder: kicad-cli, and the GUI next to it when `gui`."""
+def fake_install(tmp_path, gui: bool = True, editor: bool = False) -> str:
+    """A KiCad bin folder: kicad-cli, the Project Manager next to it when `gui`, and the
+    schematic editor when `editor`."""
     bin_dir = tmp_path / "kicad" / "bin"
     bin_dir.mkdir(parents=True)
     names = [f"kicad-cli{EXE}"] + ([f"kicad{EXE}"] if gui else [])
+    names += [f"eeschema{EXE}"] if editor else []
     for name in names:
         (bin_dir / name).write_bytes(b"")
         (bin_dir / name).chmod(0o755)
@@ -65,6 +67,34 @@ def test_open_starts_the_gui_with_the_project_and_audits(api, settings, launched
     assert program.endswith(f"kicad{EXE}") and project.endswith("HL-HW-26-0042_C.kicad_pro")
     opened = [r for r in audit_rows(deps.engine_dep(settings)) if r.action == "design_opened"]
     assert [(r.design_number, r.revision) for r in opened] == [("HL-HW-26-0042", "C")]
+
+
+def test_open_starts_the_schematic_editor_with_the_schematic(api, settings, launched, tmp_path):
+    """Decision 0030: the drawing and its title block are on screen at once."""
+    settings.kicad_cli = fake_install(tmp_path / "full", editor=True)
+
+    assert api.post(f"{BASE}/open").status_code == 200
+
+    [(program, schematic)] = launched
+    assert program.endswith(f"eeschema{EXE}") and schematic.endswith("HL-HW-26-0042_C.kicad_sch")
+    [opened] = [r for r in audit_rows(deps.engine_dep(settings)) if r.action == "design_opened"]
+    assert opened.details["program"] == f"eeschema{EXE}"
+
+
+def test_open_falls_back_to_the_project_manager_without_the_schematic(
+    api, settings, launched, tmp_path
+):
+    settings.kicad_cli = fake_install(tmp_path / "full", editor=True)
+    folder = settings.designs_root / "HW" / "HL-HW-26-0042" / "C"
+    (folder / "HL-HW-26-0042_C.kicad_sch").unlink()
+
+    assert api.post(f"{BASE}/open").status_code == 200
+    [(program, project)] = launched
+    assert program.endswith(f"kicad{EXE}") and project.endswith("HL-HW-26-0042_C.kicad_pro")
+
+    (folder / "HL-HW-26-0042_C.kicad_pro").unlink()
+    assert api.post(f"{BASE}/open").status_code == 404
+    assert len(launched) == 1
 
 
 def test_open_is_refused_when_turned_off_or_without_a_gui(api, settings, launched, tmp_path):

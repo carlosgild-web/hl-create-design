@@ -19,14 +19,44 @@ from pathlib import Path
 Launcher = Callable[[list[str]], object]
 
 
-def kicad_gui(kicad_cli: str) -> Path | None:
-    """The KiCad GUI that sits next to `kicad-cli` (same install), or None."""
+def _next_to_cli(kicad_cli: str, program: str) -> Path | None:
+    """A KiCad program that sits next to `kicad-cli` (same install), or None."""
     found = shutil.which(kicad_cli)
     if found is None:
         return None
-    name = "kicad.exe" if sys.platform == "win32" else "kicad"
-    gui = Path(found).resolve().with_name(name)
-    return gui if gui.is_file() else None
+    name = f"{program}.exe" if sys.platform == "win32" else program
+    path = Path(found).resolve().with_name(name)
+    return path if path.is_file() else None
+
+
+def kicad_gui(kicad_cli: str) -> Path | None:
+    """The KiCad Project Manager next to `kicad-cli`, or None."""
+    return _next_to_cli(kicad_cli, "kicad")
+
+
+def kicad_schematic_editor(kicad_cli: str) -> Path | None:
+    """KiCad's schematic editor (eeschema) next to `kicad-cli`, or None."""
+    return _next_to_cli(kicad_cli, "eeschema")
+
+
+def open_command(kicad_cli: str, folder: Path, stem: str) -> list[str] | None:
+    """What "Open in KiCad" starts (decision 0030): the schematic editor with the design's
+    schematic, so the drawing and its title block are on screen at once. It loads the
+    `.kicad_pro` next to the schematic, so the text variables are filled. Without eeschema
+    or the schematic: the Project Manager with the project, as before (decision 0019)."""
+    editor = kicad_schematic_editor(kicad_cli)
+    schematic = folder / f"{stem}.kicad_sch"
+    if editor is not None and schematic.is_file():
+        return [str(editor), str(schematic)]
+    gui = kicad_gui(kicad_cli)
+    project = folder / f"{stem}.kicad_pro"
+    if gui is not None and project.is_file():
+        return [str(gui), str(project)]
+    return None
+
+
+def can_open(kicad_cli: str) -> bool:
+    return kicad_schematic_editor(kicad_cli) is not None or kicad_gui(kicad_cli) is not None
 
 
 def popen_detached(command: list[str]) -> subprocess.Popen[bytes]:

@@ -49,7 +49,7 @@ describe('preview dialog (decision 0018)', () => {
 
     await user.click(within(dialog).getByRole('button', { name: 'Open in KiCad' }))
 
-    expect(await within(dialog).findByText(/KiCad is starting with the project/)).toBeInTheDocument()
+    expect(await within(dialog).findByText(/schematic editor is opening with the design/)).toBeInTheDocument()
     expect(calls.some((c) => c.url === '/api/designs/HW/HL-HW-26-0042/C/open')).toBe(true)
   })
 

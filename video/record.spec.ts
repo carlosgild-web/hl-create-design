@@ -541,7 +541,7 @@ test('demo take @demo', async ({ browser, baseURL, request }) => {
     await sleep(2500)
     if (process.env.VIDEO_OPEN_KICAD !== '0') {
       await app.getByRole('button', { name: 'Open in KiCad' }).click()
-      await expect(app.getByText(/KiCad is starting with the project/)).toBeVisible({ timeout: 30_000 })
+      await expect(app.getByText(/schematic editor is opening with the design/)).toBeVisible({ timeout: 30_000 })
     }
     await conductor.step('open_kicad')
 

@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
@@ -24,7 +25,7 @@ from app.db import store
 from app.db.models import AuditLog
 from app.db.session import write_audit
 from app.designs import check_fields, normalize_payload
-from app.kicad.launcher import kicad_gui, zip_folder
+from app.kicad.launcher import can_open, open_command, zip_folder
 from app.standards import validators as v
 
 router = APIRouter(prefix="/api", tags=["designs"])
@@ -134,7 +135,7 @@ def design_files(
     return {
         "folder": str(folder),
         "project_file": str(project),
-        "can_open": settings.kicad_open_enabled and kicad_gui(settings.kicad_cli) is not None,
+        "can_open": settings.kicad_open_enabled and can_open(settings.kicad_cli),
     }
 
 
@@ -147,17 +148,20 @@ def open_in_kicad(
     engine: EngineDep,
     launch: LauncherDep,
 ) -> dict[str, Any]:
-    """Start the KiCad GUI with the project, on the user's click. Writes no file and calls
-    no SAP (decision 0019); audited like every other action on a design."""
+    """Start KiCad's schematic editor with the design (decision 0030; the Project Manager
+    when there is no schematic editor), on the user's click. Writes no file and calls no
+    SAP (decision 0019); audited like every other action on a design."""
     folder = _existing_folder(settings, department, design_number, revision)
-    gui = kicad_gui(settings.kicad_cli) if settings.kicad_open_enabled else None
-    if gui is None:
+    if not (settings.kicad_open_enabled and can_open(settings.kicad_cli)):
         raise HTTPException(409, "Open in KiCad is not available on this server")
-    project = folder / f"{v.design_file_stem(design_number, revision)}.kicad_pro"
-    if not project.is_file():
-        raise HTTPException(404, "The project file is missing")
+    stem = v.design_file_stem(design_number, revision)
+    command = open_command(settings.kicad_cli, folder, stem)
+    if command is None:
+        raise HTTPException(404, "The schematic and the project file are missing")
+    gui = Path(command[0])
+    project = folder / f"{stem}.kicad_pro"
     try:
-        launch([str(gui), str(project)])
+        launch(command)
     except OSError as exc:
         raise HTTPException(500, f"KiCad did not start: {exc}") from exc
     write_audit(
