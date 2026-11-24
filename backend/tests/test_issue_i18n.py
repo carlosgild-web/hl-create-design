@@ -17,12 +17,17 @@ from app.designs import pdf_not_exported
 from app.kicad.exporter import ExportError
 from app.standards import validators as v
 
-MESSAGES = (REPO_ROOT / "frontend" / "src" / "i18n" / "messages.ts").read_text(encoding="utf-8")
+MESSAGES_TS = REPO_ROOT / "frontend" / "src" / "i18n" / "messages.ts"
+SOURCE_FILES = [
+    REPO_ROOT / "backend" / "app" / p for p in ("standards/validators.py", "designs.py")
+]
+if not all(p.is_file() for p in (MESSAGES_TS, *SOURCE_FILES)):
+    # The Docker image ships the backend without the frontend sources (CI's KiCad job).
+    pytest.skip("needs the repo checkout (frontend/src)", allow_module_level=True)
+
+MESSAGES = MESSAGES_TS.read_text(encoding="utf-8")
 # The modules that build user-facing issues.
-SOURCES = "".join(
-    (REPO_ROOT / "backend" / "app" / path).read_text(encoding="utf-8")
-    for path in ("standards/validators.py", "designs.py")
-)
+SOURCES = "".join(p.read_text(encoding="utf-8") for p in SOURCE_FILES)
 _ENTRY_RE = re.compile(r"'(issue\.[a-z_.]+)': '((?:[^'\\]|\\.)*)'")
 _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
 
