@@ -23,5 +23,8 @@ export default defineConfig({
     deviceScaleFactor: 1,
     colorScheme: 'light',
     locale: 'en-US',
+    // Without it a click on an element that never becomes clickable waits for the whole test
+    // timeout (a take once looked stuck for 30 min): fail with the element's name instead.
+    actionTimeout: 90_000,
   },
 })

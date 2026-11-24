@@ -8,6 +8,7 @@
     "video:smoke": "playwright test --grep @smoke",
     "video:demo": "playwright test --grep @demo && node cues.mjs out/demo && node compose.mjs out/demo",
     "video:dahl": "playwright test --grep @dahl && node cues.mjs out/dahl && node compose.mjs out/dahl --cut-gaps --readme",
+    "video:groq": "playwright test --grep @groq && node cues.mjs out/groq && node compose.mjs out/groq --cut-gaps --readme",
     "video:verify": "node cues.mjs out/demo --verify",
     "video:verify-dahl": "node cues.mjs out/dahl --verify"
   },

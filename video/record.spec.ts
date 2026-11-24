@@ -45,6 +45,8 @@ type Storyboard = {
   /** Flexible takes: the models the run may use (Dahl falls back, decision 0031), id -> banner name. */
   models?: Record<string, string>
   banner: string
+  /** The short take: per provider, the banner and the models it may show. */
+  providers?: Record<string, { banner: string; models: Record<string, string> }>
   mode?: 'strict' | 'flexible'
   hold?: number
   sentences: Record<string, string>
@@ -490,7 +492,9 @@ async function guard(api: APIRequestContext, provider: string) {
   const hint =
     provider === 'dahl'
       ? 'Start the app with start.cmd and answer Y to "Use Dahl?", then run this again.'
-      : 'Start the app with start.cmd, answer n to the cloud models, then d (demo), and run this again.'
+      : provider === 'groq'
+        ? 'Start the app with start.cmd, answer n to "Use Dahl?" and Y to "Use Groq?", then run this again.'
+        : 'Start the app with start.cmd, answer n to the cloud models, then d (demo), and run this again.'
   let health: any
   try {
     const response = await api.get('/api/health', { timeout: 5_000 })
@@ -677,10 +681,13 @@ async function saveTake(conductor: Conductor, page: Page, context: import('@play
   }
 }
 
-test('dahl take @dahl', async ({ browser, baseURL, request }) => {
+// The short video with a real model: on Dahl (decision 0029) or on Groq (decision 0012). The
+// rows are the same; the storyboard's `providers` entry sets the banner and the models.
+for (const provider of ['dahl', 'groq'] as const) test(`${provider} take @${provider}`, async ({ browser, baseURL, request }) => {
   test.setTimeout(30 * 60_000)
-  const board = loadBoard('storyboard-dahl.json')
-  const outDir = join(HERE, 'out', 'dahl')
+  const base = loadBoard('storyboard-dahl.json')
+  const board: Storyboard = { ...base, provider, ...(base.providers?.[provider] ?? {}) }
+  const outDir = join(HERE, 'out', provider)
   mkdirSync(outDir, { recursive: true })
   const health = await guard(request, board.provider)
   const name = process.env.VIDEO_DESIGN_NAME || 'Bead Grader Controller'

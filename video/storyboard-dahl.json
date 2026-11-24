@@ -7,6 +7,12 @@
     "MiniMaxAI/MiniMax-M2.7": "MiniMax-M2.7"
   },
   "banner": "Real model: {model} (Dahl)",
+  "providers": {
+    "groq": {
+      "banner": "Real model: {model} (Groq)",
+      "models": { "openai/gpt-oss-120b": "gpt-oss-120b" }
+    }
+  },
   "mode": "flexible",
   "hold": 0.75,
   "notes": [
@@ -32,8 +38,8 @@
       "subtitle": "The passages go to the model as a tool result.",
       "callouts": [["backend/app/standards/manual_search.py", "ManualIndex.search"]], "payload": { "from": "event", "pick": "result.passages.0" } },
     { "id": "1.4", "scene": 1, "on": { "event": "message" }, "layer": "Model",
-      "subtitle": "GLM-5.3 writes the answer from the passages and cites the manual section.",
-      "callouts": [["backend/app/llm/groq.py", "DahlClient"]], "payload": { "from": "event" } },
+      "subtitle": "The model writes the answer from the passages and cites the manual section.",
+      "callouts": [["backend/app/llm/groq.py", "GroqClient.chat"]], "payload": { "from": "event" } },
 
     { "id": "2.1", "scene": 2, "on": { "step": "typed:reserve" }, "layer": "Browser",
       "subtitle": "Now a new design, in one sentence." },
