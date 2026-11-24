@@ -24,13 +24,27 @@ class Settings(BaseSettings):
     )
 
     # LLM
-    llm_provider: Literal["fake", "ollama", "groq"] = "fake"
+    llm_provider: Literal["auto", "demo", "ollama", "groq", "dahl", "fake"] = "auto"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:4b-instruct-2507-q4_K_M"
     ollama_timeout_s: float = Field(default=180.0, gt=0, le=3600)  # per model call
     groq_api_key: SecretStr | None = None
     groq_model: str = "openai/gpt-oss-120b"
     groq_base_url: str = "https://api.groq.com/openai/v1"
+    # Dahl inference: OpenAI-compatible, first in the auto chain (decision 0029). GLM-5.3
+    # Flash was the one model of the three that answered a real turn with a native tool call.
+    dahl_api_key: SecretStr | None = None
+    dahl_model: str = "zai-org/GLM-5.3-Flash"
+    dahl_base_url: str = "https://inference.dahl.global/v1"
+    # Tried in order when DAHL_MODEL is at capacity or does not answer in time (decision
+    # 0031). Comma-separated; empty turns the fallback off.
+    dahl_fallback_models: str = "deepseek-ai/DeepSeek-V4-Flash-0731,MiniMaxAI/MiniMax-M2.7"
+
+    @property
+    def dahl_models(self) -> tuple[str, ...]:
+        """DAHL_MODEL first, then the fallbacks, without repeats."""
+        names = [self.dahl_model, *self.dahl_fallback_models.split(",")]
+        return tuple(dict.fromkeys(n.strip() for n in names if n.strip()))
 
     # Mock SAP
     sap_base_url: str = "http://localhost:8100"
@@ -39,6 +53,9 @@ class Settings(BaseSettings):
 
     # KiCad
     kicad_cli: str = "kicad-cli"
+    # "Open in KiCad" starts the GUI next to kicad-cli on the backend's machine: only useful
+    # when that is the user's own computer (local mode). The Docker image turns it off.
+    kicad_open_enabled: bool = True
 
     # Storage
     designs_root: Path = Path("./data/designs")
@@ -46,6 +63,13 @@ class Settings(BaseSettings):
 
     # Agent
     agent_max_iterations: int = Field(default=6, ge=1, le=20)
+    # One whole answer (all model calls and rate-limit waits); then the turn ends with a message.
+    agent_turn_timeout_s: float = Field(default=120.0, gt=0, le=3600)
+    # The backend searches the manual itself before the first model call (decision 0024):
+    # auto = for questions about the rules or the app, on = for every message, off = never.
+    agent_preretrieval: Literal["auto", "on", "off"] = "auto"
+    # Ollama only: add one short example answer to the system prompt (decision 0026).
+    agent_few_shot: bool = False
 
     # The built frontend (`npm run build`); served at `/` when the folder exists (Docker image).
     frontend_dir: Path = Path("./frontend/dist")

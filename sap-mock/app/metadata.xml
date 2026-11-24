@@ -18,7 +18,7 @@
         <Property Name="Status" Type="Edm.String" Nullable="false" MaxLength="10" sap:label="Status" sap:creatable="false"/>
         <Property Name="Material" Type="Edm.String" Nullable="false" MaxLength="18" sap:label="Material" sap:creatable="false" sap:updatable="false"/>
         <Property Name="Wbs" Type="Edm.String" Nullable="false" MaxLength="9" sap:label="WBS Element" sap:creatable="false"/>
-        <Property Name="CurrentRevision" Type="Edm.String" Nullable="false" MaxLength="1" sap:label="Current Revision" sap:creatable="false" sap:updatable="false"/>
+        <Property Name="CurrentRevision" Type="Edm.String" Nullable="false" MaxLength="2" sap:label="Current Revision" sap:creatable="false" sap:updatable="false"/>
         <Property Name="CreatedOn" Type="Edm.DateTime" Nullable="false" Precision="0" sap:display-format="Date" sap:label="Created On" sap:creatable="false" sap:updatable="false"/>
         <Property Name="CreatedBy" Type="Edm.String" Nullable="false" MaxLength="40" sap:label="Created By" sap:updatable="false"/>
         <Property Name="BlockReason" Type="Edm.String" Nullable="false" MaxLength="120" sap:label="Block Reason" sap:creatable="false"/>
@@ -32,7 +32,7 @@
           <PropertyRef Name="Revision"/>
         </Key>
         <Property Name="DesignNumber" Type="Edm.String" Nullable="false" MaxLength="14" sap:label="Design Number"/>
-        <Property Name="Revision" Type="Edm.String" Nullable="false" MaxLength="1" sap:label="Revision"/>
+        <Property Name="Revision" Type="Edm.String" Nullable="false" MaxLength="2" sap:label="Revision"/>
         <Property Name="CreatedOn" Type="Edm.DateTime" Nullable="false" Precision="0" sap:display-format="Date" sap:label="Created On"/>
         <Property Name="CreatedBy" Type="Edm.String" Nullable="false" MaxLength="40" sap:label="Created By"/>
       </EntityType>
@@ -63,7 +63,7 @@
 
       <EntityContainer Name="ZHL_PLM_DESIGN_SRV_Entities" m:IsDefaultEntityContainer="true" sap:supported-formats="json">
         <EntitySet Name="DesignSet" EntityType="ZHL_PLM_DESIGN_SRV.Design" sap:creatable="true" sap:updatable="false" sap:deletable="false" sap:pageable="true" sap:content-version="1"/>
-        <EntitySet Name="RevisionSet" EntityType="ZHL_PLM_DESIGN_SRV.Revision" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:addressable="true" sap:content-version="1"/>
+        <EntitySet Name="RevisionSet" EntityType="ZHL_PLM_DESIGN_SRV.Revision" sap:creatable="true" sap:updatable="false" sap:deletable="false" sap:addressable="true" sap:content-version="1"/>
         <EntitySet Name="DepartmentSet" EntityType="ZHL_PLM_DESIGN_SRV.Department" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:content-version="1"/>
         <AssociationSet Name="DesignRevisionsSet" Association="ZHL_PLM_DESIGN_SRV.DesignRevisions" sap:creatable="false" sap:updatable="false" sap:deletable="false" sap:content-version="1">
           <End EntitySet="DesignSet" Role="FromRole_DesignRevisions"/>

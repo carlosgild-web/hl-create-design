@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 from app.evals.fake_sap import _design
 from app.evals.harness import Env, Expect, Scenario, Turn
@@ -184,6 +185,97 @@ SCENARIOS: tuple[Scenario, ...] = (
             form={"department": "HW", "designer": "C. Velazquez"},
         ),
         tags=("happy", "fill"),
+    ),
+    # The UI's "Try an example" button sends exactly these texts (frontend i18n
+    # `chat.example.message`): the department must reach the form, not only a question.
+    *(
+        Scenario(
+            f"example-button-fill-{lang}",
+            f"The 'Try an example' message ({lang.upper()}) fills the department",
+            (
+                Turn(
+                    text,
+                    [
+                        call("propose_form_values", department=HW, name=name),
+                        say(question),
+                    ],
+                    language=lang,
+                ),
+            ),
+            Expect(tools=("propose_form_values",), form={"department": "HW"}),
+            tags=("fill",),
+        )
+        for lang, text, name, question in (
+            (
+                "en",
+                "New controller board for the drilling machine, Hardware.",
+                "Drilling Machine Controller",
+                "Who is the designer?",
+            ),
+            (
+                "es",
+                "Nueva placa controladora para la taladradora, Hardware.",
+                "Controladora Taladradora",
+                "¿Quién es el diseñador?",
+            ),
+        )
+    ),
+    # The Start panel (decision 0018): the form already carries the mode and SAP's values.
+    Scenario(
+        "existing-mode-new-revision",
+        "From an existing design: the assistant validates and opens the revision C card",
+        (
+            Turn(
+                "Create the new revision, please.",
+                [
+                    call("validate_design_request", **drill(revision="C")),
+                    call("request_create_design", **drill(revision="C")),
+                    say("Revision C is ready to create. Confirm the card."),
+                ],
+                form={"mode": "existing", **drill(revision="C")},
+                click="confirm",
+            ),
+        ),
+        Expect(
+            tools=("validate_design_request", "request_create_design"),
+            not_tools=("propose_form_values", "request_reserve_number"),
+            cards=("create_design",),
+            audit=("design_created",),
+            folders=("HW/HL-HW-26-0042/C",),
+        ),
+        tags=("happy", "start-panel"),
+    ),
+    Scenario(
+        "new-mode-reserve",
+        "New design: the assistant reserves a number instead of inventing one",
+        (
+            Turn(
+                "Get me a number for this design.",
+                [
+                    call(
+                        "request_reserve_number",
+                        department=HW,
+                        name="Gate Driver",
+                        designer="C. Velazquez",
+                    ),
+                    say("Confirm the card and SAP issues the number."),
+                ],
+                form={
+                    "mode": "new",
+                    "department": HW,
+                    "name": "Gate Driver",
+                    "designer": "C. Velazquez",
+                },
+                click="confirm",
+            ),
+        ),
+        Expect(
+            tools=("request_reserve_number",),
+            not_tools=("request_create_design",),
+            cards=("reserve_number",),
+            audit=("number_reserved",),
+        ),
+        tags=("happy", "start-panel"),
     ),
     Scenario(
         "wizard-reserve-then-create",
@@ -651,6 +743,32 @@ SCENARIOS: tuple[Scenario, ...] = (
         ),
         tags=("knowledge",),
     ),
+    # Pre-retrieval (decision 0024): the scripted model never searches; the backend did,
+    # so the answer can still cite what the search returned. No card, nothing created.
+    Scenario(
+        "preretrieval-answers-a-question",
+        "A question gets the backend's manual search before the model answers",
+        (
+            Turn(
+                "I clicked Undo after reserving. Is the number released?",
+                [explain("No: Undo only clears the form; the reservation stays in SAP.")],
+            ),
+        ),
+        Expect(tools=("search_design_manual",), cards=(), cite=True),
+        tags=("knowledge", "preretrieval"),
+    ),
+    Scenario(
+        "preretrieval-es",
+        "Spanish: an app question is answered from the manual the backend searched",
+        (
+            Turn(
+                "¿Por qué mi diseño nuevo ya trae un circuito de 24 V a 5 V?",
+                [explain("Es el circuito de ejemplo de la plantilla: bórralo y dibuja el tuyo.")],
+            ),
+        ),
+        Expect(tools=("search_design_manual",), cards=(), cite=True),
+        tags=("knowledge", "preretrieval", "es"),
+    ),
     Scenario(
         "departments-list",
         "List the departments from SAP",
@@ -667,5 +785,57 @@ SCENARIOS: tuple[Scenario, ...] = (
         tags=("knowledge",),
     ),
 )
+
+
+# --- FAQ questions (Phase 9f): one per topic, in English and Spanish ----------------------
+# From `faq_questions.json`, so the eval asks what users ask. A search must happen (the
+# model's or the backend's pre-retrieval, decision 0024), the answer cites a section that
+# answers it, no card opens, and it is in the user's language.
+
+FAQ_BANK = Path(__file__).with_name("faq_questions.json")
+FAQ_TOPICS = {
+    "08": "own-number",
+    "17": "revision-i",
+    "24": "released",
+    "32": "spanish-name",
+    "36": "designer",
+    "42": "template-circuit",
+    "43": "where-files",
+    "50": "card-expired",
+}
+FAQ_ANSWER = {"en": "From the Design Manual:", "es": "Según el Manual de Diseño:"}
+
+
+def _faq_scenarios() -> tuple[Scenario, ...]:
+    entries = {e["id"]: e for e in json.loads(FAQ_BANK.read_text(encoding="utf-8"))}
+    out = []
+    for number, topic in FAQ_TOPICS.items():
+        for lang in ("en", "es"):
+            entry = entries[f"{lang}-{number}"]
+            out.append(
+                Scenario(
+                    f"faq-{topic}-{lang}",
+                    f"FAQ ({lang.upper()}): {entry['question']}",
+                    (
+                        Turn(
+                            entry["question"],
+                            [explain(FAQ_ANSWER[lang])],
+                            language=lang,
+                        ),
+                    ),
+                    Expect(
+                        tools=("search_design_manual",),
+                        cards=(),
+                        cite=True,
+                        cite_any=tuple(entry["accepted_refs"]),
+                        language=lang,
+                    ),
+                    tags=("knowledge", "faq", lang),
+                )
+            )
+    return tuple(out)
+
+
+SCENARIOS = (*SCENARIOS, *_faq_scenarios())
 
 assert len({s.id for s in SCENARIOS}) == len(SCENARIOS), "duplicate scenario id"

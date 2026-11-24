@@ -1,5 +1,6 @@
 # Persistent data: generated designs, SQLite files, traces (never commit)
 data/
+data-video/
 
 # Env
 .env
@@ -21,6 +22,10 @@ htmlcov/
 frontend/node_modules/
 frontend/dist/
 frontend/coverage/
+
+# Explainer videos: dependencies and the takes (decision 0028)
+video/node_modules/
+video/out/
 
 # KiCad backups and lock files
 *-backups/

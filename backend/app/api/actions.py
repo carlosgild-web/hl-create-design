@@ -3,11 +3,14 @@
 `POST /api/actions/{id}/confirm` is called by the user's click on a confirmation card.
 It is the only endpoint that reserves a SAP number or creates design files; the model
 can't reach it. Status codes: 200 done, 404 unknown, 409 already decided, 410 expired,
-422 a rule is broken, 409 the folder exists, 502 SAP failed, 500 the export failed.
+422 a rule is broken, 409 the folder exists, 502 SAP failed. A failed PDF export is not a
+failure: the project is kept and the result has a `pdf_not_exported` warning (decision 0023).
 The body is always the action with its result.
 """
 
 from __future__ import annotations
+
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
@@ -23,7 +26,6 @@ FAILURE_STATUS = {
     "conflict": 409,
     "sap_unavailable": 502,
     "sap": 502,
-    "export": 500,
 }
 
 
@@ -47,9 +49,12 @@ def confirm(
     engine: EngineDep,
     sap_factory: SapFactoryDep,
     runner: RunnerDep,
+    lang: Literal["en", "es"] = "en",
 ) -> JSONResponse:
+    """`lang`: the UI language, so SAP's own refusal text comes in it (decision 0027)."""
     try:
         with sap_factory() as sap:
+            sap.use_language(lang)
             outcome = confirm_action(
                 action_id, settings=settings, engine=engine, sap=sap, runner=runner
             )

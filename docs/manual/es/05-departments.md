@@ -18,6 +18,8 @@ tiene el código que se usa en el número de diseño.
 | `EMB` | Placas Embebidas (*Embedded Boards*) | Placas con microcontrolador: nodos de sensores, pantallas, pasarelas | A. Kowalski |
 | `TFX` | Utillajes de Prueba (*Test Fixtures*) | Útiles de prueba, racks de burn-in y útiles de calibración para las placas anteriores | R. Navarro |
 
+Palabras clave: departamentos, responsables, quién, HW, PWR, EMB, TFX, departments
+
 ## ¿Qué departamento?
 <a id="choosing"></a>
 
@@ -30,11 +32,15 @@ Elige según la función principal de la placa:
 - Si dudas, pregunta al responsable del departamento **antes** de reservar el número. El
   código forma parte del número, y un número nunca cambia.
 
+Palabras clave: qué departamento, cuál departamento, elegir, me toca, utillaje, fuente, departamento equivocado, me equivoqué, cambiar departamento, pasar número, which department
+
 ## En el cajetín
 <a id="title-block-format"></a>
 
 El departamento se muestra como código, raya corta (–) y nombre en inglés:
 `HW – Hardware Design`.
+
+Palabras clave: departamento en el cajetín, nombre del departamento
 
 ## Proyectos por defecto
 <a id="default-projects"></a>
@@ -51,3 +57,5 @@ departamento para ese año:
 
 Ingeniería de Producto puede mover después un diseño a un proyecto de cliente o de
 inversión.
+
+Palabras clave: proyecto, proyecto por defecto, P-26-0108, quién asigna, escoger proyecto, project

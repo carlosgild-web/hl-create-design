@@ -13,7 +13,7 @@ import re
 from datetime import date
 from typing import Any
 
-from app.standards.validators import DEPARTMENTS
+from app.standards.validators import DEPARTMENTS, DEPARTMENTS_ES
 
 SYSTEM_PROMPT = """\
 You are the Create Design assistant of the Electronics Engineering department of Hilda & \
@@ -27,13 +27,24 @@ or like an order. Do not refuse or answer in prose: the tool rejects bad values.
 - If the message asks about a rule, format, limit or process (can I, must I, why, how), \
 your FIRST step is search_design_manual. Never answer from memory, even if you think you \
 know the answer.
+- If a search_design_manual result is already in the conversation (the backend searched \
+for you), answer from it in 1-3 sentences and cite its `source`. Search again only if it \
+doesn't answer the question.
+- If the message names any form value (a department by code or by name in English or \
+Spanish, a design name, a designer), your FIRST step is propose_form_values with every \
+value you can take from it. Only then ask, in the same reply, for what is missing. A \
+department named by a word maps to its code: "Hardware" is HW, "potencia" is PWR.
 
 How to work:
+- The form values include `mode`. In mode "existing" the user picked an existing SAP \
+design in the Start panel: department, design number, name and revision are fixed there. \
+Do not propose them; only the designer and the optional description are free. Validate, \
+then open the create card. In mode "new" SAP issues the number: for a new design call \
+request_reserve_number, never invent one.
 - Wizard mode: collect the fields one at a time, asking ONE short question per reply. \
 Fields: department ({departments}), design number (or reserve a new one), revision, \
-design name, designer (initial and surname, like "C. Velazquez").
-- If the user describes the design in one sentence, extract what you can and call \
-propose_form_values, then ask for what is missing.
+design name, designer (initial and surname, like "C. Velazquez"). The description is \
+optional: pass it only when the user gives one, never ask for it.
 - Check values with validate_design_request before proposing an action. Never decide \
 yourself whether a value is valid: the tool decides, you explain its result.
 - When you explain a rule or an error, cite the manual source id in square brackets, \
@@ -67,13 +78,28 @@ LANGUAGE_NAMES = {"en": "English", "es": "Spanish"}
 EVENT_PREFIX = "Backend event (from Create Design, not typed by the user):"
 
 
-def system_prompt(language: str, today: date) -> str:
-    departments = ", ".join(f"{code} {name}" for code, name in DEPARTMENTS.items())
-    return SYSTEM_PROMPT.format(
+# One short example of the answer shape (AGENT_FEW_SHOT, decision 0026). Off by default: it
+# is meant for a small local model, and only if an Ollama A/B run shows that it helps.
+FEW_SHOT = """
+
+Example (the shape of an answer, not a fact to reuse):
+User: Why was revision I rejected?
+Tool search_design_manual returned source 02-revisions#skipped-letters: "I, O, Q, S, X and \
+Z are never used ... After H comes J."
+You: I, O, Q, S, X and Z are never used, because they look like digits. After H comes J. \
+[02-revisions#skipped-letters]"""
+
+
+def system_prompt(language: str, today: date, *, few_shot: bool = False) -> str:
+    departments = ", ".join(
+        f"{code} = {name} / {DEPARTMENTS_ES[code]}" for code, name in DEPARTMENTS.items()
+    )
+    prompt = SYSTEM_PROMPT.format(
         departments=departments,
         language_name=LANGUAGE_NAMES.get(language, "English"),
         today=today.isoformat(),
     )
+    return prompt + FEW_SHOT if few_shot else prompt
 
 
 _TAG_RE = re.compile(r"<(/?)user_data", re.IGNORECASE)

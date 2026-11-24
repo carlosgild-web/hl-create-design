@@ -1,8 +1,7 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import { I18nContext, translate, type I18n } from './context'
+import { I18nContext, translate, translatePlural, type I18n } from './context'
 import type { Lang } from './messages'
-
 
 const STORAGE_KEY = 'hl-create-design.lang'
 
@@ -26,8 +25,17 @@ export function I18nProvider({ children, lang: fixed }: { children: ReactNode; l
       // not persisted: the choice still applies to this visit
     }
   }, [])
+  // Screen readers and the browser's spell check and hyphenation follow <html lang>.
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
   const value = useMemo<I18n>(
-    () => ({ lang, setLang, t: (key, vars) => translate(lang, key, vars) }),
+    () => ({
+      lang,
+      setLang,
+      t: (key, vars) => translate(lang, key, vars),
+      tn: (base, count, vars) => translatePlural(lang, base, count, vars),
+    }),
     [lang, setLang],
   )
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>

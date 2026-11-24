@@ -18,9 +18,10 @@ from app.llm.base import ChatTurn, LLMClient, LLMError, Message, ToolCall, ToolS
 
 Step = ChatTurn | Callable[[list[Message], list[ToolSpec]], ChatTurn]
 
+# What the unscripted test double answers. The app's demo is `DemoClient` (LLM_PROVIDER=demo).
 DEMO_NOTICE = (
-    "Demo mode: no language model is configured (LLM_PROVIDER=fake). The form and the "
-    "checks work; set LLM_PROVIDER=ollama to talk to the assistant."
+    "Test model: no language model is configured (LLM_PROVIDER=fake). The form and the "
+    "checks work; LLM_PROVIDER=demo gives the demo assistant, ollama or groq a real model."
 )
 
 _ids = itertools.count(1)

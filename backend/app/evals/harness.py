@@ -26,16 +26,19 @@ from sqlalchemy import Engine
 from app.actions import cancel_action, confirm_action
 from app.agent.service import AgentDeps, chat_turn
 from app.core.config import MANUAL_DIR, Settings
+from app.db import store
 from app.db.session import audit_rows, get_engine
 from app.evals.fake_kicad import FakeKicadCli
 from app.evals.fake_sap import FakeSap
 from app.llm.base import LLMClient
 from app.llm.fake import FakeClient, Step
-from app.standards.manual_search import ManualIndex
+from app.standards.manual_search import ManualIndex, normalize_refs
 
 TODAY = date(2026, 11, 17)  # the demo's pinned date (decision 0007)
 MAX_ITERATIONS = 6
 CITATION = re.compile(r"\[([\w-]+#[\w-]+)\]")
+# A link inside a manual passage: "(02-revisions.md#skipped-letters)".
+_MANUAL_LINK = re.compile(r"\((\d{2}-[a-z0-9-]+)\.md#([a-z0-9-]+)\)")
 
 
 @dataclass
@@ -75,6 +78,8 @@ class Expect:
     form: dict[str, str] = field(default_factory=dict)  # fields propose_form_values must set
     status: str = "answered"  # how the last run must end: answered, or limit (cut off)
     cite: bool = False  # the final answer must cite a manual reference the tools returned
+    cite_any: tuple[str, ...] = ()  # ...and one of these (the sections that answer it)
+    language: Literal["", "en", "es"] = ""  # the final answer is in this language
 
 
 @dataclass(frozen=True)
@@ -106,6 +111,11 @@ class ScenarioResult:
     answer: str
     seconds: float
     error: str = ""
+    # From the stored traces of the scenario's runs: what the model calls cost (0 when the
+    # provider does not report usage, as the fake and demo models).
+    model_calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
     @property
     def passed(self) -> bool:
@@ -128,7 +138,29 @@ class ScenarioResult:
             "answer": self.answer,
             "seconds": round(self.seconds, 2),
             "error": self.error,
+            "model_calls": self.model_calls,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
         }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ScenarioResult:
+        """A result saved by `agent-eval --resume` (the inverse of `to_dict`)."""
+        return cls(
+            id=data["id"],
+            title=data["title"],
+            tags=tuple(data.get("tags", ())),
+            provider=data["provider"],
+            model=data["model"],
+            checks=[Check(c["name"], c["ok"], c.get("detail", "")) for c in data["checks"]],
+            tool_calls=list(data.get("tool_calls", [])),
+            answer=data.get("answer", ""),
+            seconds=float(data.get("seconds", 0.0)),
+            error=data.get("error", ""),
+            model_calls=int(data.get("model_calls", 0)),
+            prompt_tokens=int(data.get("prompt_tokens", 0)),
+            completion_tokens=int(data.get("completion_tokens", 0)),
+        )
 
 
 ClientFor = Callable[[Turn], LLMClient]
@@ -167,6 +199,9 @@ class Observed:
     errors: list[str] = field(default_factory=list)
     confirmed_ok: list[str] = field(default_factory=list)  # kinds whose confirm succeeded
     script_left: int = 0
+    model_calls: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
 
     @property
     def codes(self) -> set[str]:
@@ -176,9 +211,27 @@ class Observed:
 
     @property
     def returned_refs(self) -> set[str]:
-        return {
+        """The manual ids a tool returned: each `ref` and `source`, and the sections a
+        returned passage links to ("See [02-revisions](02-revisions.md#skipped-letters)").
+        Citing a linked section cites an id the tool output contains (decision 0026)."""
+        refs = {
             str(v) for r in self.tool_results for k, v in _walk(r) if k in ("ref", "source") and v
         }
+        for r in self.tool_results:
+            for key, value in _walk(r):
+                if key == "text" and isinstance(value, str):
+                    refs |= {f"{doc}#{anchor}" for doc, anchor in _MANUAL_LINK.findall(value)}
+        return refs
+
+
+def _add_usage(seen: Observed, engine: Engine, run_id: int | None) -> None:
+    """Add the run's model calls and tokens, from its stored trace (invariant 6)."""
+    run = store.get_run(engine, run_id) if run_id is not None else None
+    for step in (run or {}).get("trace", {}).get("steps", []):
+        if step.get("type") == "model_call":
+            seen.model_calls += 1
+            seen.prompt_tokens += int(step.get("prompt_tokens") or 0)
+            seen.completion_tokens += int(step.get("completion_tokens") or 0)
 
 
 def _play_turn(
@@ -220,6 +273,7 @@ def _play_turn(
             seen.errors.append(data["message"])
         elif event.type == "done":
             seen.statuses.append(data["status"])
+            _add_usage(seen, deps.engine, data.get("run_id"))
     if isinstance(client, FakeClient):
         seen.script_left += client.remaining
 
@@ -335,20 +389,48 @@ def evaluate(sc: Scenario, env: Env, seen: Observed, folders_before: set[str]) -
         }
         add("form_fields", not wrong, f"expected {exp.form}, got {seen.form_fields}")
     if exp.cite:
-        cited = set(CITATION.findall(seen.answer))
+        cited = set(CITATION.findall(normalize_refs(seen.answer)))
         add(
             "cites_manual",
             bool(cited & seen.returned_refs),
             f"answer cites {sorted(cited)}; tools returned {sorted(seen.returned_refs)}",
         )
+    if exp.cite_any:
+        cited = set(CITATION.findall(normalize_refs(seen.answer)))
+        add(
+            "cites_an_answering_section",
+            bool(cited & set(exp.cite_any)),
+            f"answer cites {sorted(cited)}; accepted {sorted(exp.cite_any)}",
+        )
+    if exp.language:
+        got = answer_language(seen.answer)
+        add("answer_language", got == exp.language, f"expected {exp.language}, got {got}")
     return checks
+
+
+_ES_MARKERS = re.compile(r"[ñ¿¡áéíóú]|\b(el|la|los|las|de|del|que|es|en|una?|para|con|se|puedes)\b")
+_EN_MARKERS = re.compile(r"\b(the|is|are|and|of|to|you|your|can|it|in|a|an|for|with)\b")
+
+
+def answer_language(text: str) -> str:
+    """ "es" or "en", by counting common words (the citations removed). Rough, but enough to
+    tell whether a model answered a Spanish question in Spanish."""
+    plain = CITATION.sub(" ", text.lower())
+    es, en = len(_ES_MARKERS.findall(plain)), len(_EN_MARKERS.findall(plain))
+    return "es" if es > en else "en"
 
 
 # --- running -------------------------------------------------------------------------
 
 
 def run_scenario(
-    sc: Scenario, client_for: ClientFor, *, provider: str, model: str
+    sc: Scenario,
+    client_for: ClientFor,
+    *,
+    provider: str,
+    model: str,
+    preretrieval: Literal["auto", "on", "off"] = "auto",
+    few_shot: bool = False,
 ) -> ScenarioResult:
     started = time.perf_counter()
     seen = Observed()
@@ -362,6 +444,8 @@ def run_scenario(
             kicad_cli="kicad-cli",
             llm_provider="fake",
             agent_max_iterations=MAX_ITERATIONS,
+            agent_preretrieval=preretrieval,
+            agent_few_shot=few_shot,
         )
         engine = get_engine(settings.data_dir)
         env = Env(settings, engine, FakeSap(), FakeKicadCli())
@@ -417,10 +501,29 @@ def run_scenario(
         answer=seen.answer,
         seconds=time.perf_counter() - started,
         error=error,
+        model_calls=seen.model_calls,
+        prompt_tokens=seen.prompt_tokens,
+        completion_tokens=seen.completion_tokens,
     )
 
 
 def run_all(
-    scenarios: Sequence[Scenario], client_for: ClientFor, *, provider: str, model: str
+    scenarios: Sequence[Scenario],
+    client_for: ClientFor,
+    *,
+    provider: str,
+    model: str,
+    preretrieval: Literal["auto", "on", "off"] = "auto",
+    few_shot: bool = False,
 ) -> list[ScenarioResult]:
-    return [run_scenario(sc, client_for, provider=provider, model=model) for sc in scenarios]
+    return [
+        run_scenario(
+            sc,
+            client_for,
+            provider=provider,
+            model=model,
+            preretrieval=preretrieval,
+            few_shot=few_shot,
+        )
+        for sc in scenarios
+    ]

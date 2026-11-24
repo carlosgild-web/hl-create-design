@@ -11,11 +11,29 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from app import __version__
-from app.api import actions, chat, designs
+from app.agent.service import probe_turn
+from app.api import actions, chat, designs, manual, sap
 from app.cleanup import cleanup_designs
 from app.core.config import get_settings
 from app.db.session import get_engine
+from app.llm.factory import current_override, make_client
+from app.llm.resolve import current_resolution, resolve_auto
 
+
+def _console_logging() -> None:
+    """Show the app's own INFO lines (each model call, the provider choice) in the console
+    next to uvicorn's. Python's default would drop them (root level WARNING)."""
+    app_log = logging.getLogger("app")
+    if app_log.level == logging.NOTSET:
+        app_log.setLevel(logging.INFO)
+    if not any(getattr(h, "_hl_console", False) for h in app_log.handlers):
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("%(levelname)-9s %(name)s: %(message)s"))
+        handler._hl_console = True  # type: ignore[attr-defined]
+        app_log.addHandler(handler)
+
+
+_console_logging()
 log = logging.getLogger("app.cleanup")
 CLEANUP_EVERY_S = 3600
 
@@ -40,6 +58,9 @@ async def _cleanup_loop() -> None:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    if settings.llm_provider == "auto":  # probe Groq, then Ollama, once, at startup
+        await asyncio.to_thread(resolve_auto, settings, probe_turn())
     task = asyncio.create_task(_cleanup_loop()) if get_settings().designs_ttl_hours > 0 else None
     yield
     if task:
@@ -52,6 +73,8 @@ app = FastAPI(title="Create Design", version=__version__, lifespan=lifespan)
 app.include_router(chat.router)
 app.include_router(actions.router)
 app.include_router(designs.router)
+app.include_router(sap.router)
+app.include_router(manual.router)
 
 
 def mount_frontend(application: FastAPI, directory: Path) -> bool:
@@ -77,10 +100,26 @@ def mount_frontend(application: FastAPI, directory: Path) -> bool:
 @app.get("/api/health")
 def health() -> dict[str, str]:
     """Liveness probe. Reports the version and which LLM provider is configured."""
+    configured = get_settings().llm_provider
+    resolved = current_resolution() if configured == "auto" else None
+    override = current_override()
+    if override is not None:  # switched in the UI after a stuck turn
+        return {
+            "status": "ok",
+            "version": __version__,
+            "llm_provider": override.provider,
+            "llm_note": f"switched by the user to {override.provider} ({override.model})",
+        }
+    # The model in use, for the cloud providers: Dahl may have moved to a fallback model
+    # (decision 0031). Asking the shared client costs no request.
+    provider = resolved.provider if resolved else configured
+    model = make_client(get_settings()).model if provider in ("dahl", "groq") else None
     return {
         "status": "ok",
         "version": __version__,
-        "llm_provider": get_settings().llm_provider,
+        "llm_provider": provider,
+        **({"llm_model": model} if model else {}),
+        **({"llm_note": resolved.describe()} if resolved else {}),
     }
 
 

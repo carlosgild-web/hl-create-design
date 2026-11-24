@@ -23,6 +23,23 @@ export function sseResponse(events: [string, unknown][]): Response {
   return new Response(sseBody(events), { headers: { 'Content-Type': 'text/event-stream' } })
 }
 
+/** A chat stream that stays open: `send` more events, then `close`. For Stop and progress. */
+export function openStream(first: [string, unknown][]) {
+  let controller!: ReadableStreamDefaultController<Uint8Array>
+  const encoder = new TextEncoder()
+  const body = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c
+      c.enqueue(encoder.encode(sseBody(first)))
+    },
+  })
+  return {
+    response: new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }),
+    send: (events: [string, unknown][]) => controller.enqueue(encoder.encode(sseBody(events))),
+    close: () => controller.close(),
+  }
+}
+
 export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -69,7 +86,26 @@ export function stubFetch(...routes: Route[]) {
   return calls
 }
 
+const sapDesign = (over: Record<string, unknown>) => ({
+  department: 'HW',
+  material: '000000000040001234',
+  wbs: 'P-26-0108',
+  block_reason: '',
+  successor: '',
+  selectable: true,
+  ...over,
+})
+
+/** `GET /api/sap/designs` like the backend with the fake SAP of the backend tests. */
+export const SAP_DESIGNS = [
+  sapDesign({ design_number: 'HL-EMB-23-0002', department: 'EMB', name: 'Sensor Hub', status: 'OBSOLETE', revisions: ['A'], current_revision: 'A', next_free_revision: 'B', successor: 'HL-EMB-25-0011', selectable: false }),
+  sapDesign({ design_number: 'HL-EMB-25-0011', department: 'EMB', name: 'Sensor Hub II', status: 'RELEASED', revisions: ['A'], current_revision: 'A', next_free_revision: 'B' }),
+  sapDesign({ design_number: 'HL-HW-24-0003', name: 'Old Led Panel', status: 'BLOCKED', revisions: ['A', 'B'], current_revision: 'B', next_free_revision: 'C', block_reason: 'Supplier part discontinued', selectable: false }),
+  sapDesign({ design_number: 'HL-HW-26-0042', name: 'Bead Drill Controller', status: 'IN_WORK', revisions: ['A', 'B'], current_revision: 'B', next_free_revision: 'C' }),
+]
+
 export const baseRoutes: Route[] = [
+  (url) => (url === '/api/sap/designs?lang=en' ? jsonResponse(SAP_DESIGNS) : undefined),
   (url) =>
     url === '/api/departments'
       ? jsonResponse([
@@ -78,6 +114,9 @@ export const baseRoutes: Route[] = [
         ])
       : undefined,
   (url) => (url === '/api/designs' ? jsonResponse([]) : undefined),
+  (url) => (url === '/api/health' ? jsonResponse({ status: 'ok', llm_provider: 'fake' }) : undefined),
+  (url) =>
+    url === '/api/validate' ? jsonResponse({ ok: true, normalized: {}, errors: [], warnings: [] }) : undefined,
 ]
 
 /** The few user gestures the tests need, without an extra dependency. */

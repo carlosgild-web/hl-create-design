@@ -1,36 +1,84 @@
 import { useEffect, useRef, useState } from 'react'
+import { Loader2, MessageSquarePlus } from 'lucide-react'
 
-import type { Action } from '@/api/types'
-import type { TimelineItem } from '@/hooks/useChat'
+import type { Action, Department, SwitchTarget } from '@/api/types'
+import type { Activity, TimelineItem } from '@/hooks/useChat'
 import { ActionCard } from '@/components/ActionCard'
 import { SapCard } from '@/components/SapCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { useI18n } from '@/i18n'
+import { useI18n, type MessageKey, type Translate } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { WithRefs } from '@/components/ManualRef'
 
 type Props = {
   timeline: TimelineItem[]
   actions: Record<string, Action>
   busy: boolean
+  activity?: Activity | null
   onSend: (text: string) => void
   onStop: () => void
+  onNewConversation?: () => void
+  onSwitch?: (to: SwitchTarget) => void
   onActionChange: (action: Action) => void
   onUseNumber: (action: Action) => void
+  onUndoNumber?: (action: Action) => void
+  canUndoNumber?: (action: Action) => boolean
   onShowPreview: (action: Action) => void
+  /** Cards from an earlier epoch (before the form started over) are inert. */
+  epoch?: number
+  departments?: Department[]
   stepsButton?: React.ReactNode
+}
+
+const TOOL_LABELS: Record<string, MessageKey> = {
+  search_design_manual: 'activity.search_design_manual',
+  validate_design_request: 'activity.validate_design_request',
+  sap_get_design: 'activity.sap',
+  sap_list_departments: 'activity.sap',
+  check_design_folder: 'activity.check_design_folder',
+  propose_form_values: 'activity.propose_form_values',
+  request_reserve_number: 'activity.request_card',
+  request_create_design: 'activity.request_card',
+}
+
+/** How a provider is named in the chat (the backend sends its id). */
+const PROVIDER_NAMES: Record<string, string> = { dahl: 'Dahl', groq: 'Groq', ollama: 'Ollama' }
+const providerName = (id: string | undefined) => (id ? (PROVIDER_NAMES[id] ?? id) : '')
+
+/** The notice when a cloud provider's quota or credit ran out and the session moved on. */
+function switchedKey(to: string) {
+  if (to === 'ollama') return 'chat.switched.ollama' as const
+  if (to === 'groq') return 'chat.switched.groq' as const
+  return 'chat.switched.demo' as const
+}
+
+function activityText(activity: Activity | null | undefined, t: Translate): string {
+  if (!activity || activity.kind === 'thinking') return t('chat.working')
+  if (activity.kind === 'tool') return t(TOOL_LABELS[activity.name] ?? 'chat.working')
+  return t('activity.rate_limited', {
+    provider: providerName(activity.provider),
+    seconds: Math.ceil(activity.waitS),
+  })
 }
 
 export function AssistantPanel({
   timeline,
   actions,
   busy,
+  activity,
   onSend,
   onStop,
+  onNewConversation,
+  onSwitch,
   onActionChange,
   onUseNumber,
+  onUndoNumber,
+  canUndoNumber,
   onShowPreview,
+  epoch = 0,
+  departments,
   stepsButton,
 }: Props) {
   const { t } = useI18n()
@@ -50,11 +98,19 @@ export function AssistantPanel({
   return (
     <Card className="flex h-full min-h-96 flex-col">
       <CardHeader className="flex-row items-center justify-between">
-        <CardTitle className="font-heading text-lg">{t('chat.title')}</CardTitle>
-        {stepsButton}
+        <CardTitle className="font-heading text-[0.95rem] font-semibold">{t('chat.title')}</CardTitle>
+        <div className="flex items-center gap-1">
+          {onNewConversation && timeline.length > 0 && (
+            <Button size="sm" variant="ghost" onClick={onNewConversation} disabled={busy}>
+              <MessageSquarePlus aria-hidden className="size-4" />
+              {t('chat.new')}
+            </Button>
+          )}
+          {stepsButton}
+        </div>
       </CardHeader>
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1" aria-live="polite">
+        <div className="flex-1 space-y-4 overflow-y-auto pr-1" aria-live="polite">
           {timeline.length === 0 && (
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>{t('chat.empty')}</p>
@@ -72,21 +128,61 @@ export function AssistantPanel({
             switch (item.kind) {
               case 'user':
                 return (
-                  <p key={item.id} className="ml-8 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground">
+                  <p key={item.id} className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3 py-2 text-sm text-primary-foreground">
                     {item.text}
                   </p>
                 )
               case 'assistant':
                 return (
-                  <p key={item.id} className="mr-8 whitespace-pre-wrap rounded-lg bg-muted px-3 py-2 text-sm">
-                    {item.text}
+                  <p key={item.id} className="mr-6 border-l-2 border-hl-cobalt/30 pl-3 text-sm leading-relaxed whitespace-pre-wrap">
+                    <WithRefs text={item.text} />
                   </p>
                 )
               case 'error':
+                if (item.code === 'turn_timeout') {
+                  return (
+                    <div key={item.id} role="alert" className="space-y-2 rounded-lg border border-destructive/40 px-3 py-2 text-sm">
+                      <p className="text-destructive">{t('chat.timeout', { seconds: item.timeoutS ?? '' })}</p>
+                      {item.switchTo && item.switchTo.length > 0 && onSwitch && (
+                        <div className="flex flex-wrap gap-2">
+                          {item.switchTo.map((to) => (
+                            <Button key={to} size="sm" variant="outline" onClick={() => onSwitch(to)}>
+                              {t(to === 'ollama' ? 'chat.switch.ollama' : 'chat.switch.demo')}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
                 return (
                   <p key={item.id} role="alert" className="rounded-lg border border-destructive/40 px-3 py-2 text-sm text-destructive">
                     {t('chat.error', { message: item.text })}
                   </p>
+                )
+              case 'switched':
+                return (
+                  <p key={item.id} role="status" className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                    {item.by === 'user'
+                      ? t('chat.switched.user', { name: item.to === 'ollama' ? `Ollama (${item.model})` : t('chat.demo_model') })
+                      : item.by === 'busy'
+                        ? t('chat.switched.model', { provider: providerName(item.provider) || 'Dahl', from: item.from ?? '', model: item.model })
+                        : t(switchedKey(item.to), { from: providerName(item.from) || 'Groq', model: item.model })}
+                  </p>
+                )
+              case 'stopped':
+                return (
+                  <p key={item.id} role="status" className="text-center text-xs text-muted-foreground">
+                    {t('chat.stopped')}
+                  </p>
+                )
+              case 'divider':
+                return (
+                  <div key={item.id} role="status" className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span aria-hidden className="h-px flex-1 bg-border" />
+                    {t(item.cancelled ? 'chat.started_over' : 'chat.started_over_kept')}
+                    <span aria-hidden className="h-px flex-1 bg-border" />
+                  </div>
                 )
               case 'sap':
                 return <SapCard key={item.id} design={item.design} notes={item.notes} />
@@ -96,15 +192,24 @@ export function AssistantPanel({
                   <ActionCard
                     key={item.id}
                     action={action}
+                    stale={item.epoch < epoch}
+                    departments={departments}
                     onChange={onActionChange}
                     onUseNumber={onUseNumber}
+                    onUndoNumber={onUndoNumber}
+                    canUndoNumber={canUndoNumber}
                     onShowPreview={onShowPreview}
                   />
                 ) : null
               }
             }
           })}
-          {busy && <p className={cn('text-sm text-muted-foreground')}>{t('chat.working')}</p>}
+          {busy && (
+            <p role="status" className={cn('flex items-center gap-2 text-sm text-muted-foreground')}>
+              <Loader2 aria-hidden className="size-4 animate-spin" />
+              {activityText(activity, t)}
+            </p>
+          )}
           <div ref={end} />
         </div>
 

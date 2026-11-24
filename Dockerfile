@@ -34,6 +34,7 @@ COPY --from=frontend /build/dist/ frontend/dist/
 ENV DATA_DIR=/data \
     DESIGNS_ROOT=/data/designs \
     KICAD_CLI=kicad-cli \
+    KICAD_OPEN_ENABLED=false \
     PORT=8000
 RUN mkdir -p /data && chown -R kicad:kicad /data /app
 VOLUME /data

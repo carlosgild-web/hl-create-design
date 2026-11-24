@@ -90,12 +90,12 @@ def reserve(client: TestClient, token: str, **body):
     return client.post(svc("/DesignSet"), json=payload, headers={"x-csrf-token": token})
 
 
-def assert_sap_error(response, status: int, code: str) -> dict:
+def assert_sap_error(response, status: int, code: str, lang: str = "en") -> dict:
     """The SAP Gateway error body; returns `error` for further checks."""
     assert response.status_code == status, response.text
     error = response.json()["error"]
     assert error["code"] == code
-    assert error["message"]["lang"] == "en"
+    assert error["message"]["lang"] == lang
     assert error["message"]["value"]
     assert error["innererror"]["transactionid"]
     return error

@@ -30,6 +30,9 @@ CSRF_HEADER = "x-csrf-token"
 DEFAULT_TIMEOUT_S = 10.0
 DESIGN_NOT_FOUND = "ZHL_PLM/001"
 MAINTENANCE = "ZHL_GW/003"
+# What `list_designs` may filter on (the gateway's own value sets).
+DEPARTMENT_CODES = frozenset({"HW", "PWR", "EMB", "TFX"})
+DESIGN_STATUSES = frozenset({"IN_WORK", "RELEASED", "BLOCKED", "OBSOLETE"})
 
 _DATE_RE = re.compile(r"^/Date\((-?\d+)(?:[+-]\d+)?\)/$")
 
@@ -138,6 +141,12 @@ class SapClient:
     def close(self) -> None:
         self._http.close()
 
+    def use_language(self, language: str) -> SapClient:
+        """Ask SAP for its texts (error messages) in this logon language, `en` or `es`:
+        the `sap-language` header of SAP Gateway (decision 0027)."""
+        self._http.headers["sap-language"] = language.upper()
+        return self
+
     # --- reads -----------------------------------------------------------------------
 
     def get_design(self, design_number: str) -> SapDesign | None:
@@ -153,6 +162,27 @@ class SapClient:
             raise
         return _design(data["d"])
 
+    def list_designs(
+        self, department: str | None = None, status: str | None = None, top: int = 100
+    ) -> list[SapDesign]:
+        """The designs SAP knows, with their revisions, ordered by number. Filters are
+        OData `eq` clauses; only known departments and statuses are accepted, so nothing
+        from a request reaches the filter unchecked."""
+        clauses = []
+        if department is not None:
+            if department not in DEPARTMENT_CODES:
+                raise ValueError(f"unknown department {department!r}")
+            clauses.append(f"Department eq {_key(department)}")
+        if status is not None:
+            if status not in DESIGN_STATUSES:
+                raise ValueError(f"unknown status {status!r}")
+            clauses.append(f"Status eq {_key(status)}")
+        params = {"$format": "json", "$expand": "Revisions", "$top": str(max(1, min(top, 500)))}
+        if clauses:
+            params["$filter"] = " and ".join(clauses)
+        data = self._get(f"{SERVICE_ROOT}/DesignSet", params=params)
+        return [_design(row) for row in data["d"]["results"]]
+
     def list_departments(self) -> list[SapDepartment]:
         data = self._get(f"{SERVICE_ROOT}/DepartmentSet", params={"$format": "json"})
         return [_department(row) for row in data["d"]["results"]]
@@ -163,7 +193,17 @@ class SapClient:
         """Reserve the next design number of `department`. SAP issues the number, the
         material and the WBS, and records revision A. Not idempotent."""
         body = {"Department": department, "Name": name, "CreatedBy": created_by}
-        url = f"{SERVICE_ROOT}/DesignSet"
+        return _design(self._post(f"{SERVICE_ROOT}/DesignSet", body)["d"])
+
+    def add_revision(self, design_number: str, revision: str, created_by: str) -> None:
+        """Record a new revision of a design in SAP. SAP accepts only the next free letter
+        and refuses BLOCKED and OBSOLETE designs. Not idempotent."""
+        body = {"DesignNumber": design_number, "Revision": revision, "CreatedBy": created_by}
+        self._post(f"{SERVICE_ROOT}/RevisionSet", body)
+
+    def _post(self, url: str, body: dict[str, Any]) -> dict[str, Any]:
+        """A modifying request with the CSRF token; one retry with a fresh token if SAP
+        says the token expired. Never repeated otherwise: the write is not idempotent."""
         for refreshed in (False, True):
             token = self._csrf_token(refresh=refreshed)
             response = self._send(
@@ -171,8 +211,7 @@ class SapClient:
             )
             if response.status_code == 403 and _csrf_required(response) and not refreshed:
                 continue
-            data = _json_or_raise(response)
-            return _design(data["d"])
+            return _json_or_raise(response)
         raise AssertionError("unreachable")  # pragma: no cover
 
     # --- transport -------------------------------------------------------------------

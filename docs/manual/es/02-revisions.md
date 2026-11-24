@@ -15,6 +15,8 @@ Después de `Y` viene `AA`, luego `AB`, `AC`… omitiendo las mismas letras en c
 posición. Veinte revisiones de un mismo diseño es muy raro; si llegas ahí, habla con tu
 responsable.
 
+Palabras clave: secuencia, orden, letras, qué letras, después de Y, AA, sequence
+
 ## Letras omitidas
 <a id="skipped-letters"></a>
 
@@ -33,11 +35,15 @@ cajetín impreso, una serigrafía o una etiqueta se confunden fácilmente con ot
 Así, después de `H` viene `J`, después de `N` viene `P`, después de `R` viene `T` y
 después de `W` viene `Y`.
 
+Palabras clave: I, O, Q, S, X, Z, rechazada, no se permite, no me deja, letra I, letra O, skipped
+
 ## La primera revisión
 <a id="first-revision"></a>
 
 Un diseño nuevo empieza en la revisión **`A`**. No existen las revisiones `0`, `-`, `01`
 ni `P1`. Los prototipos también usan letras, y no hay subrevisiones como `A1` o `A.2`.
+
+Palabras clave: primera revisión, empezar, 0, 01, P1, A1, prototipo, subrevisión, first revision
 
 ## La siguiente revisión
 <a id="next-revision"></a>
@@ -45,6 +51,8 @@ ni `P1`. Los prototipos también usan letras, y no hay subrevisiones como `A1` o
 La siguiente revisión es la letra que sigue en la secuencia a la revisión más alta que
 existe. No te saltes letras: después de `C` viene `D`, aunque el cambio sea grande. Create
 Design comprueba las revisiones existentes y propone la siguiente letra libre.
+
+Palabras clave: saltar, brincar, me puedo saltar, cambio grande, de C a F, directo, siguiente letra, jump
 
 ## Nunca reutilices una letra
 <a id="never-reuse"></a>
@@ -54,6 +62,8 @@ la revisión. Si la revisión `C` se empezó y se abandonó, la siguiente es `D`
 
 *Por qué:* los PDF de la `C` pueden haber llegado ya al taller o a un proveedor. Dos placas
 distintas con el mismo número y la misma letra serían imposibles de distinguir.
+
+Palabras clave: reutilizar, volver a usar, otra vez, borrada, borraron, abandonada, letra usada, reuse
 
 ## Revisiones y estado en SAP
 <a id="revisions-and-status"></a>
@@ -67,6 +77,8 @@ distintas con el mismo número y la misma letra serían imposibles de distinguir
 
 Ver [06-sap-statuses](06-sap-statuses.md).
 
+Palabras clave: estado, liberado, bloqueado, obsoleto, revisión permitida, status
+
 ## Comprobación rápida
 <a id="quick-check"></a>
 
@@ -78,3 +90,5 @@ Ver [06-sap-statuses](06-sap-statuses.md).
 | `A B C` | `E` | No | No se saltan letras; la siguiente es `D` |
 | `A B` | `B` | No | `B` ya existe; las letras no se reutilizan |
 | `A B C D E F G H J K L M N` | `P` | Sí | La `O` se omite |
+
+Palabras clave: comprobar revisión, revisión válida

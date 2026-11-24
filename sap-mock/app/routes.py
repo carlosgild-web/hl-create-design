@@ -77,6 +77,16 @@ class DesignCreate(BaseModel):
     CreatedBy: str = Field(min_length=1, max_length=40)
 
 
+class RevisionCreate(BaseModel):
+    """Body of `POST RevisionSet`: a new revision of an existing design."""
+
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    DesignNumber: str = Field(min_length=1, max_length=14)
+    Revision: str = Field(min_length=1, max_length=2)
+    CreatedBy: str = Field(min_length=1, max_length=40)
+
+
 # --- service document and metadata ----------------------------------------------------
 
 
@@ -157,8 +167,29 @@ def reserve_design(
     try:
         number = db.reserve(payload.Department, payload.Name, payload.CreatedBy, settings.today())
     except ReservationError as exc:
-        raise SapError(400, exc.code, exc.message) from exc
+        raise SapError(400, exc.code, exc.message, params=exc.params) from exc
     entity = design_entity(_design_or_404(db, number), service_url(request))
+    response.headers["Location"] = entity["__metadata"]["uri"]
+    return {"d": entity}
+
+
+@router.post("/RevisionSet", status_code=201)
+def add_revision(
+    request: Request,
+    response: Response,
+    payload: RevisionCreate,
+    db: DbDep,
+    settings: SettingsDep,
+) -> dict:
+    """Record the next revision of a design (only the next free letter; not for BLOCKED or
+    OBSOLETE designs). Not idempotent: the same revision twice is refused."""
+    try:
+        db.add_revision(payload.DesignNumber, payload.Revision, payload.CreatedBy, settings.today())
+    except ReservationError as exc:
+        status = 404 if exc.code == DESIGN_NOT_FOUND else 400
+        raise SapError(status, exc.code, exc.message, params=exc.params) from exc
+    row = db.get_revision(payload.DesignNumber, payload.Revision)
+    entity = revision_entity(row, service_url(request))
     response.headers["Location"] = entity["__metadata"]["uri"]
     return {"d": entity}
 
@@ -172,7 +203,10 @@ def get_revision(
     row = db.get_revision(number, letter)
     if row is None:
         raise SapError(
-            404, REVISION_NOT_FOUND, f"Revision {letter} of design {number} does not exist"
+            404,
+            REVISION_NOT_FOUND,
+            f"Revision {letter} of design {number} does not exist",
+            params={"revision": letter, "design": number},
         )
     return {"d": revision_entity(row, service_url(request))}
 
@@ -180,7 +214,9 @@ def get_revision(
 def _design_or_404(db: Database, number: str) -> sqlite3.Row:
     row = db.get_design(number)
     if row is None:
-        raise SapError(404, DESIGN_NOT_FOUND, f"Design {number} does not exist")
+        raise SapError(
+            404, DESIGN_NOT_FOUND, f"Design {number} does not exist", params={"design": number}
+        )
     return row
 
 
@@ -206,5 +242,11 @@ def get_department(
     value = key_value(code)
     row = db.get_department(value, settings.today().year)
     if row is None:
-        raise SapError(404, DEPARTMENT_NOT_FOUND, f"Department {key_literal(value)} does not exist")
+        department = key_literal(value)
+        raise SapError(
+            404,
+            DEPARTMENT_NOT_FOUND,
+            f"Department {department} does not exist",
+            params={"department": department},
+        )
     return {"d": department_entity(row, service_url(request))}

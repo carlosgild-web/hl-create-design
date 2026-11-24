@@ -172,6 +172,65 @@ def test_cli_agent_eval_stops_when_the_model_is_unreachable(settings, monkeypatc
         def chat(self, messages, tools):
             raise LLMError("Ollama has no model 'x'")
 
-    monkeypatch.setattr(cli, "make_client", lambda s: Down())
+    monkeypatch.setattr(cli, "make_client", lambda s, **kw: Down())
     assert cli.main(["agent-eval", "--provider", "ollama"], settings) == 1
     assert "not reachable" in capsys.readouterr().err
+
+
+def test_a_resumed_run_skips_the_scenarios_already_saved(tmp_path, monkeypatch, capsys):
+    from app import cli
+    from app.core.config import Settings
+    from app.evals import harness as h
+
+    folder = tmp_path / "run"
+    base = ["agent-eval", "--provider", "demo", "--allow-failures", "--resume", str(folder)]
+    args = [*base, "--only", "manual-question", "--only", "faq-designer-es"]
+    settings = Settings(_env_file=None, llm_provider="demo")
+    assert cli.main(args, settings=settings) == 0
+    assert sorted(p.name for p in folder.iterdir()) == [
+        "faq-designer-es.json",
+        "manual-question.json",
+    ]
+
+    def must_not_run(*a, **k):
+        raise AssertionError("a saved scenario ran again")
+
+    monkeypatch.setattr(h, "run_scenario", must_not_run)
+    assert cli.main(args, settings=settings) == 0
+    assert "2/2 scenarios passed" in capsys.readouterr().out
+
+
+def test_a_section_linked_from_a_returned_passage_counts_as_returned():
+    seen = harness.Observed()
+    seen.tool_results.append(
+        {
+            "passages": [
+                {
+                    "source": "07-faq#revision-i",
+                    "text": "After H comes J. See [02-revisions](02-revisions.md#skipped-letters).",
+                }
+            ]
+        }
+    )
+    assert seen.returned_refs == {"07-faq#revision-i", "02-revisions#skipped-letters"}
+
+
+def test_a_result_counts_model_calls_and_tokens_from_the_traces():
+    """The report's cost columns come from the stored traces (decision 0029, 9d item 5)."""
+    from app.llm.base import ChatTurn
+
+    turns = [
+        ChatTurn(
+            content="",
+            tool_calls=call("sap_list_departments").tool_calls,
+            prompt_tokens=1200,
+            completion_tokens=30,
+        ),
+        ChatTurn(content="HW, PWR, EMB and TFX.", prompt_tokens=1500, completion_tokens=12),
+    ]
+    sc = Scenario("t", "t", (Turn("Which departments are there?", turns),), Expect())
+    result = run(sc)
+    assert (result.model_calls, result.prompt_tokens, result.completion_tokens) == (2, 2700, 42)
+    again = harness.ScenarioResult.from_dict(json.loads(json.dumps(result.to_dict())))
+    assert again.prompt_tokens == 2700 and again.model_calls == 2
+    assert "Tokens: 2,700 prompt + 42 completion" in report.to_markdown([result])

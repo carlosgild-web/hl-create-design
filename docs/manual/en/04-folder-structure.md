@@ -25,6 +25,8 @@ Fictional company; demo content.*
 
 One folder per department, one per design number, and one per revision.
 
+Keywords: folder, where, saved, created, files, kicad project, project location, path, carpeta, dónde, se guardan, se crea, archivos, ruta
+
 ## The designs root
 <a id="designs-root"></a>
 
@@ -37,12 +39,16 @@ letters such as `C:`, and links that point outside it.
 *Why:* designs saved on desktops and personal drives were lost, and nobody could find
 the latest revision.
 
+Keywords: desktop, another drive, D:, choose folder, outside, absolute path, escritorio, otra unidad, escoger carpeta, fuera, ruta absoluta
+
 ## File names
 <a id="file-names"></a>
 
 Files are named `<DesignNumber>_<Rev>`, for example `HL-HW-26-0042_A.kicad_sch`. The design
 name is never part of a file or folder name: names can change, numbers don't, and
 names contain spaces.
+
+Keywords: file names, rename files, naming, nombres de archivo, renombrar
 
 ## One folder per revision
 <a id="revision-folders"></a>
@@ -55,11 +61,15 @@ To continue from the previous revision, open both projects in KiCad and copy the
 schematic content into the new one. Don't copy the whole folder: the file names and the
 title block would be those of the old revision.
 
+Keywords: revision folder, folder exists, overwrite, copy folder, previous revision, reuse schematic, carpeta de revisión, ya existe, sobrescribir, copiar carpeta, revisión anterior, reusar esquemático
+
 ## The output folder
 <a id="output"></a>
 
 `output/` holds the generated PDF and SVG. Generate them again after a change; don't edit
 them.
+
+Keywords: output, pdf, svg, export, salida
 
 ## Don't
 <a id="dont"></a>
@@ -67,3 +77,5 @@ them.
 - No spaces, accents, or words like `final`, `v2` or `copy` in folder names.
 - Don't keep personal copies of a design outside the designs root.
 - Don't rename or move design folders by hand.
+
+Keywords: don't, copy folder, move files, rename, no copiar, mover archivos

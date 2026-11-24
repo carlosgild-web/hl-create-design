@@ -16,11 +16,15 @@ crear una revisión nueva.
 | `BLOCKED` | Bloqueado por Ingeniería de Producto | No permitida | Contactar con Ingeniería de Producto |
 | `OBSOLETE` | Sustituido, ya no se fabrica | No permitida | Usar el diseño sucesor |
 
+Palabras clave: estado, estados, en trabajo, liberado, bloqueado, obsoleto, status
+
 ## IN_WORK
 <a id="in-work"></a>
 
 El diseño está en desarrollo y no se ha liberado a producción. Se pueden crear revisiones
 nuevas libremente, siguiendo [02-revisions](02-revisions.md).
+
+Palabras clave: en trabajo, en curso, in work
 
 ## RELEASED
 <a id="released"></a>
@@ -30,6 +34,8 @@ que fabrica el taller, así que el proceso de la empresa exige un número de ord
 de ingeniería (ECO) antes de liberar la revisión nueva. Esta versión de Create Design no
 comprueba números de ECO: crea la revisión y muestra un aviso. Avisa a tu responsable.
 
+Palabras clave: liberado, released, ECO, revisión de un diseño liberado, revisar
+
 ## BLOCKED
 <a id="blocked"></a>
 
@@ -38,6 +44,8 @@ unidades instaladas, una prueba de seguridad fallida o un problema con un provee
 muestra el motivo. No se puede crear ninguna revisión hasta que se levante el bloqueo.
 Contacta con Ingeniería de Producto indicando el número de diseño y el motivo del bloqueo.
 
+Palabras clave: bloqueado, blocked, motivo del bloqueo, ingeniería de producto
+
 ## OBSOLETE
 <a id="obsolete"></a>
 
@@ -45,11 +53,15 @@ El diseño se ha sustituido y ya no se fabrica. SAP indica el diseño sucesor. T
 el sucesor: búscalo y crea la revisión allí. Si no hay sucesor y vuelves a necesitar la
 función antigua, reserva un número nuevo.
 
+Palabras clave: obsoleto, obsolete, sucesor, usar el sucesor, ahora qué
+
 ## Quién cambia el estado
 <a id="who-changes"></a>
 
 Ingeniería de Producto cambia los estados en SAP. Create Design solo los lee; nunca
 libera, bloquea ni deja obsoleto un diseño.
+
+Palabras clave: cambiar estado, liberar un diseño, libero, quién cambia, quién puede, ingeniería de producto, change status
 
 ## Cuando SAP no está disponible
 <a id="sap-unavailable"></a>
@@ -58,3 +70,5 @@ Si SAP no responde (mantenimiento, problemas de red), Create Design no puede com
 número de diseño y no crea nada. Nada se queda creado ni reservado a medias. Vuelve a
 intentarlo más tarde; durante el mantenimiento de SAP el mensaje dice *servicio no
 disponible (503)*.
+
+Palabras clave: sap caído, no responde, no contesta, se cae, tiempo de espera, 503, error, sap down

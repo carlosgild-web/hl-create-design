@@ -55,20 +55,36 @@ class AgentTrace:
             }
         )
 
+    def record_notice(self, iteration: int, notice: dict[str, str]) -> None:
+        """The client changed something the model did not see, e.g. a provider switch.
+        Later model calls of this run come from `notice["to"]`."""
+        self.steps.append({"type": "notice", "iteration": iteration, **notice})
+
     def record_tool_call(
-        self, iteration: int, name: str, arguments: dict[str, Any], result: str, ok: bool, ms: float
+        self,
+        iteration: int,
+        name: str,
+        arguments: dict[str, Any],
+        result: str,
+        ok: bool,
+        ms: float,
+        *,
+        auto: bool = False,
     ) -> None:
-        self.steps.append(
-            {
-                "type": "tool_call",
-                "iteration": iteration,
-                "name": name,
-                "arguments": arguments,
-                "result": result,
-                "ok": ok,
-                "ms": round(ms, 1),
-            }
-        )
+        """`auto`: the backend made this call itself before the first model call
+        (pre-retrieval, decision 0024); iteration 0."""
+        step: dict[str, Any] = {
+            "type": "tool_call",
+            "iteration": iteration,
+            "name": name,
+            "arguments": arguments,
+            "result": result,
+            "ok": ok,
+            "ms": round(ms, 1),
+        }
+        if auto:
+            step["auto"] = True
+        self.steps.append(step)
 
     def to_dict(self) -> dict[str, Any]:
         return {

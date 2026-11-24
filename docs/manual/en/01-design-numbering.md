@@ -24,6 +24,8 @@ Example: `HL-HW-26-0042` is the 42nd number that Hardware Design reserved in 202
 Write it in capital letters with hyphens and no spaces. These are all wrong:
 `hl-hw-26-0042`, `HL-HW-2026-0042`, `HL_HW_26_0042`, `HL-HW-26-42`, `HL-HWD-26-0042`.
 
+Keywords: format, number format, how is it written, look like, HL-, department code, belongs to another department, HW, PWR, formato, cómo se escribe, código de departamento, otro departamento
+
 ## Only SAP issues numbers
 <a id="issued-by-sap"></a>
 
@@ -34,6 +36,8 @@ SAP material number and the project (WBS element) together.
 *Why:* before 2024, two engineers picking the "next" number on the same day is how
 duplicate numbers reached the workshop.
 
+Keywords: choose, pick, own number, make up, invent, not found, doesn't exist, does not exist, sap issues, elegir, inventar, propio número, no existe, no encuentra
+
 ## The year in the number
 <a id="year"></a>
 
@@ -41,12 +45,16 @@ duplicate numbers reached the workshop.
 released. It never changes: a number reserved on 30 December 2025 stays `HL-xx-25-NNNN`
 in every revision, also when revision C is made in 2027.
 
+Keywords: year, next year, january, december, two digits, año, año que viene, enero, diciembre
+
 ## The sequence
 <a id="sequence"></a>
 
 `NNNN` starts at `0001` for each department every year, and SAP issues the next free
 value. Gaps are normal: a number that was reserved and then not used is never issued
 again. A number is never reused, not even for a cancelled or obsolete design.
+
+Keywords: gaps, missing numbers, skip, skipped numbers, 0041, 0044, sequence, huecos, faltan números, se brincan, secuencia
 
 ## New number or new revision?
 <a id="new-number-or-revision"></a>
@@ -56,6 +64,8 @@ again. A number is never reused, not even for a cancelled or obsolete design.
 - **New number:** the function changes, it is a different product, or the new board can't
   replace the old one. Product Engineering usually sets the old design to `OBSOLETE` with
   the new one as its successor (see [06-sap-statuses](06-sap-statuses.md)).
+
+Keywords: new number, new revision, which one, instead of, replace, different product, número nuevo, revisión nueva, cuál, en vez de, sustituir, otro producto
 
 ## SAP material number
 <a id="sap-material"></a>
@@ -68,6 +78,8 @@ has **18 characters with leading zeros**, in the range `000000000040000000` to
 - In SAP and in data exchange it always has 18 characters: `000000000040001234`.
 - SAP assigns it together with the design number. Never type it by hand.
 
+Keywords: material, material number, zeros, leading zeros, 18 characters, material sap, ceros, ceros a la izquierda
+
 ## Project (WBS element)
 <a id="wbs"></a>
 
@@ -75,6 +87,8 @@ Format `P-<YY>-<NNNN>`, for example `P-26-0108`. Every design books its engineer
 to a project. When a number is reserved, SAP uses the department's default project for
 that year (see [05-departments](05-departments.md#default-projects)). Product Engineering
 can move a design to another project in SAP later.
+
+Keywords: project, wbs, P-26, who assigns, choose project, proyecto, quién asigna, elegir proyecto
 
 ## Quick check
 <a id="quick-check"></a>
@@ -86,3 +100,5 @@ can move a design to another project in SAP later.
 | `HL-HW-2026-0042` | No | The year has two digits: `26` |
 | `HL-MECH-26-0003` | No | `MECH` is not an Electronics Engineering department |
 | `hl-emb-26-0007` | No | Capital letters only |
+
+Keywords: wrong, invalid, not valid, lowercase, four digit year, check, mal, no vale, minúsculas, año de cuatro dígitos

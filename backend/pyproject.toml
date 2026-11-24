@@ -1,6 +1,6 @@
 [project]
 name = "hl-create-design-backend"
-version = "0.1.0"
+version = "1.0.0"
 description = "Create Design backend: KiCad project generator with an AI guide (FastAPI)"
 requires-python = ">=3.11"
 

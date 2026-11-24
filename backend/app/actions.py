@@ -22,7 +22,7 @@ from app.core.config import Settings
 from app.db import store
 from app.db.session import write_audit
 from app.designs import DesignValidationError, create_design
-from app.kicad.exporter import ExportError, Runner
+from app.kicad.exporter import Runner
 from app.kicad.renderer import DesignFolderExistsError
 from app.sap.client import SapClient, SapError
 from app.standards import validators as v
@@ -46,11 +46,11 @@ class ActionNotPending(RuntimeError):
 class ActionOutcome:
     action: store.ActionRecord
     ok: bool
-    error_kind: str | None = None  # validation | sap_unavailable | sap | export | conflict
+    error_kind: str | None = None  # validation | sap_unavailable | sap | conflict | internal
 
 
-def _issue_dict(issue: v.Issue) -> dict[str, str]:
-    return {"field": issue.field, "code": issue.code, "message": issue.message, "ref": issue.ref}
+def _issue_dict(issue: v.Issue) -> dict[str, Any]:
+    return issue.to_dict()
 
 
 def _not_pending(engine: Engine, action_id: str) -> ActionNotPending:
@@ -86,7 +86,12 @@ def confirm_action(
         else:
             result = {"ok": False, "error_kind": "unknown", "message": f"Unknown {action.kind}"}
     except Exception as exc:  # never leave an action stuck in "executing"
-        result = {"ok": False, "error_kind": "internal", "message": str(exc)}
+        result = {
+            "ok": False,
+            "error_kind": "internal",
+            "message": str(exc),
+            "params": {"detail": str(exc)},
+        }
         _finish(engine, action, result)
         raise
     return _finish(engine, action, result)
@@ -163,6 +168,7 @@ def _create(
         revision=p.get("revision", ""),
         name=p.get("name", ""),
         designer=p.get("designer", ""),
+        description=p.get("description", "") or "",
     )
     number = v.validate_design_number(request.design_number, request.department)
     if not number.ok:
@@ -182,6 +188,7 @@ def _create(
             sap=record,
             require_sap=True,
             audit_details={"action_id": action.id},
+            record_revision=sap.add_revision,
         )
     except DesignValidationError as exc:
         return _validation_failure(list(exc.report.errors))
@@ -193,13 +200,10 @@ def _create(
             "error_kind": "conflict",
             "message": f"{exc} Nothing was overwritten.",
             "ref": "04-folder-structure#revision-folders",
+            "params": {"folder": exc.folder},
         }
-    except ExportError as exc:
-        return {
-            "ok": False,
-            "error_kind": "export",
-            "message": f"The PDF export failed, so nothing was kept: {exc}",
-        }
+    except SapError as exc:  # SAP refused the new revision: nothing was written
+        return _sap_failure(exc)
     req = created.request
     return {
         "ok": True,
@@ -223,6 +227,7 @@ def _validation_failure(errors: list[v.Issue]) -> dict[str, Any]:
         "ok": False,
         "error_kind": "validation",
         "message": "The values break a rule of the Design Manual; nothing was done.",
+        "params": {},
         "errors": [_issue_dict(e) for e in errors],
     }
 
@@ -234,8 +239,14 @@ def _sap_failure(exc: SapError) -> dict[str, Any]:
             "error_kind": "sap_unavailable",
             "message": f"SAP is not available ({exc.message}); nothing was done. Try again later.",
             "ref": "06-sap-statuses#sap-unavailable",
+            "params": {"sap_code": exc.code, "detail": exc.message},
         }
-    return {"ok": False, "error_kind": "sap", "message": f"SAP refused: {exc.code} {exc.message}"}
+    return {
+        "ok": False,
+        "error_kind": "sap",
+        "message": f"SAP refused: {exc.code} {exc.message}",
+        "params": {"sap_code": exc.code, "detail": exc.message},
+    }
 
 
 def _add_event(engine: Engine, action: store.ActionRecord, result: dict[str, Any]) -> None:

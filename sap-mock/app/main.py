@@ -17,6 +17,7 @@ from app import __version__
 from app.chaos import chaos
 from app.config import Settings
 from app.db import Database
+from app.messages import request_language
 from app.odata import INVALID_REQUEST, RESOURCE_NOT_FOUND, SapError, error_response
 from app.routes import router
 from app.security import CsrfStore, gateway
@@ -47,8 +48,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(BaseHTTPMiddleware, dispatch=chaos)
 
     @app.exception_handler(SapError)
-    async def sap_error(_: Request, exc: SapError) -> JSONResponse:
-        return error_response(exc.status, exc.code, exc.message, exc.headers)
+    async def sap_error(request: Request, exc: SapError) -> JSONResponse:
+        return error_response(
+            exc.status,
+            exc.code,
+            exc.message,
+            exc.headers,
+            language=request_language(request),
+            params=exc.params,
+        )
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(_: Request, exc: RequestValidationError) -> JSONResponse:

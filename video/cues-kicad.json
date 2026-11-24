@@ -1,0 +1,35 @@
+{
+  "notes": [
+    "The KiCad ending (storyboard 4b, decisions 0028 and 0030): a desktop recording of the schematic editor the app opened, appended where the take clicked Open in KiCad.",
+    "Times are seconds from the start of the KiCad clip. At zoom.start the clip cuts to a crop of the same recorded frames around the title block (labelled 'zoomed in'); nothing is redrawn.",
+    "zoom.cx/cy: the title block's centre as a fraction of the captured area, measured on a maximized KiCad 9 window at 1920x1020 (HL-HW-26-0049, 2026-11-22; cy raised 2026-11-24 so the crop ends above the status bar). Re-check the frames if KiCad's layout changes."
+  ],
+  "label": "KiCad 9 on the desktop (screen recording)",
+  "zoom": {
+    "start": 5.0,
+    "factor": 2.4,
+    "cx": 0.695,
+    "cy": 0.775,
+    "label": "zoomed in: the title block"
+  },
+  "cues": [
+    {
+      "id": "4b.3",
+      "start": 0.0,
+      "end": 5.0,
+      "subtitle": "KiCad's schematic editor opens the design this app created from the company template."
+    },
+    {
+      "id": "4b.4",
+      "start": 5.0,
+      "end": 10.5,
+      "subtitle": "The title block is filled: number, SAP material, project, department, designer, revision, date."
+    },
+    {
+      "id": "4b.5",
+      "start": 10.5,
+      "end": 16.0,
+      "subtitle": "The values are KiCad text variables in the project file, read by the company drawing sheet."
+    }
+  ]
+}

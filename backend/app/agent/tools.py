@@ -25,16 +25,18 @@ from sqlalchemy import Engine
 
 from app.core.config import Settings
 from app.db import store
-from app.designs import check_design_request
+from app.designs import SapLookup, SapNames, check_design_request, check_fields, issue_dict
 from app.llm.base import ToolCall, ToolSpec
 from app.sap.client import SapClient, SapDesign, SapError
 from app.standards import validators as v
-from app.standards.manual_search import ManualIndex
-from app.standards.validators import DesignRequest, Issue, UnsafePathError
+from app.standards.manual_search import MAX_TEXT_CHARS, ManualIndex
+from app.standards.validators import DesignRequest, UnsafePathError
 
 FREE_TEXT_MAX = 200
 GATED_TOOLS = frozenset({"request_create_design", "request_reserve_number"})
 FORM_FIELDS = ("department", "design_number", "revision", "name", "designer")
+# The form's optional field: checked and passed on when given, never required.
+FIELDS = (*FORM_FIELDS, "description")
 
 
 # --- context and results -------------------------------------------------------------
@@ -50,6 +52,10 @@ class ToolContext:
     run_id: int | None = None
     language: str = "en"
     opened_actions: dict[str, str] = field(default_factory=dict)  # kind -> action id
+    # Manual search results: how many passages and how long (shorter for a small local
+    # model, decision 0024).
+    search_limit: int = 4
+    passage_chars: int = MAX_TEXT_CHARS
 
 
 @dataclass(frozen=True)
@@ -64,8 +70,7 @@ class ToolResult:
         return json.dumps(self.content, ensure_ascii=False)
 
 
-def _issue(issue: Issue) -> dict[str, str]:
-    return {"field": issue.field, "code": issue.code, "message": issue.message, "ref": issue.ref}
+_issue = issue_dict
 
 
 def _error(code: str, message: str, ref: str | None = None) -> ToolResult:
@@ -75,15 +80,28 @@ def _error(code: str, message: str, ref: str | None = None) -> ToolResult:
     return ToolResult(content, ok=False)
 
 
-def _sap_error(exc: SapError) -> ToolResult:
+def sap_error_info(exc: SapError) -> dict[str, Any]:
+    """What a SAP failure means for the user, the same for the assistant and the UI.
+    `params` let the UI word it in its language around SAP's own text (decision 0027)."""
+    params = {"sap_code": exc.code, "detail": exc.message}
     if exc.unavailable:
-        return _error(
-            "sap_unavailable",
-            f"SAP is not available right now ({exc.message}). Nothing was checked in SAP; "
-            "try again later.",
-            "06-sap-statuses#sap-unavailable",
-        )
-    return _error("sap_error", f"SAP answered {exc.code}: {exc.message}")
+        return {
+            "code": "sap_unavailable",
+            "message": f"SAP is not available right now ({exc.message}). Nothing was checked "
+            "in SAP; try again later.",
+            "ref": "06-sap-statuses#sap-unavailable",
+            "params": params,
+        }
+    return {
+        "code": "sap_error",
+        "message": f"SAP answered {exc.code}: {exc.message}",
+        "params": params,
+    }
+
+
+def _sap_error(exc: SapError) -> ToolResult:
+    info = sap_error_info(exc)
+    return _error(info["code"], info["message"], info.get("ref"))
 
 
 # --- argument models -----------------------------------------------------------------
@@ -110,6 +128,7 @@ class DesignFieldsArgs(_Args):
     revision: str = _text("Revision letter, e.g. A")
     name: str = _text("Design name, e.g. Bead Drill Controller")
     designer: str = _text("Designer as initial and surname, e.g. C. Velazquez")
+    description: str = _text("Optional one-line description for the title block (max 60)")
 
 
 class DesignNumberArgs(_Args):
@@ -138,16 +157,19 @@ class CreateArgs(_Args):
     revision: str = Field(max_length=4, description="Revision letter")
     name: str = Field(max_length=FREE_TEXT_MAX, description="Design name")
     designer: str = Field(max_length=FREE_TEXT_MAX, description="Designer, e.g. C. Velazquez")
+    description: str = _text("Optional one-line description (max 60), only if the user gave one")
 
 
 # --- read tools ----------------------------------------------------------------------
 
 
 def search_design_manual(args: SearchManualArgs, ctx: ToolContext) -> ToolResult:
-    passages = ctx.manual.search(args.query, lang=args.language or ctx.language)
+    passages = ctx.manual.search(
+        args.query, lang=args.language or ctx.language, limit=ctx.search_limit
+    )
     if not passages:
         return ToolResult({"passages": [], "note": "No passage matched; try other keywords."})
-    return ToolResult({"passages": [p.to_dict() for p in passages]})
+    return ToolResult({"passages": [p.to_dict(ctx.passage_chars) for p in passages]})
 
 
 def _sap_lookup(ctx: ToolContext, number: str) -> tuple[SapDesign | None, ToolResult | None]:
@@ -157,52 +179,46 @@ def _sap_lookup(ctx: ToolContext, number: str) -> tuple[SapDesign | None, ToolRe
         return None, _sap_error(exc)
 
 
+def sap_lookup_for(sap: SapClient) -> SapLookup:
+    """`check_fields`' SAP access: the record, or a note (with its manual ref) on failure."""
+
+    def lookup(number: str) -> tuple[SapDesign | None, dict[str, Any] | None]:
+        try:
+            return sap.get_design(number), None
+        except SapError as exc:
+            return None, _sap_error(exc).content["error"]
+
+    return lookup
+
+
+def sap_names_for(sap: SapClient) -> SapNames:
+    """`check_fields`' list of SAP design names, fetched once per check. When SAP fails the
+    list is empty: the same-name warning is a hint, never a reason to fail the check."""
+    cache: list[tuple[str, str]] | None = None
+
+    def names() -> list[tuple[str, str]]:
+        nonlocal cache
+        if cache is None:
+            try:
+                cache = [(d.design_number, d.name) for d in sap.list_designs(top=500)]
+            except SapError:
+                cache = []
+        return cache
+
+    return names
+
+
 def validate_design_request(args: DesignFieldsArgs, ctx: ToolContext) -> ToolResult:
-    """Check the fields given so far. Missing fields are listed, not reported as errors."""
-    given = {name: getattr(args, name) for name in FORM_FIELDS if getattr(args, name)}
+    """Check the fields given so far. Missing fields are listed, not reported as errors.
+    The same check as the form's inline validation (`app.designs.check_fields`)."""
+    given = {name: getattr(args, name) for name in FIELDS if getattr(args, name)}
     if not given:
         return _error("no_fields", "Pass at least one field to check.")
-    request = DesignRequest(**{name: given.get(name, "") for name in FORM_FIELDS})
-
-    sap: SapDesign | None = None
-    sap_note: dict[str, Any] | None = None
-    number_ok = v.validate_design_number(request.design_number, request.department or None).ok
-    if request.design_number and number_ok:
-        sap, failure = _sap_lookup(ctx, request.design_number.strip())
-        if failure is not None:
-            sap_note = failure.content["error"]
-
-    try:
-        report = check_design_request(
-            request,
-            ctx.settings.designs_root,
-            sap=sap,
-            require_sap=bool(request.design_number and number_ok and sap_note is None),
-        )
-    except UnsafePathError as exc:
-        return ToolResult({"ok": False, "errors": [_issue(exc.issue)]})
-
-    # Without a design number the revision can only be checked for its format.
-    sequence_codes = {"rev_first_not_a", "rev_jump", "rev_reused"}
-    errors = [
-        _issue(e)
-        for e in report.errors
-        if (e.field in given or e.field == "status")
-        and not ("design_number" not in given and e.code in sequence_codes)
-    ]
-    content: dict[str, Any] = {
-        "ok": not errors,
-        "normalized": {k: getattr(report.request, k) for k in given},
-        "errors": errors,
-        "warnings": [_issue(w) for w in report.warnings],
-        "missing": [name for name in FORM_FIELDS if name not in given],
-    }
-    if "design_number" in given:
-        content["next_free_revision"] = report.next_revision
-    if sap is not None:
-        content["sap"] = {"status": sap.status, "material": sap.material, "wbs": sap.wbs}
-    if sap_note is not None:
-        content["sap_unavailable"] = sap_note
+    content = check_fields(
+        given, ctx.settings.designs_root, sap_lookup_for(ctx.sap), sap_names_for(ctx.sap)
+    )
+    if not content["normalized"] and not content["ok"]:  # a path outside DESIGNS_ROOT
+        return ToolResult({"ok": False, "errors": content["errors"]})
     return ToolResult(content)
 
 
@@ -258,7 +274,7 @@ def check_design_folder(args: FolderArgs, ctx: ToolContext) -> ToolResult:
 
 
 def propose_form_values(args: DesignFieldsArgs, _: ToolContext) -> ToolResult:
-    fields = {name: getattr(args, name) for name in FORM_FIELDS if getattr(args, name)}
+    fields = {name: getattr(args, name) for name in FIELDS if getattr(args, name)}
     if not fields:
         return _error("no_fields", "Pass at least one field to fill in.")
     return ToolResult(
@@ -312,7 +328,10 @@ def request_reserve_number(args: ReserveArgs, ctx: ToolContext) -> ToolResult:
     errors = [_issue(e) for c in checks.values() for e in c.errors]
     if errors:
         return ToolResult({"ok": False, "errors": errors, "note": "No card was opened."})
-    payload = {name: check.value for name, check in checks.items()}
+    payload: dict[str, Any] = {name: check.value for name, check in checks.items()}
+    warnings = [w for c in checks.values() for w in c.warnings]
+    warnings += v.check_name_unique(payload["name"], "", sap_names_for(ctx.sap)())
+    payload["warnings"] = [_issue(w) for w in warnings]  # shown on the card (decision 0023)
     return _open_card(
         "reserve_number",
         payload,
@@ -324,7 +343,7 @@ def request_reserve_number(args: ReserveArgs, ctx: ToolContext) -> ToolResult:
 def request_create_design(args: CreateArgs, ctx: ToolContext) -> ToolResult:
     if (blocked := _one_card_per_kind("create_design", ctx)) is not None:
         return blocked
-    request = DesignRequest(**{name: getattr(args, name) for name in FORM_FIELDS})
+    request = DesignRequest(**{name: getattr(args, name) for name in FIELDS})
     number_ok = v.validate_design_number(request.design_number, request.department).ok
     sap, failure = _sap_lookup(ctx, request.design_number.strip()) if number_ok else (None, None)
     if failure is not None:
@@ -345,7 +364,9 @@ def request_create_design(args: CreateArgs, ctx: ToolContext) -> ToolResult:
             }
         )
     req = report.request
-    payload = {name: getattr(req, name) for name in FORM_FIELDS}
+    payload = {
+        name: getattr(req, name) for name in FIELDS if name in FORM_FIELDS or getattr(req, name)
+    }
     payload |= {"sap_material": req.sap_material, "project": req.project}
     payload["warnings"] = [_issue(w) for w in report.warnings]
     return _open_card(

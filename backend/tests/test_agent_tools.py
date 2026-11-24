@@ -163,8 +163,9 @@ def test_reserve_opens_a_card_and_calls_no_sap(registry, ctx, fake_sap, engine):
         "department": "HW",
         "name": "Bead Counter",
         "designer": "C. Velazquez",
+        "warnings": [],
     }
-    assert fake_sap.posts == []
+    assert fake_sap.posts == []  # only read: the reservation happens at confirm
 
 
 def test_create_opens_a_card_with_sap_values_and_writes_nothing(registry, ctx, settings):

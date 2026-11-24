@@ -28,7 +28,7 @@ def test_plain_answer_is_one_model_call(deps, engine):
     d = deps([say("Hi! Which department?")])
     out = events(d)
 
-    assert [e.type for e in out] == ["conversation", "message", "done"]
+    assert [e.type for e in out] == ["conversation", "run", "message", "done"]
     done = out[-1].data
     assert done["status"] == "answered"
     run = store.get_run(engine, done["run_id"])
@@ -40,7 +40,14 @@ def test_tool_results_go_back_to_the_model_and_into_the_trace(deps, engine):
     d = deps([call("sap_get_design", design_number="HL-HW-26-0042"), say("It is IN_WORK.")])
     out = events(d, text="status of HL-HW-26-0042?")
 
-    assert [e.type for e in out] == ["conversation", "tool_call", "tool_result", "message", "done"]
+    assert [e.type for e in out] == [
+        "conversation",
+        "run",
+        "tool_call",
+        "tool_result",
+        "message",
+        "done",
+    ]
     second_call = d.client.calls[1].messages
     assert second_call[-1].role == "tool"
     assert '"status": "IN_WORK"' in second_call[-1].content
@@ -72,7 +79,7 @@ def test_provider_failure_is_an_error_event_and_a_stored_run(deps, engine):
 
     out = events(deps([broken]))
 
-    assert [e.type for e in out] == ["conversation", "error", "done"]
+    assert [e.type for e in out] == ["conversation", "run", "error", "done"]
     run = store.get_run(engine, out[-1].data["run_id"])
     assert run["status"] == "error"
     assert run["trace"]["error"] == "Ollama is not reachable"
@@ -123,3 +130,120 @@ def test_spanish_answers_are_asked_for_in_the_prompt(deps):
     d = deps([say("Hola")])
     events(d, language="es")
     assert "Spanish" in d.client.calls[0].messages[0].content
+
+
+def test_a_provider_switch_is_announced_and_traced(settings, engine, sap, manual):
+    from app.llm.base import QuotaExhausted
+    from app.llm.fallback import SwitchingClient
+
+    class UsedUp(FakeClient):
+        provider = "groq"
+
+        def chat(self, messages, tools):
+            raise QuotaExhausted("daily token quota used up")
+
+    client = SwitchingClient(UsedUp(), lambda: FakeClient([say("Hola.")]))
+    d = AgentDeps(settings=settings, engine=engine, client=client, sap=sap, manual=manual)
+    out = events(d)
+
+    assert [e.type for e in out] == ["conversation", "run", "notice", "message", "done"]
+    assert out[2].data["to"] == "fake" and out[2].data["code"] == "provider_switched"
+    trace = store.get_run(engine, out[-1].data["run_id"])["trace"]
+    [notice] = [s for s in trace["steps"] if s["type"] == "notice"]
+    assert notice["from"] == "groq" and "daily" in notice["reason"]
+
+
+def test_the_switch_is_announced_even_when_the_fallback_fails(settings, engine, sap, manual):
+    from app.llm.base import QuotaExhausted
+    from app.llm.fallback import SwitchingClient
+
+    class Raises(FakeClient):
+        def __init__(self, provider, error):
+            super().__init__([])
+            self.provider, self.error = provider, error
+
+        def chat(self, messages, tools):
+            raise self.error
+
+    client = SwitchingClient(
+        Raises("groq", QuotaExhausted("daily")),
+        lambda: Raises("ollama", LLMError("Ollama took too long")),
+    )
+    d = AgentDeps(settings=settings, engine=engine, client=client, sap=sap, manual=manual)
+    out = events(d)
+
+    assert [e.type for e in out] == ["conversation", "run", "notice", "error", "done"]
+    assert out[2].data["to"] == "ollama"
+
+
+# --- pre-retrieval: the backend searches the manual first (decision 0024) ---------------
+
+
+def test_a_question_gets_the_backends_search_before_the_first_model_call(deps, engine):
+    d = deps(
+        [say("No. Undo only clears the form [08-using-create-design#undo-number].")],
+        agent_preretrieval="auto",
+    )
+    out = events(d, text="I clicked Undo after reserving. Is the number released?")
+
+    assert [e.type for e in out] == [
+        "conversation",
+        "run",
+        "tool_call",
+        "tool_result",
+        "message",
+        "done",
+    ]
+    call_event = out[2].data
+    assert call_event["name"] == "search_design_manual" and call_event["auto"] is True
+    assert call_event["arguments"]["language"] == "en"
+    # the model's first call already has the search: an assistant call, then its result
+    first = d.client.calls[0].messages
+    assert (first[-2].role, first[-1].role) == ("assistant", "tool")
+    run_id = out[1].data["id"]
+    assert first[-2].tool_calls[0].id == first[-1].tool_call_id == f"auto_{run_id}"
+    assert "08-using-create-design#undo-number" in first[-1].content
+
+    run = store.get_run(engine, out[-1].data["run_id"])
+    assert run["model_calls"] == 1  # the search is not a model call
+    [step] = [s for s in run["trace"]["steps"] if s["type"] == "tool_call"]
+    assert step["auto"] is True and step["iteration"] == 0
+    assert step["result"] == first[-1].content  # exactly what the model saw
+
+
+def test_a_form_fill_gets_no_search_and_off_means_never(deps):
+    fill = deps([say("Checking.")], agent_preretrieval="auto")
+    out = events(fill, text="Create HL-HW-26-0042 revision C, Bead Drill Controller, C. Velazquez.")
+    assert "tool_call" not in [e.type for e in out]
+
+    off = deps([say("No.")], agent_preretrieval="off")
+    assert "tool_call" not in [e.type for e in events(off, text="Can I choose my own number?")]
+
+
+def test_the_search_answers_in_the_ui_language(deps):
+    d = deps([say("No.")], agent_preretrieval="on")
+    out = events(d, text="mi tarjeta caducó", language="es")
+    result = out[3].data["result"]
+    assert result["passages"][0]["lang"] == "es"
+    assert result["passages"][0]["source"] == "08-using-create-design#card-expired"
+
+
+def test_ollama_gets_three_short_passages(deps):
+    d = deps([say("No.")], agent_preretrieval="on")
+    d.client.provider = "ollama"
+    out = events(d, text="What are the rules for the design name?")
+    passages = out[3].data["result"]["passages"]
+    assert len(passages) <= 3
+    assert all(len(p["text"]) <= 502 for p in passages)  # 500 + " …"
+
+
+def test_the_few_shot_example_is_for_ollama_only_and_off_by_default(deps):
+    plain = deps([say("ok")])
+    events(plain, text="hi")
+    assert "Example (the shape" not in plain.client.calls[0].messages[0].content
+
+    for provider, expected in (("ollama", True), ("groq", False)):
+        d = deps([say("ok")], agent_few_shot=True)
+        d.client.provider = provider
+        events(d, text="hi")
+        assert ("Example (the shape" in d.client.calls[0].messages[0].content) is expected

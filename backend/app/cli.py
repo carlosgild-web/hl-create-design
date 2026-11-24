@@ -7,7 +7,7 @@
   `POST /api/actions/{id}/confirm`); `cancel <action_id>` dismisses it.
 
 Exit codes: 0 done, 1 refused by a rule, SAP, the file system or the model,
-2 bad arguments, 3 kicad-cli failed (nothing was kept).
+2 bad arguments, 3 kicad-cli made no PDF (the project was kept without it; decision 0023).
 """
 
 from __future__ import annotations
@@ -15,18 +15,21 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from urllib.parse import urlparse
 
 from app.actions import ActionNotFound, ActionNotPending, cancel_action, confirm_action
-from app.agent.service import AgentDeps, chat_turn
+from app.agent.service import AgentDeps, chat_turn, probe_turn
 from app.core.config import MANUAL_DIR, Settings, get_settings
 from app.db.session import get_engine
 from app.designs import DesignValidationError, create_design
-from app.kicad.exporter import ExportError
 from app.kicad.renderer import DesignFolderExistsError
 from app.llm.base import LLMClient, LLMError, Message
 from app.llm.factory import make_client
+from app.llm.ollama import OllamaProbe, find_ollama, start_ollama
+from app.llm.resolve import ProviderStatus, check_ollama, check_providers
 from app.sap.client import SapClient
 from app.standards.manual_search import ManualIndex
 from app.standards.validators import DesignRequest, Issue, UnsafePathError
@@ -49,6 +52,9 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--material", default="", help="SAP material number (offline use)")
     create.add_argument("--project", default="", help="WBS element, e.g. P-26-0108 (offline use)")
     create.add_argument("--date", default="", help="Issue date YYYY-MM-DD (default: today)")
+    create.add_argument(
+        "--description", default="", help="Optional one line under the title (max 60)"
+    )
     create.add_argument(
         "--no-export", action="store_true", help="Skip the kicad-cli PDF/SVG export"
     )
@@ -76,17 +82,182 @@ def build_parser() -> argparse.ArgumentParser:
         "--older-than", type=float, default=None, metavar="HOURS", help="default: DESIGNS_TTL_HOURS"
     )
 
+    check = commands.add_parser(
+        "llm-check",
+        help="Check Dahl, Groq and Ollama, suggest a model, ask which to use, and print it",
+    )
+    check.add_argument("--out", type=Path, metavar="FILE", help="Also write the choice here")
+
     ev = commands.add_parser("agent-eval", help="Run the agent scenario suite (PLAN Phase 6)")
     which = ev.add_mutually_exclusive_group(required=True)
     which.add_argument("--fake", action="store_true", help="Scripted model (CI, no LLM needed)")
-    which.add_argument("--provider", choices=("ollama", "groq"), help="Real provider")
+    which.add_argument(
+        "--provider", choices=("ollama", "groq", "dahl", "demo"), help="Real provider, or the demo"
+    )
     ev.add_argument("--only", action="append", default=[], metavar="ID", help="Run these scenarios")
     ev.add_argument("--json", type=Path, metavar="FILE", help="Write the results as JSON")
     ev.add_argument("--markdown", type=Path, metavar="FILE", help="Write a Markdown report")
     ev.add_argument(
         "--allow-failures", action="store_true", help="Exit 0 even if scenarios fail (real runs)"
     )
+    ev.add_argument(
+        "--preretrieval",
+        choices=("auto", "on", "off"),
+        default="auto",
+        help="The backend's own manual search before the first model call (decision 0024)",
+    )
+    ev.add_argument(
+        "--resume",
+        type=Path,
+        metavar="DIR",
+        help="Save each result in DIR as it finishes and skip those already there (long runs)",
+    )
+    ev.add_argument(
+        "--few-shot",
+        action="store_true",
+        help="Ollama only: one example answer in the prompt, for an A/B run (decision 0026)",
+    )
     return parser
+
+
+# --- llm-check: which model answers (run by start.cmd / start.sh) --------------------
+
+# ask(question, yes_letter) -> True/False, or None when there is no terminal to ask on
+Ask = Callable[[str, str], "bool | None"]
+OLLAMA_START_WAIT_S = 30
+
+
+def _say(text: str = "") -> None:
+    print(text, file=sys.stderr, flush=True)
+
+
+def ask_terminal(
+    question: str,
+    yes_letter: str,
+    *,
+    reader: Callable[[], str] = input,
+    interactive: Callable[[], bool] = lambda: sys.stdin.isatty(),
+) -> bool | None:
+    """Ask the person at the terminal and wait for their answer: there is no time limit,
+    nothing is chosen until they press Enter. Enter alone takes the suggestion (the capital
+    letter). None when there is no terminal at all (CI, Docker)."""
+    if not interactive():
+        return None
+    sys.stderr.write(question)
+    sys.stderr.flush()
+    try:
+        answer = reader()
+    except EOFError:  # e.g. `start.cmd < nul`: Windows reports NUL as a terminal
+        sys.stderr.write("\n")
+        return None
+    answer = answer.strip().lower()
+    return answer == "" or answer.startswith(yes_letter)
+
+
+def _is_local(url: str) -> bool:
+    return urlparse(url).hostname in ("localhost", "127.0.0.1", "::1")
+
+
+def start_and_wait(
+    settings: Settings,
+    *,
+    find: Callable[[], Path | None] = find_ollama,
+    start: Callable[[Path], None] = start_ollama,
+    check: Callable[[Settings], OllamaProbe] = check_ollama,
+    sleep: Callable[[float], None] = time.sleep,
+    wait_s: int = OLLAMA_START_WAIT_S,
+) -> OllamaProbe:
+    """Start `ollama serve` and wait until it answers (at most `wait_s` seconds)."""
+    executable = find()
+    if executable is None:
+        return OllamaProbe("not_installed", "not installed")
+    _say("  Starting Ollama ...")
+    try:
+        start(executable)
+    except OSError as exc:
+        return OllamaProbe("not_running", f"could not be started ({exc})")
+    for _ in range(wait_s):
+        probe = check(settings)
+        if probe.state != "not_running":
+            return probe
+        sleep(1)
+    return OllamaProbe("not_running", f"did not answer within {wait_s} s of starting")
+
+
+def choose_provider(
+    status: ProviderStatus,
+    settings: Settings,
+    ask: Ask,
+    start: Callable[[Settings], OllamaProbe],
+) -> str:
+    """Suggest the best provider and let the person pick. Without a terminal (`ask` returns
+    None) the suggestion is taken, and Ollama is never started."""
+    dahl, groq, ollama = status.dahl, status.groq, status.ollama
+    if dahl and dahl.usable and ask("Use Dahl? [Y/n] ", "y") is not False:
+        return "dahl"
+    if groq and groq.usable and ask("Use Groq? [Y/n] ", "y") is not False:
+        return "groq"
+    if ollama is None:
+        return "demo"
+    if ollama.state == "not_running" and _is_local(settings.ollama_base_url):
+        if ask("Ollama is installed but not running. Start it now? [Y/n] ", "y"):
+            ollama = start(settings)
+            _say(f"  Ollama    {ollama.detail}")
+            if ollama.usable:
+                return "ollama"
+        return "demo"
+    if ollama.usable:
+        question = (
+            "Use [O]llama (local, slower, needs ~3.5 GB free RAM) or the [D]emo model? [O/d] "
+        )
+        return "ollama" if ask(question, "o") is not False else "demo"
+    return "demo"
+
+
+def run_llm_check(
+    settings: Settings,
+    out: Path | None = None,
+    *,
+    check: Callable[[Settings], ProviderStatus] | None = None,
+    ask: Ask = ask_terminal,
+    start: Callable[[Settings], OllamaProbe] = start_and_wait,
+) -> int:
+    """Show each provider's status, suggest one and ask (when there is a terminal). The
+    questions and status go to stderr; the chosen name goes to stdout and to `out`, so the
+    start scripts can run the app with `LLM_PROVIDER=<name>`."""
+    configured = settings.llm_provider
+    if configured == "demo":
+        _say("Assistant: the demo assistant, rules and no real AI (LLM_PROVIDER=demo).")
+        _say("  Dahl, Groq and Ollama are not checked. Set LLM_PROVIDER=auto in .env to check")
+        _say("  them.")
+        provider = configured
+    elif configured == "fake":
+        # The scripted test double (decision 0025): it only answers with a notice.
+        _say("Assistant: the scripted TEST model (LLM_PROVIDER=fake), not the demo assistant.")
+        _say("  Dahl, Groq and Ollama are not checked. To check them, set LLM_PROVIDER=auto")
+        _say("  in .env, or LLM_PROVIDER=demo for the demo assistant.")
+        provider = configured
+    else:
+        _say("Checking the assistant's model ...")
+        status = (check or (lambda s: check_providers(s, turn=probe_turn())))(settings)
+        if status.dahl:
+            _say(f"  Dahl      {status.dahl.detail}")
+        if status.groq:
+            _say(f"  Groq      {status.groq.detail}")
+        if status.ollama:
+            _say(f"  Ollama    {status.ollama.detail}")
+        provider = choose_provider(status, settings, ask, start)
+        names = {
+            "dahl": f"Dahl ({(status.dahl and status.dahl.model) or settings.dahl_model})",
+            "groq": f"Groq ({settings.groq_model})",
+            "ollama": f"Ollama ({settings.ollama_model})",
+            "demo": "the demo assistant (rules, no real AI)",
+        }
+        _say(f"Using {names[provider]}.")
+    if out:
+        out.write_text(provider, encoding="utf-8")
+    print(provider)
+    return 0
 
 
 def _issue_line(kind: str, issue: Issue) -> str:
@@ -103,6 +274,7 @@ def run_create_design(args: argparse.Namespace, settings: Settings) -> int:
         sap_material=args.material,
         project=args.project,
         issue_date=args.date,
+        description=args.description,
     )
     try:
         created = create_design(request, settings=settings, export=not args.no_export)
@@ -116,13 +288,6 @@ def run_create_design(args: argparse.Namespace, settings: Settings) -> int:
     except DesignFolderExistsError as exc:
         print(f"error {exc} (manual: 04-folder-structure#revision-folders)", file=sys.stderr)
         return 1
-    except ExportError as exc:
-        print(f"error {exc}", file=sys.stderr)
-        if exc.log:
-            print(exc.log, file=sys.stderr)
-        print("Nothing was kept. Fix KICAD_CLI or use --no-export.", file=sys.stderr)
-        return 3
-
     req = created.request
     print(f"Created {req.design_number} rev {req.revision}: {req.name}")
     print(f"  folder:    {created.project.folder}")
@@ -133,6 +298,9 @@ def run_create_design(args: argparse.Namespace, settings: Settings) -> int:
     for warning in created.warnings:
         print(_issue_line("warning", warning))
     print(f"  audit id:  {created.audit_id}")
+    if any(w.code == "pdf_not_exported" for w in created.warnings):
+        print("No PDF: fix KICAD_CLI, or use --no-export.", file=sys.stderr)
+        return 3
     return 0
 
 
@@ -152,6 +320,8 @@ def main(argv: Sequence[str] | None = None, settings: Settings | None = None) ->
         return run_cancel(args, settings)
     if args.command == "cleanup":
         return run_cleanup(args, settings)
+    if args.command == "llm-check":
+        return run_llm_check(settings, args.out)
     if args.command == "agent-eval":
         return run_agent_eval(args, settings)
     return 2  # pragma: no cover - argparse rejects unknown commands
@@ -215,6 +385,8 @@ def run_chat(
                 print(f"         confirm: python -m app.cli confirm {action['id']}")
             elif event.type == "message":
                 print(f"\n{d['content']}\n")
+            elif event.type == "notice":
+                print(f"  [notice] now on {d['to']} ({d['model']}): {d['reason']}")
             elif event.type == "error":
                 print(f"error {d['message']}", file=sys.stderr)
             elif event.type == "done":
@@ -289,7 +461,9 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
     else:
         scenarios = [s for s in scenarios if "fake-only" not in s.tags]
         try:
-            client = make_client(settings.model_copy(update={"llm_provider": args.provider}))
+            client = make_client(
+                settings.model_copy(update={"llm_provider": args.provider}), fallback=False
+            )
         except LLMError as exc:
             print(f"error {exc}", file=sys.stderr)
             return 1
@@ -300,7 +474,17 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
             return 1
         client_for, provider, model = harness.real(client), client.provider, client.model
         print(f"{provider}: {model}; {len(scenarios)} scenarios (fake-only ones skipped)")
-    results = harness.run_all(scenarios, client_for, provider=provider, model=model)
+    if args.resume:
+        results = _run_resumable(args, scenarios, client_for, provider, model)
+    else:
+        results = harness.run_all(
+            scenarios,
+            client_for,
+            provider=provider,
+            model=model,
+            preretrieval=args.preretrieval,
+            few_shot=args.few_shot,
+        )
     print(report.console(results))
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
@@ -310,6 +494,40 @@ def run_agent_eval(args: argparse.Namespace, settings: Settings) -> int:
         args.markdown.write_text(report.to_markdown(results), encoding="utf-8")
     passed, total = report.score(results)
     return 0 if passed == total or args.allow_failures else 1
+
+
+def _run_resumable(args: argparse.Namespace, scenarios, client_for, provider: str, model: str):
+    """One scenario at a time, each result saved at once as `DIR/<id>.json`. A stopped run
+    (Ctrl+C, a crash, a reboot) loses at most the scenario in progress; run the same
+    command again and it continues. Results of another provider or model are not reused."""
+    from app.evals import harness
+
+    folder: Path = args.resume
+    folder.mkdir(parents=True, exist_ok=True)
+    results = []
+    for number, sc in enumerate(scenarios, 1):
+        saved = folder / f"{sc.id}.json"
+        if saved.exists():
+            data = json.loads(saved.read_text(encoding="utf-8"))
+            if data.get("provider") == provider and data.get("model") == model:
+                results.append(harness.ScenarioResult.from_dict(data))
+                continue
+        print(f"[{number}/{len(scenarios)}] {sc.id} ...", flush=True)
+        result = harness.run_scenario(
+            sc,
+            client_for,
+            provider=provider,
+            model=model,
+            preretrieval=args.preretrieval,
+            few_shot=args.few_shot,
+        )
+        saved.write_text(
+            json.dumps(result.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        mark = "PASS" if result.passed else "FAIL"
+        print(f"    {mark} in {result.seconds:.0f} s", flush=True)
+        results.append(result)
+    return results
 
 
 if __name__ == "__main__":

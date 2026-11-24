@@ -13,9 +13,13 @@ from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 
+from app.messages import text
+
 SEED_DIR = Path(__file__).resolve().parents[1] / "seed"
 
 FIRST_REVISION = "A"
+REVISION_LETTERS = "ABCDEFGHJKLMNPRTUVWY"  # I, O, Q, S, X and Z are never used
+REVISABLE_STATUSES = frozenset({"IN_WORK", "RELEASED"})
 SEQUENCE_MAX = 9_999  # NNNN in HL-<DEPT>-<YY>-<NNNN>
 MATERIAL_MAX = 49_999_999  # end of the electronic assemblies range
 
@@ -66,11 +70,12 @@ CREATE TABLE IF NOT EXISTS material_range (
 );
 """
 
-# Revision letters sort alphabetically in issue order (skipped letters don't change that).
+# Revisions run A..Y, then AA, AB...: within one length they sort alphabetically in issue
+# order (skipped letters don't change that), and a longer one is always later.
 _DESIGN_SELECT = """
 SELECT d.*,
-       (SELECT MAX(r.rev) FROM revisions r WHERE r.design_number = d.design_number)
-           AS current_revision
+       (SELECT r.rev FROM revisions r WHERE r.design_number = d.design_number
+        ORDER BY LENGTH(r.rev) DESC, r.rev DESC LIMIT 1) AS current_revision
 FROM designs d
 """
 
@@ -78,12 +83,15 @@ FILTERABLE_COLUMNS = frozenset({"department", "status", "design_number"})
 
 
 class ReservationError(Exception):
-    """SAP refused to reserve a number; `code` and `message` go to the client."""
+    """SAP refused to reserve a number; `code`, `message` and `params` (for the text in
+    the caller's language, `app/messages.py`) go to the client."""
 
-    def __init__(self, code: str, message: str) -> None:
+    def __init__(self, code: str, **params: object) -> None:
+        message = text(code, "en", params)
         super().__init__(message)
         self.code = code
         self.message = message
+        self.params = params
 
 
 class Database:
@@ -247,20 +255,14 @@ class Database:
         with self.transaction() as conn:
             known = conn.execute("SELECT 1 FROM departments WHERE code = ?", (department,))
             if known.fetchone() is None:
-                raise ReservationError(
-                    "ZHL_PLM/010", f"Department '{department}' does not exist in SAP"
-                )
+                raise ReservationError("ZHL_PLM/010", department=department)
 
             wbs = conn.execute(
                 "SELECT wbs FROM default_wbs WHERE department = ? AND year = ?",
                 (department, year),
             ).fetchone()
             if wbs is None:
-                raise ReservationError(
-                    "ZHL_PLM/011",
-                    f"No default project (WBS) for department {department} in {year};"
-                    " contact Product Engineering",
-                )
+                raise ReservationError("ZHL_PLM/011", department=department, year=year)
 
             row = conn.execute(
                 "SELECT last_seq FROM number_ranges WHERE department = ? AND year = ?",
@@ -268,9 +270,7 @@ class Database:
             ).fetchone()
             seq = (row["last_seq"] if row else 0) + 1
             if seq > SEQUENCE_MAX:
-                raise ReservationError(
-                    "ZHL_PLM/012", f"Number range for {department} {year} is exhausted"
-                )
+                raise ReservationError("ZHL_PLM/012", department=department, year=year)
             conn.execute(
                 "INSERT INTO number_ranges (department, year, last_seq) VALUES (?, ?, ?)"
                 " ON CONFLICT (department, year) DO UPDATE SET last_seq = excluded.last_seq",
@@ -282,9 +282,7 @@ class Database:
                 + 1
             )
             if material > MATERIAL_MAX:
-                raise ReservationError(
-                    "ZHL_PLM/013", "Material number range for electronic assemblies is exhausted"
-                )
+                raise ReservationError("ZHL_PLM/013")
             conn.execute("UPDATE material_range SET last_material = ? WHERE id = 1", (material,))
 
             number = f"HL-{department}-{year % 100:02d}-{seq:04d}"
@@ -307,6 +305,53 @@ class Database:
                 (number, FIRST_REVISION, today.isoformat(), created_by),
             )
         return number
+
+    def add_revision(self, design_number: str, rev: str, created_by: str, today: date) -> None:
+        """Record a new revision of a design. Only the next free letter, and only while the
+        design is IN_WORK or RELEASED. Raises `ReservationError`."""
+        with self.transaction() as conn:
+            design = conn.execute(
+                "SELECT status FROM designs WHERE design_number = ?", (design_number,)
+            ).fetchone()
+            if design is None:
+                raise ReservationError("ZHL_PLM/001", design=design_number)
+            if design["status"] not in REVISABLE_STATUSES:
+                raise ReservationError("ZHL_PLM/020", design=design_number, status=design["status"])
+            existing = [
+                r["rev"]
+                for r in conn.execute(
+                    "SELECT rev FROM revisions WHERE design_number = ?", (design_number,)
+                )
+            ]
+            if rev in existing:
+                raise ReservationError("ZHL_PLM/021", revision=rev, design=design_number)
+            expected = next_revision(existing)
+            if rev != expected:
+                raise ReservationError(
+                    "ZHL_PLM/022", revision=rev, design=design_number, expected=expected
+                )
+            conn.execute(
+                "INSERT INTO revisions (design_number, rev, created_on, created_by)"
+                " VALUES (?, ?, ?, ?)",
+                (design_number, rev, today.isoformat(), created_by),
+            )
+
+
+def next_revision(existing: Iterable[str]) -> str:
+    """The revision after the latest one: A..Y, then AA..YY."""
+    n = len(REVISION_LETTERS)
+
+    def index(rev: str) -> int:
+        if len(rev) == 1:
+            return REVISION_LETTERS.index(rev)
+        return n * (1 + REVISION_LETTERS.index(rev[0])) + REVISION_LETTERS.index(rev[1])
+
+    known = [index(r) for r in existing if r and all(c in REVISION_LETTERS for c in r)]
+    following = max(known) + 1 if known else 0
+    if following < n:
+        return REVISION_LETTERS[following]
+    first, second = divmod(following - n, n)
+    return REVISION_LETTERS[first] + REVISION_LETTERS[second]
 
 
 def _load_json(path: Path) -> dict:
