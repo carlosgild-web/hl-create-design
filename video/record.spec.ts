@@ -42,6 +42,8 @@ type Storyboard = {
   video: string
   provider: string
   model?: string
+  /** Flexible takes: the models the run may use (Dahl falls back, decision 0031), id -> banner name. */
+  models?: Record<string, string>
   banner: string
   mode?: 'strict' | 'flexible'
   hold?: number
@@ -333,7 +335,11 @@ class Conductor {
 
   private slideData(name: string) {
     if (name === 'invariants' || name === 'close') return { invariants: invariants(), hot: [2, 3, 6] }
-    if (name === 'end') return { repo: process.env.VIDEO_REPO_URL || 'github.com/carlosgild-web/hl-create-design' }
+    if (name === 'end') return {
+      repo: process.env.VIDEO_REPO_URL || 'github.com/carlosgild-web/hl-create-design',
+      author: process.env.VIDEO_AUTHOR ?? 'Carlos Velazquez',
+      linkedin: process.env.VIDEO_LINKEDIN ?? 'linkedin.com/in/carlos-v-90b99149',
+    }
     if (name === 'trace') {
       const run = this.traces.at(-1) ?? this.fail('trace slide: no trace saved')
       const steps = (run.trace?.steps ?? []) as any[]
@@ -696,10 +702,20 @@ test('dahl take @dahl', async ({ browser, baseURL, request }) => {
     await conductor.until(conductor.waitTurn(), TURN_TIMEOUT_MS, `turn "${key}"`)
     const model = conductor.traces.at(-1)?.model
     if (board.model && model !== board.model) throw new Error(`the run used model "${model}", the banner says "${board.model}"`)
+    if (board.models) {
+      if (!(model in board.models)) throw new Error(`the run used model "${model}", not one of the storyboard's models`)
+      await setBanner(model)
+    }
   }
 
+  // The banner names the model in use; a busy model hands over to the next (decision 0031).
+  const bannerFor = (model: string) => board.banner.replace('{model}', board.models?.[model] ?? model)
+  const setBanner = (model: string) =>
+    page.evaluate((text) => { document.getElementById('banner')!.textContent = text }, bannerFor(model))
+  const startModel: string = (health as any).llm_model ?? Object.keys(board.models ?? {})[0] ?? ''
+
   try {
-    await page.evaluate((b) => (window as any).stage.init(b), { banner: board.banner, provider: `provider ${health.llm_provider}` })
+    await page.evaluate((b) => (window as any).stage.init(b), { banner: bannerFor(startModel), provider: `provider ${health.llm_provider}` })
     await conductor.step('hook')
 
     // A rule question: pre-retrieval, then the real model's cited answer

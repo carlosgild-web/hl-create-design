@@ -88,7 +88,9 @@
     end: (d) => `
       <h1>The AI guides. The code decides.</h1>
       <p class="lead" style="margin-bottom:34px">And the engineer clicks. Every step is traced.</p>
-      <p class="lead">${esc(d.repo || '')}</p>`,
+      <p class="lead">${esc(d.repo || '')}</p>
+      ${d.author ? `<p class="lead" style="margin-top:34px">${esc(d.author)}</p>` : ''}
+      ${d.linkedin ? `<p class="lead">${esc(d.linkedin)}</p>` : ''}`,
     close: (d) => `
       <h1>The AI guides. The code decides.</h1>
       <p class="lead" style="margin-bottom:34px">And the user clicks.</p>
