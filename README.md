@@ -12,7 +12,8 @@ the company Design Manual. **The AI guides; the code decides.**
 
 <sub>Recorded with the scripted demo model. KiCad output is real.</sub>
 
-### The 2-minute video: a real model, under the hood
+https://github.com/user-attachments/assets/f27fd03c-f28d-4b5e-94cc-408ffe2cfbe9
+
 
 <!-- To make it play inline: edit this file on GitHub, drag video/out/groq/video-readme.mp4
      onto the line below the image, and delete the image line. -->
