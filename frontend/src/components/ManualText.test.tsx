@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { ManualText } from './ManualText'
+import { InlineMarkdown, ManualText } from './ManualText'
 
 const NUMBERING =
   '- **New revision, same number:** you change the same design (a fix, a component change,\n' +
@@ -47,5 +47,18 @@ describe('ManualText', () => {
 
     expect(container.querySelector('ol')?.children).toHaveLength(2)
     expect(container.querySelectorAll('p')).toHaveLength(1)
+  })
+})
+
+describe('InlineMarkdown in a chat answer', () => {
+  it('shows **bold** and `code` without the marks', () => {
+    render(
+      <p>
+        <InlineMarkdown text={'Confirm the card for **Bead Threader Controller**; after `H` comes `J`.'} />
+      </p>,
+    )
+    expect(screen.getByText('Bead Threader Controller').tagName).toBe('STRONG')
+    expect(screen.getByText('H').tagName).toBe('CODE')
+    expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument()
   })
 })

@@ -264,7 +264,7 @@ export function DesignForm({
                   <Input
                     {...common}
                     value={values[field]}
-                    placeholder={FIELD_PLACEHOLDERS[field]}
+                    placeholder={FIELD_PLACEHOLDERS[field] && t('form.example', { value: FIELD_PLACEHOLDERS[field] })}
                     maxLength={field === 'description' ? DESCRIPTION_MAX : undefined}
                     autoComplete="off"
                     onChange={(e) => onChange(field, e.target.value)}

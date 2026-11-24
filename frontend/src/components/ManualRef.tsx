@@ -3,7 +3,7 @@ import { useState } from 'react'
 
 import { getManualPassage } from '@/api/client'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ManualText } from '@/components/ManualText'
+import { InlineMarkdown, ManualText } from '@/components/ManualText'
 import { useI18n } from '@/i18n'
 import { normalizeRefs } from '@/lib/issues'
 
@@ -60,7 +60,7 @@ export function WithRefs({ text }: { text: string }) {
   parts.push(clean.slice(last))
   return (
     <>
-      {parts.map((part, i) => (typeof part === 'string' ? part : <ManualRef key={i} source={part.source} />))}
+      {parts.map((part, i) => (typeof part === 'string' ? <InlineMarkdown key={i} text={part} /> : <ManualRef key={i} source={part.source} />))}
     </>
   )
 }

@@ -49,6 +49,9 @@ _WAIT_IN_MESSAGE_RE = re.compile(
 _WAIT_PART_RE = re.compile(r"([\d.]+)(ms|h|m|s)")
 _LIMIT_RE = re.compile(r"\((TPM|RPM|TPD|RPD)\)", re.IGNORECASE)
 _USAGE_RE = re.compile(r"Limit (\d+), Used (\d+)", re.IGNORECASE)
+# Some models (e.g. MiniMax on Dahl) put their reasoning in the reply as <think>...</think>;
+# an unclosed block at the start is reasoning cut off by the turn. Never shown to the user.
+_THINK_RE = re.compile(r"<think>.*?(?:</think>|$)", re.DOTALL | re.IGNORECASE)
 
 GroqState = Literal[
     "ok", "per_minute", "daily", "no_credit", "no_key", "bad_key", "unreachable", "error"
@@ -164,7 +167,7 @@ class GroqClient(LLMClient):
         calls = [_call(c) for c in message.get("tool_calls") or ()]
         usage = data.get("usage") or {}
         return ChatTurn(
-            content=(message.get("content") or "").strip(),
+            content=_THINK_RE.sub("", message.get("content") or "").strip(),
             tool_calls=tuple(c for c in calls if c is not None),
             prompt_tokens=int(usage.get("prompt_tokens") or 0),
             completion_tokens=int(usage.get("completion_tokens") or 0),

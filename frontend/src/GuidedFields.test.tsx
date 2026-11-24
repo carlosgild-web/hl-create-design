@@ -36,7 +36,7 @@ describe('guided fields (decisions 0017 F and 0018)', () => {
     expect(screen.getByLabelText('Revision')).toHaveValue('A')
     expect(screen.getByLabelText('Revision')).toHaveAttribute('aria-readonly', 'true')
     expect(screen.getByText('Initials and surname, e.g. C. Velazquez or C. de la Torre')).toBeInTheDocument()
-    expect(screen.getByLabelText('Design name')).toHaveAttribute('placeholder', 'Bead Drill Controller')
+    expect(screen.getByLabelText('Design name')).toHaveAttribute('placeholder', 'e.g. Bead Drill Controller')
     // the old reserve buttons in the form are gone: the Start panel owns reserving
     expect(screen.queryByRole('button', { name: 'Reserve a new number' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Reserve new' })).not.toBeInTheDocument()

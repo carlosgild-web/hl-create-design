@@ -90,7 +90,7 @@
       "subtitle": "The model does not decide if values are valid. These functions do.",
       "callouts": [["backend/app/standards/validators.py", "validate_revision"], ["backend/app/standards/validators.py", "check_status_allows_revision"], ["backend/app/standards/validators.py", "validate_designer"]], "payload": { "from": "event", "pick": "result" } },
     { "id": "2.9", "scene": 2, "turn": "fill_wrong", "on": { "event": "tool_result", "name": "validate_design_request", "code": "rev_skipped_letter" }, "layer": "Validators",
-      "subtitle": "Same sentence, revision I: the validator returns a code and a manual reference. The UI translates the code.",
+      "subtitle": "Same sentence, revision I: the validator returns an error code and a manual reference, not prose.",
       "callouts": [["backend/app/standards/validators.py", "validate_revision"]], "payload": { "from": "event", "pick": "result.errors" } },
     { "id": "2.10", "scene": 2, "turn": "fill_wrong", "on": { "event": "message" }, "layer": "Model",
       "subtitle": "The model now explains the result in words. It cannot change it.",

@@ -23,7 +23,7 @@ export const FIELD_PLACEHOLDERS: Partial<Record<FormField, string>> = {
   design_number: 'HL-HW-26-0042',
   revision: 'A',
   name: 'Bead Drill Controller',
-  designer: 'C. Velazquez',
+  designer: 'M. Lopez', // not a real user's name: an empty field must not look filled
   description: 'Six-axis stepper drive for the bead drill',
 }
 

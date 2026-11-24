@@ -3,6 +3,8 @@ setlocal
 rem Clone and run Create Design.
 rem   start.cmd                run locally (default): Python + Node on this PC, no Docker
 rem   start.cmd local          same as above
+rem   start.cmd video          local, on a fresh copy of the seed data in data-video\ (deleted
+rem                            at each start): the explainer videos show no earlier takes
 rem   start.cmd docker         run in Docker; extra arguments go to docker compose,
 rem                            e.g. start.cmd docker --profile ollama
 cd /d "%~dp0"
@@ -10,8 +12,17 @@ set "MODE=%~1"
 if "%MODE%"=="" set "MODE=local"
 if /i "%MODE%"=="local" goto local
 if /i "%MODE%"=="docker" goto docker
-echo Usage: start.cmd [local^|docker]
+if /i "%MODE%"=="video" goto video
+echo Usage: start.cmd [local^|video^|docker]
 exit /b 1
+
+:video
+rem Environment variables win over .env: both services and the designs move to data-video\.
+set "DATA_DIR=%~dp0data-video"
+set "DESIGNS_ROOT=%~dp0data-video\designs"
+if exist "%DATA_DIR%" rmdir /s /q "%DATA_DIR%"
+echo Video mode: fresh data in %DATA_DIR% ^(your data\ folder is not touched^).
+goto local
 
 :local
 where python >nul 2>&1 || (echo Python 3.11+ is required: https://www.python.org/downloads/ & exit /b 1)

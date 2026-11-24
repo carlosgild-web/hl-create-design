@@ -121,8 +121,9 @@ function kicadFilter(spec, textFiles, { from, crop }) {
     `scale=${W}:${STAGE_H}:force_original_aspect_ratio=decrease:flags=lanczos`,
     `pad=${W}:${STAGE_H}:(ow-iw)/2:(oh-ih)/2:color=0x0f1720`,
     `pad=${W}:${H}:0:0:color=0x0a1016`,
-    drawText(textFiles.label, 22, 'white@0.9', 'x=24:y=20:box=1:boxcolor=0x0f1720@0.75:boxborderw=10'),
-    ...(crop ? [drawText(textFiles.zoom, 22, '0x39b3a6', 'x=24:y=66:box=1:boxcolor=0x0f1720@0.75:boxborderw=10')] : []),
+    // Bottom right of the stage: at the top left the label covered KiCad's menu bar.
+    drawText(textFiles.label, 22, 'white@0.9', `x=w-text_w-24:y=${STAGE_H}-text_h-${crop ? 96 : 50}:box=1:boxcolor=0x0f1720@0.75:boxborderw=10`),
+    ...(crop ? [drawText(textFiles.zoom, 22, '0x39b3a6', `x=w-text_w-24:y=${STAGE_H}-text_h-50:box=1:boxcolor=0x0f1720@0.75:boxborderw=10`)] : []),
     // drawtext's t is the piece's own time
     ...spec.cues.map((c, i) =>
       drawText(textFiles.cues[i], 30, 'white', `x=(w-text_w)/2:y=${STAGE_H}+(${H - STAGE_H}-text_h)/2`, `between(t+${from},${c.start},${c.end})`),

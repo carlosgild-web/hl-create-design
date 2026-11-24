@@ -2,14 +2,14 @@
   "notes": [
     "The KiCad ending (storyboard 4b, decisions 0028 and 0030): a desktop recording of the schematic editor the app opened, appended where the take clicked Open in KiCad.",
     "Times are seconds from the start of the KiCad clip. At zoom.start the clip cuts to a crop of the same recorded frames around the title block (labelled 'zoomed in'); nothing is redrawn.",
-    "zoom.cx/cy: the title block's centre as a fraction of the captured area, measured on a maximized KiCad 9 window at 1920x1020 (HL-HW-26-0049, 2026-11-22). Re-check the frames if KiCad's layout changes."
+    "zoom.cx/cy: the title block's centre as a fraction of the captured area, measured on a maximized KiCad 9 window at 1920x1020 (HL-HW-26-0049, 2026-11-22; cy raised 2026-11-24 so the crop ends above the status bar). Re-check the frames if KiCad's layout changes."
   ],
   "label": "KiCad 9 on the desktop (screen recording)",
   "zoom": {
     "start": 5.0,
     "factor": 2.4,
     "cx": 0.695,
-    "cy": 0.803,
+    "cy": 0.775,
     "label": "zoomed in: the title block"
   },
   "cues": [

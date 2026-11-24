@@ -133,3 +133,19 @@ def test_the_trace_takes_the_model_that_answered():
     assert [e.type for e in events] == ["notice"] and events[0].data["code"] == "model_switched"
     assert trace.model == "b" and trace.to_dict()["model"] == "b"
     assert trace.steps[-1]["type"] == "notice"
+
+
+def test_reasoning_in_think_tags_never_reaches_the_answer():
+    body = {
+        "choices": [
+            {"message": {"content": "<think>The user wants X.\nI will...</think>\nDone [ref]."}}
+        ]
+    }
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, json=body))
+    turn = DahlClient("dk_t", "a", transport=transport).chat([Message("user", "x")], [])
+    assert turn.content == "Done [ref]."
+    cut = {"choices": [{"message": {"content": "<think>still thinking when the turn ended"}}]}
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, json=cut))
+    assert (
+        DahlClient("dk_t", "a", transport=transport).chat([Message("user", "x")], []).content == ""
+    )

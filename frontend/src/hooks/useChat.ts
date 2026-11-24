@@ -180,9 +180,15 @@ export function useChat({ language, getForm, onFormProposal }: Options) {
         case 'form_proposal':
           onFormProposal(event.data.fields)
           break
-        case 'pending_action':
+        case 'pending_action': {
+          // A model may open the card without proposing the values first: the form shows
+          // the card's values too, as the assistant's (never over the user's, never locked ones).
+          const payload = event.data.action.payload as Record<string, unknown>
+          const fields = Object.fromEntries(FORM_FIELDS.filter((f) => typeof payload[f] === 'string').map((f) => [f, payload[f]]))
+          if (Object.keys(fields).length) onFormProposal(fields as Partial<FormValues>)
           openCard(event.data.action)
           break
+        }
         case 'message':
           push({ kind: 'assistant', text: event.data.content })
           break

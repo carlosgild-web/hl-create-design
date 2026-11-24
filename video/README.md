@@ -11,9 +11,10 @@ npm run video:smoke         # 10 s: the 1920x1080 stage -> out/smoke/
 
 The short video for the README (a real model, ~2 min, decisions 0029 and 0030):
 
-1. Start the app: `start.cmd`, answer `Y` to "Use Dahl?".
-2. `VIDEO_DESIGN_NAME="Bead Grader Controller" npm run video:dahl`. Use a name that is not in
-   SAP yet. It writes to `out/dahl/`:
+1. Start the app on fresh seed data: `start.cmd video` (it deletes and re-seeds `data-video/`;
+   your `data/` is not touched). Answer `Y` to "Use Dahl?", or `n` and then `Y` to "Use Groq?".
+2. `VIDEO_DESIGN_NAME="Bead Grader Controller" npm run video:dahl` (or `npm run video:groq`).
+   Use a name that is not in SAP yet. It writes to `out/dahl/` (or `out/groq/`):
    - `video.mp4`, with the model waits over 3 s shortened to 1 s and labelled;
    - `video-readme.mp4` (1280x720, under 10 MB) and `poster.png`;
    - `take.json`, which lists the storyboard rows the model's turn never matched.
@@ -24,7 +25,8 @@ clip in, with a cut to the title block. Leave the screen alone for those ~20 s.
 
 The Demo video:
 
-1. Start the app: `start.cmd`, answer `n` to Dahl and to Groq, then `d` (demo).
+1. Start the app on fresh seed data: `start.cmd video`, answer `n` to Dahl and to Groq, then
+   `d` (demo).
 2. `npm run video:demo` writes these files to `out/demo/`:
    - `take.webm` and `video.mp4`;
    - `subtitles.en.srt`;
@@ -45,5 +47,6 @@ The Demo video:
 | `kicad.mjs`, `cues-kicad.json` | The KiCad ending: window capture and its subtitles |
 | `cues.mjs`, `compose.mjs` | Cues, checks, gap cuts, `.mp4`, `.srt`, the README copy (ffmpeg) |
 
-Recording writes to the real `data/`: every take reserves a new SAP number and creates a
-design. With `VIDEO_OPEN_KICAD=0` the take does not click **Open in KiCad**.
+Every take reserves a new SAP number and creates a design. In `start.cmd video` mode that
+happens in `data-video/`, which the next start deletes, so a take never shows the leftovers
+of an earlier one (duplicate names, high numbers). With `VIDEO_OPEN_KICAD=0` the take does not click **Open in KiCad**.

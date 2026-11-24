@@ -87,6 +87,11 @@ function renderBlock(block: Block, key: number) {
   )
 }
 
+/** Inline `code` and **bold** in a chat answer (models write them; shown raw they look broken). */
+export function InlineMarkdown({ text }: { text: string }) {
+  return <>{inline(text)}</>
+}
+
 const INLINE = /`([^`]+)`|\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)]*)\)/g
 
 /** `code`, **bold** and [text](target) as text; everything else stays plain text. */

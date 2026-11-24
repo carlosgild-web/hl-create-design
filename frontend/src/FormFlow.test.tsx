@@ -174,7 +174,11 @@ describe('form: where each value came from', () => {
     renderWithProviders(<App />)
     await user.type(screen.getByLabelText(/describe your design/i), 'Reserve a Hardware number')
     await user.click(screen.getByRole('button', { name: 'Send' }))
-    await user.click(await screen.findByRole('button', { name: 'Confirm' }))
+    const confirm = await screen.findByRole('button', { name: 'Confirm' })
+    // the form shows the card's values before the click, as the assistant's
+    await waitFor(() => expect(screen.getByLabelText('Design name')).toHaveValue('Bead Weaver Controller'))
+    expect(screen.getByLabelText('Designer')).toHaveValue('C. Velazquez')
+    await user.click(confirm)
 
     await waitFor(() => expect(screen.getByLabelText('Design number')).toHaveValue('HL-HW-26-0053'))
     expect(screen.getByLabelText('Design name')).toHaveValue('Bead Weaver Controller')
