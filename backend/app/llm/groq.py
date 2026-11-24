@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -84,6 +84,7 @@ class RateLimit:
 class GroqProbe:
     state: GroqState
     detail: str
+    model: str | None = None  # Dahl: the model that answered the probe (decision 0031)
 
     @property
     def usable(self) -> bool:
@@ -260,13 +261,95 @@ class GroqClient(LLMClient):
 
 class DahlClient(GroqClient):
     """Dahl inference (inference.dahl.global): OpenAI-compatible, so the same client
-    (decision 0029). It answers 429 when a model is at capacity, with a short Retry-After
-    that the client waits out, and 402 when the account's credit is used up."""
+    (decision 0029). It answers 429 when a model is at capacity, and 402 when the account's
+    credit is used up.
+
+    With `fallback_models` (decision 0031), a 429 or a timeout moves the call to the next
+    model at once instead of waiting; the client stays on the model that answered, and says
+    so once through `take_notice()`. When every model is busy, it waits out the last 429 on
+    the current model as before."""
 
     provider = "dahl"
     label = "Dahl"
     key_env = "DAHL_API_KEY"
     model_env = "DAHL_MODEL"
+
+    def __init__(
+        self, api_key: str, model: str, *, fallback_models: Sequence[str] = (), **kwargs: Any
+    ) -> None:
+        super().__init__(api_key, model, **kwargs)
+        self._models = tuple(dict.fromkeys([model, *fallback_models]))
+        self._notice: dict[str, str] | None = None
+
+    def _others(self) -> list[str]:
+        """The models after the current one, wrapping round, in the configured order."""
+        i = self._models.index(self.model) if self.model in self._models else -1
+        return [*self._models[i + 1 :], *self._models[: max(i, 0)]]
+
+    def _move_to(self, model: str, reason: str) -> None:
+        log.warning("dahl: %s %s, trying %s", self.model, reason, model)
+        previous, self.model = self.model, model
+        report("model_switched", provider=self.provider, from_model=previous, to_model=model)
+        self._notice = {
+            "code": "model_switched",
+            "from": previous,
+            "to": model,
+            "provider": self.provider,
+            "model": model,
+            "reason": reason,
+        }
+
+    def _post(self, body: dict[str, Any]) -> httpx.Response:
+        tried = {self.model}
+        while True:
+            body["model"] = self.model
+            try:
+                started = time.perf_counter()
+                response = self._http.post("/chat/completions", json=body)
+            except httpx.TimeoutException:
+                untried = [m for m in self._others() if m not in tried]
+                if not untried:
+                    raise
+                self._move_to(untried[0], "did not answer in time")
+                tried.add(self.model)
+                continue
+            if response.status_code != 429:
+                ms = (time.perf_counter() - started) * 1000
+                _log_call(self.provider, self.model, response, ms)
+                return response
+            untried = [m for m in self._others() if m not in tried]
+            if not untried or rate_limit(response).scope == "day":
+                return super()._post(body)  # every model busy: wait it out on this one
+            self._move_to(untried[0], "is at capacity")
+            tried.add(self.model)
+
+    def probe(
+        self, messages: list[Message] | None = None, tools: list[ToolSpec] | None = None
+    ) -> GroqProbe:
+        """Probe each model in order and stay on the first that answers. If none does, the
+        result of the first model is reported (a per-minute limit is still usable)."""
+        first: GroqProbe | None = None
+        for model in self._models:
+            self.model = model
+            result = super().probe(messages, tools)
+            result = GroqProbe(result.state, result.detail, model)
+            if result.state == "ok":
+                if model != self._models[0]:
+                    head = first.detail if first else "busy"
+                    detail = f"{result.detail}; {self._models[0]}: {head}"
+                    result = GroqProbe("ok", detail, model)
+                return result
+            if result.state in ("bad_key", "no_credit"):
+                self.model = self._models[0]
+                return result
+            first = first or result
+        self.model = self._models[0]
+        assert first is not None
+        return first
+
+    def take_notice(self) -> dict[str, str] | None:
+        notice, self._notice = self._notice, None
+        return notice
 
 
 def _human(seconds: float) -> str:

@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     dahl_api_key: SecretStr | None = None
     dahl_model: str = "zai-org/GLM-5.3-Flash"
     dahl_base_url: str = "https://inference.dahl.global/v1"
+    # Tried in order when DAHL_MODEL is at capacity or does not answer in time (decision
+    # 0031). Comma-separated; empty turns the fallback off.
+    dahl_fallback_models: str = "deepseek-ai/DeepSeek-V4-Flash-0731,MiniMaxAI/MiniMax-M2.7"
+
+    @property
+    def dahl_models(self) -> tuple[str, ...]:
+        """DAHL_MODEL first, then the fallbacks, without repeats."""
+        names = [self.dahl_model, *self.dahl_fallback_models.split(",")]
+        return tuple(dict.fromkeys(n.strip() for n in names if n.strip()))
 
     # Mock SAP
     sap_base_url: str = "http://localhost:8100"

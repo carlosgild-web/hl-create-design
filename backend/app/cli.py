@@ -248,7 +248,7 @@ def run_llm_check(
             _say(f"  Ollama    {status.ollama.detail}")
         provider = choose_provider(status, settings, ask, start)
         names = {
-            "dahl": f"Dahl ({settings.dahl_model})",
+            "dahl": f"Dahl ({(status.dahl and status.dahl.model) or settings.dahl_model})",
             "groq": f"Groq ({settings.groq_model})",
             "ollama": f"Ollama ({settings.ollama_model})",
             "demo": "the demo assistant (rules, no real AI)",

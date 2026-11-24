@@ -16,7 +16,7 @@ from app.api import actions, chat, designs, manual, sap
 from app.cleanup import cleanup_designs
 from app.core.config import get_settings
 from app.db.session import get_engine
-from app.llm.factory import current_override
+from app.llm.factory import current_override, make_client
 from app.llm.resolve import current_resolution, resolve_auto
 
 
@@ -110,10 +110,15 @@ def health() -> dict[str, str]:
             "llm_provider": override.provider,
             "llm_note": f"switched by the user to {override.provider} ({override.model})",
         }
+    # The model in use, for the cloud providers: Dahl may have moved to a fallback model
+    # (decision 0031). Asking the shared client costs no request.
+    provider = resolved.provider if resolved else configured
+    model = make_client(get_settings()).model if provider in ("dahl", "groq") else None
     return {
         "status": "ok",
         "version": __version__,
-        "llm_provider": resolved.provider if resolved else configured,
+        "llm_provider": provider,
+        **({"llm_model": model} if model else {}),
         **({"llm_note": resolved.describe()} if resolved else {}),
     }
 

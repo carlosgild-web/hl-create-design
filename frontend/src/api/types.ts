@@ -124,7 +124,7 @@ export type ChatEvent =
     }
   | {
       type: 'notice'
-      data: { code: 'provider_switched'; from: string; to: string; model: string; reason: string }
+      data: { code: 'provider_switched' | 'model_switched'; from: string; to: string; model: string; reason: string; provider?: string }
     }
   | { type: 'done'; data: { conversation_id?: string; run_id?: number; status: string } }
 

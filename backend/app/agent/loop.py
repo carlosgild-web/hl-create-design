@@ -57,6 +57,8 @@ def _notice(client: LLMClient, trace: AgentTrace, iteration: int) -> Iterator[Ag
     it moved to Ollama: into the trace, and to the UI."""
     notice = client.take_notice()
     if notice:
+        if notice.get("code") == "model_switched":
+            trace.model = notice["to"]
         trace.record_notice(iteration, notice)
         yield AgentEvent("notice", notice)
 

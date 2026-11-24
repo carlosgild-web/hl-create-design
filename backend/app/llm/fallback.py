@@ -55,4 +55,4 @@ class SwitchingClient(LLMClient):
     def take_notice(self) -> dict[str, str] | None:
         with self._lock:
             notice, self._notice = self._notice, None
-            return notice
+        return notice or self._current.take_notice()

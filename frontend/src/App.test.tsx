@@ -256,6 +256,30 @@ describe('Create Design', () => {
     expect(screen.getByText('Which department?')).toBeInTheDocument()
   })
 
+  it('says so when a busy Dahl model handed over to the next one (decision 0031)', async () => {
+    stubFetch(
+      (url) =>
+        url === '/api/chat'
+          ? sseResponse([
+              ['conversation', { id: 'c1' }],
+              ['notice', { code: 'model_switched', provider: 'dahl', from: 'zai-org/GLM-5.3-Flash', to: 'deepseek-ai/DeepSeek-V4-Flash-0731', model: 'deepseek-ai/DeepSeek-V4-Flash-0731', reason: 'is at capacity' }],
+              ['message', { role: 'assistant', content: 'Which department?' }],
+              ['done', { conversation_id: 'c1', run_id: 8, status: 'answered' }],
+            ])
+          : undefined,
+      ...baseRoutes,
+    )
+    renderWithProviders(<App />)
+
+    await user.click(screen.getByRole('button', { name: 'Guide me step by step' }))
+
+    expect(
+      await screen.findByText(
+        'zai-org/GLM-5.3-Flash is busy on Dahl, so the assistant continues on deepseek-ai/DeepSeek-V4-Flash-0731 for the rest of this session.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('names Dahl when its credit ran out and the session moved to Groq (decision 0029)', async () => {
     stubFetch(
       (url) =>

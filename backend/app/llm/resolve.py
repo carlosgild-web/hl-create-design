@@ -72,10 +72,22 @@ def groq_client(settings: Settings, transport: httpx.BaseTransport | None = None
     )
 
 
-def dahl_client(settings: Settings, transport: httpx.BaseTransport | None = None) -> DahlClient:
+def dahl_client(
+    settings: Settings,
+    transport: httpx.BaseTransport | None = None,
+    *,
+    model: str | None = None,
+) -> DahlClient:
+    """`model`: start on this one (the probe found DAHL_MODEL busy, decision 0031)."""
     key = settings.dahl_api_key.get_secret_value() if settings.dahl_api_key else ""
+    models = settings.dahl_models
+    first = model if model in models else models[0]
     return DahlClient(
-        key, settings.dahl_model, base_url=settings.dahl_base_url, transport=transport
+        key,
+        first,
+        fallback_models=[m for m in models if m != first],
+        base_url=settings.dahl_base_url,
+        transport=transport,
     )
 
 
@@ -177,7 +189,7 @@ def resolve_auto(
             status = ProviderStatus(groq, ollama, dahl)
             provider = status.first_usable()
             client = (
-                dahl_client(settings, dahl_transport)
+                dahl_client(settings, dahl_transport, model=dahl.model)
                 if provider == "dahl"
                 else _client(provider, settings, groq_transport, ollama_transport)
             )

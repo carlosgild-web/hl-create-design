@@ -63,7 +63,13 @@ def start_run(engine: Engine, conversation_id: str, provider: str, model: str) -
 
 
 def finish_run(
-    engine: Engine, run_id: int, *, status: str, model_calls: int, trace: dict[str, Any]
+    engine: Engine,
+    run_id: int,
+    *,
+    status: str,
+    model_calls: int,
+    trace: dict[str, Any],
+    model: str | None = None,
 ) -> None:
     with Session(engine) as session, session.begin():
         run = session.get(AgentRun, run_id)
@@ -72,6 +78,8 @@ def finish_run(
         run.status = status
         run.model_calls = model_calls
         run.trace = trace
+        if model:  # the client moved to another model during the run (decision 0031)
+            run.model = model
         run.finished_at = utcnow()
 
 

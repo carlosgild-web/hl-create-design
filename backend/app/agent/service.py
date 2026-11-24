@@ -161,6 +161,7 @@ def chat_turn(
             status=outcome.status,
             model_calls=trace.model_calls,
             trace=trace.to_dict(),
+            model=trace.model,
         )
         store.add_tokens(deps.engine, trace.tokens)
     yield AgentEvent(

@@ -165,7 +165,9 @@ export function AssistantPanel({
                   <p key={item.id} role="status" className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                     {item.by === 'user'
                       ? t('chat.switched.user', { name: item.to === 'ollama' ? `Ollama (${item.model})` : t('chat.demo_model') })
-                      : t(switchedKey(item.to), { from: providerName(item.from) || 'Groq', model: item.model })}
+                      : item.by === 'busy'
+                        ? t('chat.switched.model', { provider: providerName(item.provider) || 'Dahl', from: item.from ?? '', model: item.model })
+                        : t(switchedKey(item.to), { from: providerName(item.from) || 'Groq', model: item.model })}
                   </p>
                 )
               case 'stopped':
