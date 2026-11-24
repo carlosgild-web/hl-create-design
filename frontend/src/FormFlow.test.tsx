@@ -148,6 +148,40 @@ describe('form: where each value came from', () => {
     expect(screen.getByLabelText('Design name')).not.toHaveAttribute('readonly')
   })
 
+  it('a card the model opened without filling the form brings the name and the designer', async () => {
+    const pending = makeAction({
+      id: 'r2',
+      kind: 'reserve_number',
+      payload: { department: 'HW', name: 'Bead Weaver Controller', designer: 'C. Velazquez' },
+    })
+    const confirmed: Action = {
+      ...pending,
+      status: 'confirmed',
+      result: { ok: true, design_number: 'HL-HW-26-0053', department: 'HW', revision: 'A', name: 'Bead Weaver Controller' },
+    }
+    stubFetch(
+      (url) =>
+        url === '/api/chat'
+          ? sseResponse([
+              ['conversation', { id: 'c1' }],
+              ['pending_action', { action: pending }],
+              ['done', { status: 'answered' }],
+            ])
+          : undefined,
+      (url) => (url === '/api/actions/r2/confirm?lang=en' ? jsonResponse(confirmed) : undefined),
+      ...baseRoutes,
+    )
+    renderWithProviders(<App />)
+    await user.type(screen.getByLabelText(/describe your design/i), 'Reserve a Hardware number')
+    await user.click(screen.getByRole('button', { name: 'Send' }))
+    await user.click(await screen.findByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => expect(screen.getByLabelText('Design number')).toHaveValue('HL-HW-26-0053'))
+    expect(screen.getByLabelText('Design name')).toHaveValue('Bead Weaver Controller')
+    expect(screen.getByLabelText('Designer')).toHaveValue('C. Velazquez')
+    expect(screen.queryByText(/To create:/)).not.toBeInTheDocument()
+  })
+
   it('a Create click while the check runs waits for it instead of being lost', async () => {
     const opened: unknown[] = []
     stubFetch(

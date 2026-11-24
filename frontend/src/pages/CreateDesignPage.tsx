@@ -126,12 +126,17 @@ export default function CreateDesignPage() {
     void queryClient.invalidateQueries({ queryKey: ['recent-designs'] })
     const { design_number, revision } = action.result
     if (action.kind === 'reserve_number' && design_number) {
-      // The number comes from SAP: fill it at once (the card and the panel offer Undo).
+      // The number comes from SAP: fill it at once (the card and the panel offer Undo). The
+      // name is SAP's too, and locked once the number is in, so it must come with it: a model
+      // may open the card without filling the form first. The designer the user confirmed on
+      // the card fills an empty field (Undo reverts both).
       form.fillFromSap(action.id, {
         design_number,
         revision: revision ?? 'A',
         department: action.result.department ?? action.payload.department,
+        name: action.result.name ?? action.payload.name,
       })
+      if (!form.values.designer && action.payload.designer) form.edit('designer', action.payload.designer)
       setReservation(action)
       void queryClient.invalidateQueries({ queryKey: ['sap-designs'] })
     }
