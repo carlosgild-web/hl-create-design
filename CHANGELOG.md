@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-24
+
+The first release: Phases 0-10 of [PLAN.md](PLAN.md).
+
 ### Added
 
 - Phase 0 skeleton: `backend/` and `sap-mock/` FastAPI services with health endpoints,
@@ -108,3 +112,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   designs; agent-steps drawer; ES/EN. Backend: `/api/departments`, `/api/designs`,
   `/api/designs/.../preview.{pdf,svg}`, `POST /api/actions` (decision 0010).
   Playwright e2e in `e2e/` on a scripted model and a stub `kicad-cli`; new CI job.
+
+[Unreleased]: https://github.com/carlosgild-web/hl-create-design/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/carlosgild-web/hl-create-design/releases/tag/v1.0.0
