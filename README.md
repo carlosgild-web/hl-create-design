@@ -12,6 +12,15 @@ the company Design Manual. **The AI guides; the code decides.**
 
 <sub>Recorded with the scripted demo model. KiCad output is real.</sub>
 
+### The 2-minute video: a real model, under the hood
+
+<!-- To make it play inline: edit this file on GitHub, drag video/out/groq/video-readme.mp4
+     onto the line below the image, and delete the image line. -->
+[![The 2-minute video: Groq answers a rule question with a citation, fills the form, opens the SAP card; the engineer confirms; KiCad opens with the title block filled](docs/showcase/video-poster.png)](docs/video.md)
+
+A real model (Groq, `gpt-oss-120b`), with the code and the data behind each step on the
+right. What it shows and how it was recorded: [docs/video.md](docs/video.md).
+
 ```bash
 git clone https://github.com/carlosgild-web/hl-create-design.git
 cd hl-create-design

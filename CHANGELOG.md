@@ -40,6 +40,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   treats free text as data. `POST /api/chat` streams SSE; `POST /api/actions/{id}/confirm`
   is the only side-effect path (confirm once, expiry, re-validation, audit).
   CLI: `chat`, `confirm`, `cancel`. Decision 0009: the Anthropic client waits for Phase 7.
+- Phase 6 (evaluation and hardening): `python -m app.cli agent-eval` runs scripted scenarios
+  (rules, SAP errors, prompt injection, path traversal) against any provider and writes
+  JSON/Markdown reports to `docs/eval/`; prompt tuning took Ollama (qwen3 4B) from 11/27 to
+  21/27 with every invariant held.
+- Phase 7 (packaging, decision 0013): a Docker image on the official KiCad image, compose
+  with the app and the mock SAP (Ollama as a profile), `start.cmd`/`start.sh`, and a CI job
+  that exports a real PDF with `kicad-cli`.
+- Phase 8 (showcase, decisions 0014-0020):
+  - Hilda & Luna palette, the "How this demo works" guide, and a one-screen layout: chat on
+    the left, a Start panel (new design or existing SAP design), a guided two-column form
+    with inline validation, value-source labels and SAP auto-fill with Undo, and a live
+    title-block preview.
+  - `LLM_PROVIDER=auto` and a startup check that suggests a model; a session moves to Ollama
+    or the demo when Groq's daily quota runs out. Turns never stall silently: status events,
+    a turn timeout, Stop and a provider switch.
+  - Optional design description (`${COMMENT1}`), Open in KiCad, project zip, copy path.
+  - README rewritten for v1.0 with the GIF, before/after title block, architecture,
+    invariants and eval table; screenshots recorded by a Playwright showcase spec.
 - Phase 9 (review fixes and FAQ knowledge, decisions 0021-0026):
   - The user FAQ is manual content: chapter 08 "Using Create Design", user-worded 07-faq
     sections, a `Keywords:` column, EN/ES stopwords, and a retrieval test (top-3 >= 95%).
@@ -64,6 +82,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - 16 FAQ eval scenarios (EN and ES; `cite_any`, `language`), `agent-eval --provider
     demo`, `--preretrieval` and `--few-shot`.
   - `start.cmd` and `start.sh` offer to stop a process that holds port 8000 or 8100.
+
+- Phase 10 (video, decisions 0028-0032):
+  - Dahl as the first cloud provider (GLM-5.3 Flash; Phase 9 runs 38/49, invariants held).
+    A busy Dahl model hands over to the next one (`DAHL_FALLBACK_MODELS`).
+  - Open in KiCad starts the schematic editor with the design.
+  - `video/`: recorded explainer videos from the real app, with an "Under the hood" panel
+    whose payloads are checked against the capture, and the KiCad window at the end. The
+    README video is the 2-minute Groq take ([docs/video.md](docs/video.md)).
+  - `start.cmd video`: fresh seed data in `data-video/` for recordings.
+  - Fixes found in the takes: a model-opened card fills the form, a confirmed reservation
+    fills the name, chat answers render bold and code, placeholders read "e.g. …",
+    `<think>` reasoning is never shown.
 
 ### Changed
 

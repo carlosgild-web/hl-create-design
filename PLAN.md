@@ -283,7 +283,9 @@ field instead of calling the tool), `path-traversal`, and missing citations in `
   try-it steps.
 - The GIF is recorded by the Playwright showcase spec with the real `kicad-cli`
   (`E2E_REAL_KICAD=1`). Fake eval is 34/34.
-- Open: the user's video, PR to `main`, the v1.0.0 release, and the CV/LinkedIn links.
+- The video: the 2-minute Groq take, `video/` tooling (Phase 10, decisions 0028-0032),
+  described in `docs/video.md`; it plays inline in the README once uploaded on GitHub.
+- Open: PR to `main`, the v1.0.0 release, and the CV/LinkedIn links.
 
 ---
 
