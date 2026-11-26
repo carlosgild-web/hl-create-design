@@ -5,7 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Planned as 1.1.0.
+## [1.1.0] - 2026-11-26
+
+The PCB gets the company title block, the designer may be written with full names, and a
+fresh clone finds KiCad where its installer put it.
 
 ### Added
 
@@ -138,5 +141,6 @@ The first release: Phases 0-10 of [PLAN.md](PLAN.md).
   `/api/designs/.../preview.{pdf,svg}`, `POST /api/actions` (decision 0010).
   Playwright e2e in `e2e/` on a scripted model and a stub `kicad-cli`; new CI job.
 
-[Unreleased]: https://github.com/carlosgild-web/hl-create-design/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/carlosgild-web/hl-create-design/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/carlosgild-web/hl-create-design/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/carlosgild-web/hl-create-design/releases/tag/v1.0.0
