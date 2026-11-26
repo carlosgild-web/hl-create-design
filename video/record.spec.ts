@@ -760,7 +760,19 @@ for (const provider of ['dahl', 'groq'] as const) test(`${provider} take @${prov
     await expect(app.getByText(/schematic editor is opening with the design/)).toBeVisible({ timeout: 30_000 })
     await conductor.step('open_kicad')
     const created = conductor.lastConfirm('create_design')
-    await conductor.until(captureEditor({ stem: `${created.design_number}_${created.revision}`, outDir, now: () => conductor.now() }), 120_000, 'KiCad')
+    const stem = `${created.design_number}_${created.revision}`
+    await conductor.until(captureEditor({ stem, outDir, now: () => conductor.now() }), 120_000, 'KiCad')
+
+    // Open PCB: the board, with the same title block, in KiCad's PCB editor (decision 0036)
+    await sleep(1200)
+    await app.getByRole('button', { name: 'Open PCB' }).click()
+    await expect(app.getByText(/PCB editor is opening with the board/)).toBeVisible({ timeout: 30_000 })
+    await conductor.step('open_pcb')
+    await conductor.until(
+      captureEditor({ stem, outDir, now: () => conductor.now(), seconds: 11, editor: 'pcb' }),
+      120_000,
+      'KiCad PCB',
+    )
 
     await conductor.step('end')
     await sleep(1000)

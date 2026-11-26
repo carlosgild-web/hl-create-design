@@ -68,6 +68,9 @@
     { "id": "3.5", "scene": 3, "on": { "step": "open_kicad" }, "layer": "Browser",
       "subtitle": "Open in KiCad starts KiCad's schematic editor with the new design.",
       "callouts": [["backend/app/kicad/launcher.py", "open_command"]] },
+    { "id": "3.6", "scene": 3, "on": { "step": "open_pcb" }, "layer": "Browser",
+      "subtitle": "The board was created too. Open PCB starts KiCad's PCB editor with it.",
+      "callouts": [["backend/app/kicad/renderer.py", "render_board_file"]] },
 
     { "id": "4.1", "scene": 4, "on": { "step": "end" }, "slide": "end",
       "subtitle": "The AI guides. The code decides. The engineer clicks." }

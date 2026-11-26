@@ -1,12 +1,14 @@
 /**
- * The KiCad ending (decisions 0028 and 0030): after the take clicks "Open in KiCad", the
- * app starts KiCad's schematic editor on this PC. Playwright cannot see a desktop window,
- * so this module waits for it, maximizes it, and records its screen with ffmpeg `gdigrab`.
- * compose.mjs puts the clip in the take where the click happened.
+ * The KiCad ending (decisions 0028, 0030 and 0036): after the take clicks "Open in KiCad",
+ * the app starts KiCad's schematic editor on this PC; after "Open PCB", its PCB editor.
+ * Playwright cannot see a desktop window, so this module waits for it, maximizes it, and
+ * records its screen with ffmpeg `gdigrab`. compose.mjs puts each clip in the take where
+ * its click happened.
  *
  * Windows only (KiCad is a desktop program on the user's machine). PowerShell and ffmpeg,
  * no extra dependency. The capture is the monitor's working area: no taskbar. The window
- * title is "<design>_<rev> — Schematic Editor" (no path), checked when it is found.
+ * title is "<design>_<rev> — Schematic Editor" or "... — PCB Editor" (no path), checked
+ * when it is found.
  */
 import { execFile, execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
@@ -35,12 +37,19 @@ public class VideoWin {
 Add-Type -AssemblyName System.Windows.Forms
 `
 
-/** The schematic editor's window for `stem` (e.g. HL-HW-26-0049_A), once it has loaded. */
-export async function waitForEditor(stem, timeoutMs = 60_000) {
+/** The two editors a take records: the process, the files it writes, its name in errors. */
+export const EDITORS = {
+  schematic: { process: 'eeschema', clip: 'kicad', name: "KiCad's schematic editor" },
+  pcb: { process: 'pcbnew', clip: 'kicad-pcb', name: "KiCad's PCB editor" },
+}
+
+/** The editor's window for `stem` (e.g. HL-HW-26-0049_A), once it has loaded. */
+export async function waitForEditor(stem, editor = 'schematic', timeoutMs = 60_000) {
+  const { process, name } = EDITORS[editor]
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const out = powershell(
-      `Get-Process eeschema -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like '${stem}*' } | Select-Object -First 1 | ForEach-Object { "$($_.Id)|$($_.MainWindowTitle)" }`,
+      `Get-Process ${process} -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like '${stem}*' } | Select-Object -First 1 | ForEach-Object { "$($_.Id)|$($_.MainWindowTitle)" }`,
     )
     if (out) {
       const [pid, title] = out.split('|')
@@ -48,7 +57,7 @@ export async function waitForEditor(stem, timeoutMs = 60_000) {
     }
     await sleep(500)
   }
-  throw new Error(`KiCad's schematic editor did not open ${stem} within ${timeoutMs / 1000} s`)
+  throw new Error(`${name} did not open ${stem} within ${timeoutMs / 1000} s`)
 }
 
 /** Maximize the window, bring it to the front, and return its monitor's working area. */
@@ -88,19 +97,21 @@ export function close(pid) {
 }
 
 /**
- * The whole ending: wait for the window, maximize it, record it. Writes `kicad.mp4` and
- * `kicad.json` (when it started and ended on the take's clock, the title, the area).
+ * One KiCad clip: wait for the editor's window, maximize it, record it. Writes
+ * `kicad.mp4` + `kicad.json` (schematic) or `kicad-pcb.mp4` + `kicad-pcb.json` (PCB): when
+ * it started and ended on the take's clock, the title, the area.
  */
-export async function captureEditor({ stem, outDir, now, seconds = 16 }) {
-  const editor = await waitForEditor(stem)
-  if (/[A-Za-z]:\\|\\Users\\/.test(editor.title)) throw new Error(`the KiCad title shows a path: ${editor.title}`)
-  const area = maximize(editor.pid)
-  await sleep(1500) // KiCad redraws the sheet for the new size
+export async function captureEditor({ stem, outDir, now, seconds = 16, editor = 'schematic' }) {
+  const window = await waitForEditor(stem, editor)
+  if (/[A-Za-z]:\\|\\Users\\/.test(window.title)) throw new Error(`the KiCad title shows a path: ${window.title}`)
+  const area = maximize(window.pid)
+  await sleep(editor === 'pcb' ? 2500 : 1500) // KiCad redraws the sheet for the new size
+  const { clip } = EDITORS[editor]
   const start_ms = now()
-  await record(area, seconds, join(outDir, 'kicad.mp4'))
+  await record(area, seconds, join(outDir, `${clip}.mp4`))
   const end_ms = now()
-  close(editor.pid)
-  const info = { start_ms, end_ms, seconds, title: editor.title, area }
-  writeFileSync(join(outDir, 'kicad.json'), JSON.stringify(info, null, 2))
+  close(window.pid)
+  const info = { editor, start_ms, end_ms, seconds, title: window.title, area }
+  writeFileSync(join(outDir, `${clip}.json`), JSON.stringify(info, null, 2))
   return info
 }
