@@ -3,6 +3,7 @@
 - `create-design`: the generator without the assistant (developer tool, offline).
 - `chat "message"`: one turn with the assistant on LLM_PROVIDER; prints the tool calls
   and the confirmation cards it opens.
+- `kicad-check`: whether KiCad 9 was found, and what works without it (start scripts).
 - `confirm <action_id>`: the user's click on a card (the same code as
   `POST /api/actions/{id}/confirm`); `cancel <action_id>` dismisses it.
 
@@ -25,6 +26,7 @@ from app.agent.service import AgentDeps, chat_turn, probe_turn
 from app.core.config import MANUAL_DIR, Settings, get_settings
 from app.db.session import get_engine
 from app.designs import DesignValidationError, create_design
+from app.kicad.locate import DEFAULT_KICAD_CLI, KICAD_DOWNLOAD_URL, kicad_status
 from app.kicad.renderer import DesignFolderExistsError
 from app.llm.base import LLMClient, LLMError, Message
 from app.llm.factory import make_client
@@ -117,7 +119,33 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Ollama only: one example answer in the prompt, for an A/B run (decision 0026)",
     )
+    commands.add_parser(
+        "kicad-check", help="Say whether KiCad 9 was found and what works without it"
+    )
     return parser
+
+
+# --- kicad-check: is KiCad here, and what needs it (run by start.cmd / start.sh) -----
+
+
+def run_kicad_check(settings: Settings) -> int:
+    """Always 0: KiCad is optional. Prints what works now and what KiCad 9 would add."""
+    status = kicad_status(settings.kicad_cli, settings.kicad_open_enabled)
+    if status.found:
+        print(f"KiCad {status.version or '9'} found: {status.path}")
+        if not status.can_open:
+            print("  Open in KiCad is off here (KICAD_OPEN_ENABLED or no KiCad GUI next to it).")
+        return 0
+    print("KiCad 9 was not found.")
+    if settings.kicad_cli != DEFAULT_KICAD_CLI:
+        print(f"  KICAD_CLI is set to {settings.kicad_cli}, and nothing runs there.")
+    print(
+        "  Works without it: the assistant, the checks, SAP numbers, and the KiCad project files."
+    )
+    print("  Needs KiCad 9:     the PDF and preview (schematic and PCB), Open in KiCad, Open PCB.")
+    print(f"  To test everything, install KiCad 9 from {KICAD_DOWNLOAD_URL} and start again.")
+    print("  Installed somewhere else? Set KICAD_CLI in .env to the full path of kicad-cli.")
+    return 0
 
 
 # --- llm-check: which model answers (run by start.cmd / start.sh) --------------------
@@ -293,8 +321,11 @@ def run_create_design(args: argparse.Namespace, settings: Settings) -> int:
     print(f"  folder:    {created.project.folder}")
     print(f"  project:   {created.project.project_file.name}")
     print(f"  schematic: {created.project.schematic_file.name}")
+    print(f"  board:     {created.project.board_file.name}")
     if created.export:
         print(f"  pdf:       {created.export.pdf}")
+    if created.board_export:
+        print(f"  pcb pdf:   {created.board_export.pdf}")
     for warning in created.warnings:
         print(_issue_line("warning", warning))
     print(f"  audit id:  {created.audit_id}")
@@ -320,6 +351,8 @@ def main(argv: Sequence[str] | None = None, settings: Settings | None = None) ->
         return run_cancel(args, settings)
     if args.command == "cleanup":
         return run_cleanup(args, settings)
+    if args.command == "kicad-check":
+        return run_kicad_check(settings)
     if args.command == "llm-check":
         return run_llm_check(settings, args.out)
     if args.command == "agent-eval":

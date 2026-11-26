@@ -5,6 +5,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+Planned as 1.1.0.
+
+### Added
+
+- The PCB gets the company title block (decision 0033):
+  - the template has an empty KiCad 9 board;
+  - each design gets `<number>_<rev>.kicad_pcb` with the same title block as the schematic;
+  - both editors use the company drawing sheet;
+  - `kicad-cli` exports the board's PDF and SVG;
+  - the preview dialog has a Schematic | PCB switch and an Open PCB button.
+- KiCad is found in its standard install folder when `KICAD_CLI` is left at `kicad-cli`
+  (decision 0035).
+  - `python -m app.cli kicad-check`, run by the start scripts, says whether KiCad was found,
+    what works without it, and where to get it.
+  - `GET /api/kicad` reports the same status, and the preview dialog shows a note with the
+    download link when KiCad is missing.
+  - The README has a "What each feature needs" table.
+- The README GIF and the 2-minute video end on the PCB title block too (decision 0036).
+  `npm run video:test` checks how `compose.mjs` cuts a take.
+
+### Changed
+
+- The designer may be written with full given names: `Carlos Velazquez` and
+  `Carlos A. Velazquez` are valid next to `C. Velazquez` (decision 0034).
+
 ## [1.0.0] - 2026-11-24
 
 The first release: Phases 0-10 of [PLAN.md](PLAN.md).

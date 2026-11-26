@@ -13,7 +13,7 @@ import re
 import pytest
 
 from app.core.config import REPO_ROOT
-from app.designs import pdf_not_exported
+from app.designs import pcb_pdf_not_exported, pdf_not_exported
 from app.kicad.exporter import ExportError
 from app.standards import validators as v
 
@@ -104,6 +104,7 @@ def produced() -> list[v.Issue]:
     missing = ExportError("kicad-cli not found")
     missing.__cause__ = FileNotFoundError("kicad-cli")
     issues += [pdf_not_exported(missing), pdf_not_exported(ExportError("exit code 1"))]
+    issues.append(pcb_pdf_not_exported(ExportError("exit code 1")))
     return issues
 
 

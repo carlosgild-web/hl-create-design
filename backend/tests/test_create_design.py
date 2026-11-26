@@ -23,6 +23,7 @@ def settings(tmp_path) -> Settings:
         designs_root=tmp_path / "designs",
         data_dir=tmp_path / "data",
         kicad_cli="kicad-cli",
+        kicad_autodetect=False,  # tests never depend on a KiCad installed here
     )
 
 
@@ -60,6 +61,36 @@ def test_creates_the_revision_with_pdf_and_audit(settings):
     assert (row.actor, row.design_number, row.revision) == ("C. Velazquez", "HL-HW-26-0042", "A")
     assert row.details["folder"] == "HW/HL-HW-26-0042/A"
     assert row.details["pdf"] is True
+    assert row.details["pcb_pdf"] is True
+
+    # Decision 0033: the board has the same title block and its own PDF.
+    board = created.project.board_file.read_text(encoding="utf-8")
+    assert '(title "Bead Drill Controller")' in board
+    assert created.board_export and created.board_export.pdf.name == "HL-HW-26-0042_A_pcb.pdf"
+
+
+def test_a_failed_board_export_keeps_the_schematic_pdf(settings):
+    def board_fails(command, **kwargs):
+        if command[1] == "pcb":
+            return FakeKicadCli(returncode=2)(command, **kwargs)
+        return FakeKicadCli()(command, **kwargs)
+
+    created = create_design(request(), settings=settings, today=TODAY, runner=board_fails)
+
+    assert created.export is not None and created.board_export is None
+    [warning] = [w for w in created.warnings if w.code == "pcb_pdf_not_exported"]
+    assert "exit code 2" in warning.params["detail"]
+    assert not [w for w in created.warnings if w.code == "pdf_not_exported"]
+    [row] = audit_rows(get_engine(settings.data_dir))
+    assert row.details["pdf"] is True and row.details["pcb_pdf"] is False
+
+
+def test_a_missing_kicad_cli_gives_one_warning_only(settings):
+    def missing(command, **kw):
+        raise FileNotFoundError(command[0])
+
+    created = create_design(request(), settings=settings, today=TODAY, runner=missing)
+    assert [w.code for w in created.warnings if w.field == "pdf"] == ["pdf_not_exported"]
 
 
 def test_next_revision_follows_the_folders_on_disk(settings):

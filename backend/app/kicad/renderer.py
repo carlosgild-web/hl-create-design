@@ -2,12 +2,15 @@
 
 The template (`kicad/template/`) is a complete KiCad 9 project. Rendering it:
 
-- renames `hl_template.kicad_pro/.kicad_sch` to `<DesignNumber>_<Rev>.*`
+- renames `hl_template.kicad_pro/.kicad_sch/.kicad_pcb` to `<DesignNumber>_<Rev>.*`
   (04-folder-structure#file-names) and copies the drawing sheet `hl_title_block.kicad_wks`;
+- points both the schematic editor and the PCB editor at that drawing sheet (decision 0033);
 - writes the company fields as project text variables (`${HL_DESIGN_NUMBER}`, ...) in the
-  `.kicad_pro`, which the drawing sheet shows;
+  `.kicad_pro`, which the drawing sheet shows in both editors;
 - writes the built-in fields (`${TITLE}`, `${REVISION}`, `${ISSUE_DATE}`, `${COMPANY}`, and
-  the optional description as `${COMMENT1}`) in the schematic's `(title_block ...)`.
+  the optional description as `${COMMENT1}`) in the `(title_block ...)` of the schematic
+  and of the board. KiCad keeps one copy in each file and never syncs them, so both are
+  written from the same `TitleBlock`.
 
 The values arrive already validated and normalized (`standards/validators.py`); this module
 only escapes them. It never overwrites: the revision folder must not exist (invariant 3 and
@@ -69,6 +72,7 @@ class RenderedProject:
     folder: Path
     project_file: Path
     schematic_file: Path
+    board_file: Path
     drawing_sheet: Path
     output_dir: Path
 
@@ -81,6 +85,7 @@ def render_project_file(template_text: str, stem: str, block: TitleBlock) -> str
     project = json.loads(template_text)
     project.setdefault("meta", {})["filename"] = f"{stem}.kicad_pro"
     project.setdefault("schematic", {})["page_layout_descr_file"] = DRAWING_SHEET
+    project.setdefault("pcbnew", {})["page_layout_descr_file"] = DRAWING_SHEET
     project["text_variables"] = block.text_variables()
     return json.dumps(project, indent=2, ensure_ascii=False) + "\n"
 
@@ -123,20 +128,30 @@ def _sexpr_span(text: str, start: int) -> int:
             if depth == 0:
                 return i + 1
         i += 1
-    raise ValueError("unbalanced s-expression in the template schematic")
+    raise ValueError("unbalanced s-expression in the template")
+
+
+def replace_title_block(template_text: str, block: TitleBlock, what: str) -> str:
+    """`template_text` with its one `(title_block ...)` replaced by `block`'s values."""
+    start = template_text.find("(title_block")
+    if start < 0:
+        raise ValueError(f"the template {what} has no (title_block ...)")
+    line_start = template_text.rfind("\n", 0, start) + 1
+    indent = template_text[line_start:start]
+    end = _sexpr_span(template_text, start)
+    return template_text[:line_start] + title_block_sexpr(block, indent) + template_text[end:]
 
 
 def render_schematic_file(template_text: str, stem: str, block: TitleBlock) -> str:
     """The `.kicad_sch` with the new title block and the project name in symbol instances."""
-    start = template_text.find("(title_block")
-    if start < 0:
-        raise ValueError("the template schematic has no (title_block ...)")
-    line_start = template_text.rfind("\n", 0, start) + 1
-    indent = template_text[line_start:start]
-    end = _sexpr_span(template_text, start)
-    text = template_text[:line_start] + title_block_sexpr(block, indent) + template_text[end:]
+    text = replace_title_block(template_text, block, "schematic")
     # Symbol instances name the project they belong to; keep references after the rename.
     return text.replace(f"(project {sexpr_string(TEMPLATE_STEM)}", f"(project {sexpr_string(stem)}")
+
+
+def render_board_file(template_text: str, block: TitleBlock) -> str:
+    """The `.kicad_pcb` with the same title block as the schematic."""
+    return replace_title_block(template_text, block, "board")
 
 
 # --- files ---------------------------------------------------------------------------
@@ -155,20 +170,25 @@ def render_project(
     try:
         project_file = folder / f"{stem}.kicad_pro"
         schematic_file = folder / f"{stem}.kicad_sch"
+        board_file = folder / f"{stem}.kicad_pcb"
         drawing_sheet = folder / DRAWING_SHEET
         output_dir = folder / OUTPUT_DIR
 
         pro_template = (template_dir / f"{TEMPLATE_STEM}.kicad_pro").read_text(encoding="utf-8")
         sch_template = (template_dir / f"{TEMPLATE_STEM}.kicad_sch").read_text(encoding="utf-8")
         _write(project_file, render_project_file(pro_template, stem, block))
+        pcb_template = (template_dir / f"{TEMPLATE_STEM}.kicad_pcb").read_text(encoding="utf-8")
         _write(schematic_file, render_schematic_file(sch_template, stem, block))
+        _write(board_file, render_board_file(pcb_template, block))
         shutil.copyfile(template_dir / DRAWING_SHEET, drawing_sheet)
         output_dir.mkdir()
     except BaseException:
         shutil.rmtree(folder, ignore_errors=True)
         raise
 
-    return RenderedProject(folder, project_file, schematic_file, drawing_sheet, output_dir)
+    return RenderedProject(
+        folder, project_file, schematic_file, board_file, drawing_sheet, output_dir
+    )
 
 
 def _write(path: Path, text: str) -> None:

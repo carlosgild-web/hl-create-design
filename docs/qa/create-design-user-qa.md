@@ -196,8 +196,9 @@ second source for the gate driver". Accents and Spanish are fine. `${` isn't all
 Ref: 03-title-block#description
 
 ### How do I write the designer?
-One or two initials with a period, a space and the surname, as in the company directory:
-`C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Accents are allowed; maximum 40 characters.
+Your first name or initials, a space and the surname, as in the company directory:
+`Carlos Velazquez`, `C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Accents are allowed;
+maximum 40 characters.
 Ref: 03-title-block#designer, 07-faq#designer-format
 
 ### Why does the material number have so many zeros?

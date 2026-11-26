@@ -17,6 +17,7 @@ def settings(tmp_path) -> Settings:
         designs_root=tmp_path / "designs",
         data_dir=tmp_path / "data",
         kicad_cli="kicad-cli",
+        kicad_autodetect=False,  # tests never depend on a KiCad installed here
         llm_provider="fake",
         agent_max_iterations=6,
         # The loop's mechanics tests script every call; pre-retrieval has its own tests.

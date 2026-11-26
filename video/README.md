@@ -23,8 +23,10 @@ The short video for the README (a real model, ~2 min, decisions 0030 and 0032):
    - `take.json`, which lists the storyboard rows the model's turn never matched.
 
 Both videos end in KiCad. "Open in KiCad" starts the schematic editor, and `kicad.mjs`
-records its window on the desktop (ffmpeg `gdigrab`, Windows). `compose.mjs` then puts the
-clip in, with a cut to the title block. Leave the screen alone for those ~20 s.
+records its window on the desktop (ffmpeg `gdigrab`, Windows). The short video then clicks
+"Open PCB" and records the PCB editor the same way (decision 0036). `compose.mjs` puts each
+clip in where its click happened, with a cut to its title block. Leave the screen alone
+for those ~40 s. `npm run video:test` checks how `compose.mjs` cuts a take.
 
 The long demo video (the demo assistant, ~6 min; recorded and checked, not published):
 
@@ -47,7 +49,7 @@ The long demo video (the demo assistant, ~6 min; recorded and checked, not publi
 | `lines.mjs` | `file:symbol` → current line and excerpt |
 | `introspect.py` | FTS terms and BM25 ranking, intent label (read only, backend venv) |
 | `storyboard-dahl.json` | The short video's rows, for Groq and Dahl (flexible: a real model's steps vary) |
-| `kicad.mjs`, `cues-kicad.json` | The KiCad ending: window capture and its subtitles |
+| `kicad.mjs`, `cues-kicad.json` | The KiCad ending: window capture of each editor, its zoom and subtitles |
 | `cues.mjs`, `compose.mjs` | Cues, checks, gap cuts, `.mp4`, `.srt`, the README copy (ffmpeg) |
 
 Every take reserves a new SAP number and creates a design. In `start.cmd video` mode that

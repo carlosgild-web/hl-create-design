@@ -213,7 +213,7 @@ describe('form: where each value came from', () => {
     await user.click(screen.getByRole('radio', { name: 'From existing design' }))
     await user.click(await screen.findByRole('option', { name: /HL-HW-26-0042/ }))
     await user.type(screen.getByLabelText('Designer'), 'carlos')
-    await screen.findByText(/Write the designer as one or two initials/, undefined, { timeout: 2000 })
+    await screen.findByText(/Write the designer as a first name or initials/, undefined, { timeout: 2000 })
 
     fireEvent.change(screen.getByLabelText('Designer'), { target: { value: 'C. Velazquez' } })
     // the last answer still has the error, but the click is kept

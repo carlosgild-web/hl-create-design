@@ -107,8 +107,9 @@ Keywords: sap down, not answering, sap caído, no responde
 ## How do I write the designer?
 <a id="designer-format"></a>
 
-One or two initials with a period, a space and the surname, as in the company directory:
-`C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Accents are allowed; maximum 40 characters. See [03-title-block](03-title-block.md#designer).
+Your first name or initials, a space and the surname, as in the company directory:
+`Carlos Velazquez`, `C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Accents are allowed;
+maximum 40 characters. See [03-title-block](03-title-block.md#designer).
 
 Keywords: designer, designer name, write the designer, how to write my name, format, my name, initial, surname, rejected, diseñador, nombre del diseñador, formato, inicial, apellido, no acepta
 

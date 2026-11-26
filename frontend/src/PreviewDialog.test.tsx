@@ -64,6 +64,101 @@ describe('preview dialog (decision 0018)', () => {
     expect(screen.queryByRole('button', { name: 'Open in KiCad' })).not.toBeInTheDocument()
   })
 
+  it('switches to the PCB view, with its own image and PDF (decision 0033)', async () => {
+    stubFetch(
+      (url) =>
+        url.endsWith('/files')
+          ? jsonResponse({ folder: '/d', project_file: '/d/x.kicad_pro', can_open: false, has_pcb_preview: true })
+          : undefined,
+      ...baseRoutes,
+    )
+    renderWithProviders(<PreviewDialog target={TARGET} onClose={() => {}} />)
+    const dialog = screen.getByRole('dialog')
+
+    await user.click(await within(dialog).findByRole('button', { name: 'PCB' }))
+
+    expect(within(dialog).getByRole('button', { name: 'PCB' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(dialog).getByRole('img', { name: /PCB title block of HL-HW-26-0042 rev C/ })).toHaveAttribute(
+      'src',
+      '/api/designs/HW/HL-HW-26-0042/C/pcb.svg',
+    )
+    const download = within(dialog).getByRole('link', { name: 'Download PDF' })
+    expect(download).toHaveAttribute('href', '/api/designs/HW/HL-HW-26-0042/C/pcb.pdf')
+    expect(download).toHaveAttribute('download', 'HL-HW-26-0042_C_pcb.pdf')
+
+    await user.click(within(dialog).getByRole('button', { name: 'Schematic' }))
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', '/api/designs/HW/HL-HW-26-0042/C/preview.svg')
+  })
+
+  it('no PCB switch for a design without a board', async () => {
+    stubFetch(
+      (url) => (url.endsWith('/files') ? jsonResponse({ folder: '/d', project_file: '/d/x.kicad_pro', can_open: true }) : undefined),
+      ...baseRoutes,
+    )
+    renderWithProviders(<PreviewDialog target={TARGET} onClose={() => {}} />)
+
+    expect(await screen.findByRole('button', { name: 'Open in KiCad' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'PCB' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open PCB' })).not.toBeInTheDocument()
+  })
+
+  it('Open PCB starts the PCB editor', async () => {
+    const calls = stubFetch(
+      (url) =>
+        url.endsWith('/files')
+          ? jsonResponse({ folder: '/d', project_file: '/d/x.kicad_pro', can_open: true, can_open_pcb: true })
+          : undefined,
+      (url, init) => (url.includes('/open') && init?.method === 'POST' ? jsonResponse({ ok: true }) : undefined),
+      ...baseRoutes,
+    )
+    renderWithProviders(<PreviewDialog target={TARGET} onClose={() => {}} />)
+
+    await user.click(await screen.findByRole('button', { name: 'Open PCB' }))
+
+    expect(await screen.findByText(/PCB editor is opening with the board/)).toBeInTheDocument()
+    expect(calls.some((c) => c.url === '/api/designs/HW/HL-HW-26-0042/C/open?target=pcb')).toBe(true)
+  })
+
+  it('says KiCad is missing and where to get it (decision 0035)', async () => {
+    stubFetch(
+      (url) =>
+        url === '/api/kicad'
+          ? jsonResponse({
+              found: false,
+              path: 'kicad-cli',
+              version: '',
+              can_export: false,
+              can_open: false,
+              can_open_pcb: false,
+              download_url: 'https://www.kicad.org/download/',
+            })
+          : undefined,
+      ...baseRoutes,
+    )
+    renderWithProviders(<PreviewDialog target={TARGET} onClose={() => {}} />)
+
+    const note = await screen.findByRole('note', { name: 'KiCad 9 is not installed on this computer' })
+    expect(note).toHaveTextContent(/Open in KiCad and Open PCB need KiCad 9/)
+    expect(within(note).getByRole('link', { name: 'Download KiCad 9' })).toHaveAttribute(
+      'href',
+      'https://www.kicad.org/download/',
+    )
+  })
+
+  it('no KiCad notice when KiCad is found', async () => {
+    stubFetch(
+      (url) =>
+        url === '/api/kicad'
+          ? jsonResponse({ found: true, path: 'k', version: '9.0.8', can_export: true, can_open: true, can_open_pcb: true, download_url: '' })
+          : undefined,
+      ...baseRoutes,
+    )
+    renderWithProviders(<PreviewDialog target={TARGET} onClose={() => {}} />)
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+    expect(screen.queryByRole('note')).not.toBeInTheDocument()
+  })
+
   it('a missing preview says so (404)', async () => {
     stubFetch((url) => (url.endsWith('preview.svg') ? new Response('', { status: 404 }) : undefined), ...baseRoutes)
     renderWithProviders(<PreviewDialog target={TARGET} onClose={() => {}} />)

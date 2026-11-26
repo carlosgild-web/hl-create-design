@@ -1,8 +1,9 @@
 # The video
 
-A 2-minute recording of the real app with a real model: Groq, `openai/gpt-oss-120b`
+A 2½-minute recording of the real app with a real model: Groq, `openai/gpt-oss-120b`
 (decision 0032). On the left is the app. On the right, an "Under the hood" panel shows the
-code behind each step and the data that passed through it. KiCad is recorded at the end.
+code behind each step and the data that passed through it. KiCad's schematic and PCB editors
+are recorded at the end.
 
 ## What it shows
 
@@ -11,12 +12,13 @@ code behind each step and the data that passed through it. KiCad is recorded at 
 | 0:00 | Title | |
 | 0:07 | "Why was revision I rejected?" | The backend searches the Design Manual (SQLite FTS5) **before** the model is called; the passages go to the model as a tool result. |
 | 0:22 | The answer | Written by the model from those passages, with a clickable citation `[07-faq#revision-i]`. |
-| 0:33 | "Reserve a Hardware number for Bead Grader Controller, designer C. Velazquez." | The model proposes form values, then calls `validate_design_request`. The validators decide; the model only explains. |
+| 0:32 | "Reserve a Hardware number for Bead Grader Controller, designer C. Velazquez." | The model proposes form values, then calls `validate_design_request`. The validators decide; the model only explains. |
 | 0:55 | The reservation card | The model can only open a card. Nothing reaches SAP until the engineer clicks Confirm. |
-| 1:12 | Confirm | `POST /api/actions/{id}/confirm` → `SapClient` → the mock SAP issues HL-HW-26-0042, the material and the project. The fields SAP owns lock. |
-| 1:36 | Create | A second card and a second click. The files are written inside the designs folder only. `kicad-cli` exports the PDF. |
-| 1:46 | Open in KiCad | KiCad's schematic editor, recorded on the desktop, then a cut to the title block filled from the project's text variables. |
-| 2:10 | End | |
+| 1:11 | Confirm | `POST /api/actions/{id}/confirm` → `SapClient` → the mock SAP issues HL-HW-26-0042, the material and the project. The fields SAP owns lock. |
+| 1:39 | Create | A second card and a second click. The files are written inside the designs folder only. `kicad-cli` exports the PDF. |
+| 1:51 | Open in KiCad | KiCad's schematic editor, recorded on the desktop, then a cut to the title block filled from the project's text variables. |
+| 2:16 | Open PCB | The board was created too. KiCad's PCB editor shows the same title block, with the same values, from the same text variables (decision 0036). |
+| 2:37 | End | |
 
 ## Is it real?
 

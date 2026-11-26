@@ -1,15 +1,16 @@
 /**
- * take.webm (+ kicad.mp4) -> video.mp4 (H.264) and subtitles.en.srt.
+ * take.webm (+ kicad.mp4, kicad-pcb.mp4) -> video.mp4 (H.264) and subtitles.en.srt.
  *
  *   node compose.mjs out/demo
  *   node compose.mjs out/dahl --cut-gaps --readme
  *
  * The video is a list of pieces, encoded apart and joined without re-encoding:
  * - take pieces;
- * - with a KiCad ending (kicad.json, decision 0030), the KiCad clip in place of the browser
- *   frames recorded while KiCad was on the desktop. It is scaled into the stage's 1920x960
- *   area, with a "screen recording" label, then cut to a crop of the same frames around the
- *   title block (labelled "zoomed in"), and its subtitles go in the stage's subtitle bar;
+ * - with a KiCad ending (kicad.json, decision 0030; kicad-pcb.json, decision 0036), each
+ *   KiCad clip in place of the browser frames recorded while that editor was on the desktop.
+ *   It is scaled into the stage's 1920x960 area, with a "screen recording" label, then cut
+ *   to a crop of the same frames around the title block (labelled "zoomed in"), and its
+ *   subtitles go in the stage's subtitle bar;
  * - with --cut-gaps (a real model), every wait over 3 s inside a chat turn, where nothing
  *   changed on screen, is kept for 1 s with a label that says how long it really was. A wait
  *   is never removed without that label.
@@ -72,10 +73,20 @@ export function findGaps(events, shown) {
   return gaps
 }
 
-/** The pieces of the final video, in order. Take pieces are [from, to) of the take. */
-export function planPieces(takeS, gaps, kicad) {
+/** The KiCad clips a take recorded, in the order the editors opened (schematic, then PCB). */
+export const KICAD_CLIPS = [
+  { editor: 'schematic', clip: 'kicad' },
+  { editor: 'pcb', clip: 'kicad-pcb' },
+]
+
+/**
+ * The pieces of the final video, in order. Take pieces are [from, to) of the take; each
+ * KiCad clip (`{ editor, start_ms, end_ms }`, from its .json) replaces the take's frames
+ * recorded while it ran.
+ */
+export function planPieces(takeS, gaps, clips = []) {
   const cuts = [...gaps.map((g) => ({ kind: 'gap', ...g }))]
-  if (kicad) cuts.push({ kind: 'kicad', from: kicad.start_ms / 1000, to: kicad.end_ms / 1000 })
+  for (const c of clips) cuts.push({ kind: 'kicad', editor: c.editor, from: c.start_ms / 1000, to: c.end_ms / 1000 })
   cuts.sort((a, b) => a.from - b.from)
   const pieces = []
   let pos = 0
@@ -86,7 +97,7 @@ export function planPieces(takeS, gaps, kicad) {
       const waited = cut.to - cut.from
       pieces.push({ src: 'take', from: cut.from, to: cut.from + KEEP_S, label: `waiting for the model: ${waited.toFixed(0)} s, shortened to ${KEEP_S} s` })
     } else {
-      pieces.push({ src: 'kicad', from: cut.from, to: cut.to })
+      pieces.push({ src: 'kicad', editor: cut.editor, from: cut.from, to: cut.to })
     }
     pos = cut.to
   }
@@ -183,16 +194,23 @@ function main() {
   const read = (name) => JSON.parse(readFileSync(join(dir, name), 'utf8'))
   const ffmpeg = (args) => execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...args], { cwd: dir, stdio: 'inherit' })
   const cues = read('cues.json')
-  const kicad = existsSync(join(dir, 'kicad.json')) && existsSync(join(dir, 'kicad.mp4')) ? read('kicad.json') : null
+  const clips = KICAD_CLIPS.filter(({ clip }) => existsSync(join(dir, `${clip}.json`)) && existsSync(join(dir, `${clip}.mp4`))).map(
+    ({ editor, clip }) => ({ ...read(`${clip}.json`), editor, clip }),
+  )
   const gaps = flags.includes('--cut-gaps') ? findGaps(read('events.json'), read('shown.json')) : []
-  const pieces = planPieces(duration(join(dir, 'take.webm')), gaps, kicad)
+  const pieces = planPieces(duration(join(dir, 'take.webm')), gaps, clips)
 
-  const spec = JSON.parse(readFileSync(join(HERE, 'cues-kicad.json'), 'utf8'))
-  // Plain-text files for drawtext: no escaping of ':' or ',' in the texts.
-  const textFiles = { label: 'kicad-label.txt', zoom: 'kicad-zoom.txt', cues: spec.cues.map((_, i) => `kicad-cue-${i}.txt`) }
-  writeFileSync(join(dir, textFiles.label), spec.label)
-  writeFileSync(join(dir, textFiles.zoom), spec.zoom.label)
-  spec.cues.forEach((c, i) => writeFileSync(join(dir, textFiles.cues[i]), c.subtitle))
+  const kicadSpec = JSON.parse(readFileSync(join(HERE, 'cues-kicad.json'), 'utf8'))
+  // Per clip: its zoom and cues, and plain-text files for drawtext (no escaping of ':' or ',').
+  const specs = {}
+  for (const { editor, clip } of clips) {
+    const spec = kicadSpec.clips[editor]
+    const textFiles = { label: `${clip}-label.txt`, zoom: `${clip}-zoom.txt`, cues: spec.cues.map((_, i) => `${clip}-cue-${i}.txt`) }
+    writeFileSync(join(dir, textFiles.label), kicadSpec.label)
+    writeFileSync(join(dir, textFiles.zoom), spec.zoom.label)
+    spec.cues.forEach((c, i) => writeFileSync(join(dir, textFiles.cues[i]), c.subtitle))
+    specs[editor] = { spec, textFiles, clip: clips.find((c) => c.editor === editor) }
+  }
 
   const files = []
   const lengths = []
@@ -209,32 +227,36 @@ function main() {
       files.push(file)
       lengths.push(duration(join(dir, file)))
     } else {
-      // The KiCad clip in two pieces: the whole sheet, then a cut to the title block.
+      // A KiCad clip in two pieces: the whole sheet, then a cut to the title block.
+      const { spec, textFiles, clip } = specs[p.editor]
+      const source = `${clip.clip}.mp4`
       const zoomAt = spec.zoom.start
-      const crop = zoomRect(kicad.area, spec.zoom)
+      const crop = zoomRect(clip.area, spec.zoom)
       const sheet = `part-${String(files.length + 1).padStart(2, '0')}.mp4`
       const block = `part-${String(files.length + 2).padStart(2, '0')}.mp4`
-      ffmpeg(['-i', 'kicad.mp4', '-t', String(zoomAt), '-vf', kicadFilter(spec, textFiles, { from: 0 }), ...encodeArgs(sheet)])
-      ffmpeg(['-ss', String(zoomAt), '-i', 'kicad.mp4', '-vf', kicadFilter(spec, textFiles, { from: zoomAt, crop }), ...encodeArgs(block)])
+      ffmpeg(['-i', source, '-t', String(zoomAt), '-vf', kicadFilter(spec, textFiles, { from: 0 }), ...encodeArgs(sheet)])
+      ffmpeg(['-ss', String(zoomAt), '-i', source, '-vf', kicadFilter(spec, textFiles, { from: zoomAt, crop }), ...encodeArgs(block)])
       files.push(sheet, block)
-      posterAt = lengths.reduce((a, b) => a + b, 0) + zoomAt + 1.5
+      // The poster: the schematic's title block, zoomed in.
+      if (p.editor === 'schematic') posterAt = lengths.reduce((a, b) => a + b, 0) + zoomAt + 1.5
       lengths.push(duration(join(dir, sheet)) + duration(join(dir, block)))
     }
   }
   writeFileSync(join(dir, 'parts.txt'), files.map((f) => `file '${f}'`).join('\n'))
   ffmpeg(['-f', 'concat', '-safe', '0', '-i', 'parts.txt', '-c', 'copy', '-movflags', '+faststart', 'video.mp4'])
 
-  // Subtitles on the final clock: the take's cues mapped, the KiCad cues where its clip is.
+  // Subtitles on the final clock: the take's cues mapped, each KiCad clip's cues where it is.
   const map = mapper(pieces, lengths)
   const final = cues
     .map((c) => ({ ...c, start_ms: map(c.start_ms), end_ms: map(c.end_ms) }))
     .filter((c) => c.end_ms - c.start_ms > 300)
-  const k = pieces.findIndex((p) => p.src === 'kicad')
-  if (k >= 0) {
+  for (const [k, p] of pieces.entries()) {
+    if (p.src !== 'kicad') continue
     const at = lengths.slice(0, k).reduce((a, b) => a + b, 0) * 1000
+    const { spec } = specs[p.editor]
     final.push(...spec.cues.map((c) => ({ id: c.id, start_ms: at + c.start * 1000, end_ms: at + Math.min(c.end * 1000, lengths[k] * 1000), subtitle: c.subtitle })))
-    final.sort((a, b) => a.start_ms - b.start_ms)
   }
+  final.sort((a, b) => a.start_ms - b.start_ms)
   writeFileSync(join(dir, 'subtitles.en.srt'), srt(final))
   writeFileSync(join(dir, 'pieces.json'), JSON.stringify(pieces.map((p, i) => ({ ...p, seconds: lengths[i] })), null, 2))
 

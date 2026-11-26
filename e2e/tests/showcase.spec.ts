@@ -127,6 +127,17 @@ test('desktop: recorded demo for the README GIF', async ({ browser }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'Title block' }).click()
   await page.waitForTimeout(3500)
 
+  // The board has the same title block (decision 0033): switch to it and zoom in again.
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'PCB', exact: true }).hover()
+  await page.waitForTimeout(500)
+  await dialog.getByRole('button', { name: 'PCB', exact: true }).click()
+  const board = dialog.getByRole('img', { name: /PCB title block/ })
+  await expect.poll(() => board.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0), { timeout: 30_000 }).toBe(true)
+  await page.waitForTimeout(2000)
+  await dialog.getByRole('button', { name: 'Title block' }).click()
+  await page.waitForTimeout(3500)
+
   const video = page.video()
   await context.close()
   await video?.saveAs(join(TMP, 'demo.webm'))

@@ -79,13 +79,15 @@ Palabras clave: descripción, opcional, 60 caracteres, español, qué tan larga,
 ## Diseñador
 <a id="designer"></a>
 
-Una o dos iniciales con punto, un espacio y el apellido, como en el directorio de la
-empresa: `C. Velazquez`, `J. C. Pérez`, `E. Marín`. Las partículas pueden ir en minúscula
-(`de`, `del`, `de la`, `de los`, `van`, `von`, `y`): `C. de la Torre`, `M. van Dijk`. La
-última palabra del apellido empieza con mayúscula. Se admiten tildes, apóstrofos y guiones
-(`L. O'Brien`, `R. Navarro-Ruiz`); los dígitos no. Máximo 40 caracteres.
+El nombre o las iniciales, un espacio y el apellido, como en el directorio de la empresa:
+`Carlos Velazquez`, `C. Velazquez`, `Juan Carlos Pérez`, `Carlos A. Velazquez`,
+`J. C. Pérez`. Cada nombre de pila va completo o como inicial con punto; como mucho dos
+iniciales. Las partículas pueden ir en minúscula (`de`, `del`, `de la`, `de los`, `van`,
+`von`, `y`): `C. de la Torre`, `Ana van Dijk`. Las demás palabras empiezan con mayúscula y
+la última es el apellido. Se admiten tildes, apóstrofos y guiones (`L. O'Brien`,
+`R. Navarro-Ruiz`); los dígitos no. Máximo 40 caracteres.
 
-Palabras clave: diseñador, nombre del diseñador, formato, inicial, apellido, no me acepta, designer
+Palabras clave: diseñador, nombre del diseñador, nombre completo, nombre de pila, formato, inicial, apellido, no me acepta, designer
 
 ## Fecha
 <a id="date"></a>

@@ -79,8 +79,9 @@ case "$mode" in
     fi
     # Without a .env, pin the mock SAP's date so the demo numbers stay in 2026 (decision 0007).
     [ -f .env ] || export SAP_TODAY="${SAP_TODAY:-2026-11-17}"
-    command -v kicad-cli >/dev/null 2>&1 || grep -q '^KICAD_CLI=' .env 2>/dev/null \
-      || echo "Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env."
+    # Is KiCad 9 here (also in its install folders, decision 0035), and what needs it?
+    echo
+    (cd backend && .venv/bin/python -m app.cli kicad-check)
     free_port 8000 "the app" || exit 1
     free_port 8100 "the mock SAP" || exit 1
     # Which model will answer? It checks Dahl, Groq and Ollama, suggests one and asks (Enter = the

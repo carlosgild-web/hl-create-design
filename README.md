@@ -8,16 +8,17 @@ the title block already filled in, gets the design number from SAP, and exports 
 `kicad-cli`. An assistant guides the engineer through the fields and explains each rule from
 the company Design Manual. **The AI guides; the code decides.**
 
-![Demo: the assistant fills the form from one sentence, the engineer confirms, KiCad renders the title block](docs/showcase/demo.gif)
+![Demo: the assistant fills the form from one sentence, the engineer confirms, KiCad renders the title block on the schematic and on the PCB](docs/showcase/demo.gif)
 
 <sub>Recorded with the scripted demo model. KiCad output is real.</sub>
 
-### The 2-minute video: a real model, under the hood
+### The 2½-minute video: a real model, under the hood
 
-https://github.com/user-attachments/assets/f27fd03c-f28d-4b5e-94cc-408ffe2cfbe9
+https://github.com/user-attachments/assets/8b9fae08-10d2-4be1-b6d1-a1bc62ac2e7a
 
 A real model (Groq, `gpt-oss-120b`), with the code and the data behind each step on the
-right. What it shows and how it was recorded: [docs/video.md](docs/video.md).
+right. It ends in KiCad's schematic and PCB editors. What it shows and how it was recorded:
+[docs/video.md](docs/video.md).
 
 ```bash
 git clone https://github.com/carlosgild-web/hl-create-design.git
@@ -46,8 +47,8 @@ Create Design takes this to one form and one click:
   section it comes from.
 - **The assistant** turns "revision C of the bead sorter vision board" into a filled form, and
   answers "why can't I use revision I?" from the manual. It explains; it never decides.
-- **The result** is a KiCad project with the H&L drawing sheet filled in, a PDF, a zip, and an
-  Open in KiCad button.
+- **The result** is a KiCad project with the H&L drawing sheet filled in on both the
+  schematic and the PCB, a PDF of each, a zip, and Open in KiCad and Open PCB buttons.
 
 ## Before and after
 
@@ -111,8 +112,8 @@ flowchart LR
     api --> actions
     actions --> sapc
     actions --> renderer
-    renderer --> kicad[["kicad-cli<br/>PDF + SVG"]]
-    renderer --> files[("DESIGNS_ROOT<br/>.kicad_pro · .kicad_sch · PDF")]
+    renderer --> kicad[["kicad-cli<br/>schematic + PCB: PDF, SVG"]]
+    renderer --> files[("DESIGNS_ROOT<br/>.kicad_pro · .kicad_sch · .kicad_pcb · PDF")]
     sapc -- "OData v2<br/>Basic auth + CSRF" --> sap[("Mock SAP<br/>FastAPI · SQLite")]
 ```
 
@@ -125,8 +126,8 @@ flowchart LR
 - **The manual** (`docs/manual/`, English and Spanish) is searched with SQLite FTS5, so no
   embedding model is needed.
 - **The renderer** writes KiCad text variables into the project and a custom drawing sheet
-  (`kicad/template/hl_title_block.kicad_wks`). Then `kicad-cli` exports the PDF and the
-  preview.
+  (`kicad/template/hl_title_block.kicad_wks`), used by both the schematic and the PCB editor.
+  Then `kicad-cli` exports a PDF and a preview of each.
 
 Each choice has a short decision record in [docs/decisions/](docs/decisions/).
 
@@ -175,9 +176,8 @@ cd backend && python -m app.cli agent-eval --fake      # the CI suite
 
 ## Try it
 
-**Requirements:** Python 3.11+ and Node 20+ (local mode), or Docker. KiCad 9 is optional:
-without it everything works except the PDF and the preview. Set `KICAD_CLI` in `.env` if
-`kicad-cli` is not on the `PATH`.
+**Requirements:** Python 3.11+ and Node 20+ (local mode), or Docker. KiCad 9 is optional,
+but you need it to try every feature (see [What each feature needs](#what-each-feature-needs)).
 
 ```bash
 start.cmd                       # local mode (default): Python + Node, no Docker
@@ -196,6 +196,24 @@ one:
 Press Enter to take the suggestion. The browser opens at <http://localhost:8000>.
 
 Configuration is all environment variables. See [.env.example](.env.example).
+
+### What each feature needs
+
+To test everything, install [KiCad 9](https://www.kicad.org/download/) before you start.
+The app finds it in its standard install folder, so you don't have to add it to the `PATH`.
+At start-up the script says whether it found KiCad. If it didn't, the preview dialog says so
+too, with the download link.
+
+| Feature | Needs | Without it |
+|---|---|---|
+| Assistant, rule checks, SAP numbers, the KiCad project files | Python 3.11+ and Node 20+ (or Docker) | — |
+| Answers from a real model | a Dahl or Groq API key in `.env`, or Ollama running | the demo assistant answers (rules, no AI) |
+| PDF and preview of the schematic and the PCB | KiCad 9 (`kicad-cli`) | the project is created without them, with a warning |
+| Open in KiCad, Open PCB | KiCad 9 on the same computer as the app (local mode) | the buttons are hidden; open the project file by hand |
+
+The Docker image includes `kicad-cli`, so PDFs work there. Open in KiCad and Open PCB are
+off in Docker: the app runs in a container, not on your desktop. If KiCad is installed in another folder,
+set `KICAD_CLI` in `.env` to the full path of `kicad-cli`.
 
 ## Development
 

@@ -21,11 +21,11 @@ EXE = ".exe" if sys.platform == "win32" else ""
 
 def fake_install(tmp_path, gui: bool = True, editor: bool = False) -> str:
     """A KiCad bin folder: kicad-cli, the Project Manager next to it when `gui`, and the
-    schematic editor when `editor`."""
+    schematic and PCB editors when `editor`."""
     bin_dir = tmp_path / "kicad" / "bin"
     bin_dir.mkdir(parents=True)
     names = [f"kicad-cli{EXE}"] + ([f"kicad{EXE}"] if gui else [])
-    names += [f"eeschema{EXE}"] if editor else []
+    names += [f"eeschema{EXE}", f"pcbnew{EXE}"] if editor else []
     for name in names:
         (bin_dir / name).write_bytes(b"")
         (bin_dir / name).chmod(0o755)
@@ -79,6 +79,35 @@ def test_open_starts_the_schematic_editor_with_the_schematic(api, settings, laun
     assert program.endswith(f"eeschema{EXE}") and schematic.endswith("HL-HW-26-0042_C.kicad_sch")
     [opened] = [r for r in audit_rows(deps.engine_dep(settings)) if r.action == "design_opened"]
     assert opened.details["program"] == f"eeschema{EXE}"
+
+
+def test_files_says_whether_the_board_can_be_opened_and_previewed(api, settings):
+    """Decision 0033: designs made before it have no board, so no Open PCB for them."""
+    files = api.get(f"{BASE}/files").json()
+    assert files["can_open_pcb"] is True and files["has_pcb_preview"] is True
+
+    folder = settings.designs_root / "HW" / "HL-HW-26-0042" / "C"
+    (folder / "HL-HW-26-0042_C.kicad_pcb").unlink()
+    (folder / "output" / "HL-HW-26-0042_C_pcb.svg").unlink()
+    files = api.get(f"{BASE}/files").json()
+    assert files["can_open_pcb"] is False and files["has_pcb_preview"] is False
+
+
+def test_open_pcb_starts_the_pcb_editor_with_the_board(api, settings, launched, tmp_path):
+    settings.kicad_cli = fake_install(tmp_path / "full", editor=True)
+
+    assert api.post(f"{BASE}/open", params={"target": "pcb"}).status_code == 200
+
+    [(program, board)] = launched
+    assert program.endswith(f"pcbnew{EXE}") and board.endswith("HL-HW-26-0042_C.kicad_pcb")
+    [opened] = [r for r in audit_rows(deps.engine_dep(settings)) if r.action == "design_opened"]
+    assert opened.details["program"] == f"pcbnew{EXE}"
+    assert opened.details["target"] == "pcb"
+
+
+def test_open_refuses_an_unknown_target(api, launched):
+    assert api.post(f"{BASE}/open", params={"target": "gerber"}).status_code == 422
+    assert launched == []
 
 
 def test_open_falls_back_to_the_project_manager_without_the_schematic(

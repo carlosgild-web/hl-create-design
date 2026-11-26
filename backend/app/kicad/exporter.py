@@ -1,4 +1,4 @@
-"""Run `kicad-cli` to export a schematic to PDF and SVG.
+"""Run `kicad-cli` to export a schematic and a board to PDF and SVG.
 
 The path to the executable comes from `KICAD_CLI`. Every run has a timeout and its output
 is captured, so a failure can be shown to the user and kept in the logs. The runner is
@@ -13,6 +13,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_TIMEOUT_S = 120.0
+# `<stem>_pcb.pdf` / `.svg`: the board's exports sit next to the schematic's in `output/`.
+BOARD_SUFFIX = "_pcb"
+# The board has no outline or parts yet; Edge.Cuts plus the drawing sheet shows the frame
+# and the title block (decision 0033).
+BOARD_LAYERS = "Edge.Cuts"
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
 
@@ -59,10 +64,54 @@ def export_schematic(
     log = "\n".join(logs)
     if not pdf.is_file():
         raise ExportError(f"kicad-cli wrote no PDF at {pdf}", log=log)
-    svgs = tuple(sorted(output_dir.glob("*.svg")))
+    svgs = tuple(sorted(p for p in output_dir.glob("*.svg") if not p.stem.endswith(BOARD_SUFFIX)))
     if not svgs:
         raise ExportError(f"kicad-cli wrote no SVG in {output_dir}", log=log)
     return ExportResult(pdf=pdf, svgs=svgs, log=log)
+
+
+def export_board(
+    board: Path,
+    output_dir: Path,
+    *,
+    kicad_cli: str,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+    runner: Runner = subprocess.run,
+) -> ExportResult:
+    """Export `board` with its title block to `<output_dir>/<stem>_pcb.pdf` and `.svg`."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    pdf = output_dir / f"{board.stem}{BOARD_SUFFIX}.pdf"
+    svg = output_dir / f"{board.stem}{BOARD_SUFFIX}.svg"
+    # Black and white: the Edge.Cuts colour (pale pink) is hard to read on screen and on paper.
+    common = ["--layers", BOARD_LAYERS, "--mode-single", "--black-and-white"]
+    logs = [
+        _run(
+            [
+                kicad_cli,
+                "pcb",
+                "export",
+                "pdf",
+                *common,
+                "--include-border-title",
+                "--output",
+                str(pdf),
+                str(board),
+            ],
+            runner,
+            timeout_s,
+        ),
+        _run(
+            [kicad_cli, "pcb", "export", "svg", *common, "--output", str(svg), str(board)],
+            runner,
+            timeout_s,
+        ),
+    ]
+    log = "\n".join(logs)
+    if not pdf.is_file():
+        raise ExportError(f"kicad-cli wrote no PDF at {pdf}", log=log)
+    if not svg.is_file():
+        raise ExportError(f"kicad-cli wrote no SVG at {svg}", log=log)
+    return ExportResult(pdf=pdf, svgs=(svg,), log=log)
 
 
 def _run(command: list[str], runner: Runner, timeout_s: float) -> str:
