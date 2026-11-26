@@ -77,13 +77,15 @@ Keywords: description, optional, 60 characters, spanish, how long, descripción,
 ## Designer
 <a id="designer"></a>
 
-One or two initials with a period, a space and the surname, as in the company directory:
-`C. Velazquez`, `J. C. Pérez`, `E. Marín`. Particles may be lowercase (`de`, `del`, `de la`,
-`de los`, `van`, `von`, `y`): `C. de la Torre`, `M. van Dijk`. The surname's last word starts
-with a capital. Accents, apostrophes and hyphens are allowed (`L. O'Brien`, `R. Navarro-Ruiz`);
-digits are not. Maximum 40 characters.
+The first name or initials, a space and the surname, as in the company directory:
+`Carlos Velazquez`, `C. Velazquez`, `Juan Carlos Pérez`, `Carlos A. Velazquez`,
+`J. C. Pérez`. Each given name is a full name or an initial with a period; at most two
+initials. Particles may be lowercase (`de`, `del`, `de la`, `de los`, `van`, `von`, `y`):
+`C. de la Torre`, `Ana van Dijk`. Every other word starts with a capital, and the last word
+is the surname. Accents, apostrophes and hyphens are allowed (`L. O'Brien`,
+`R. Navarro-Ruiz`); digits are not. Maximum 40 characters.
 
-Keywords: designer, designer name, write the designer, how to write my name, format, initial, surname, rejected my name, diseñador, nombre del diseñador, formato, inicial, apellido
+Keywords: designer, designer name, write the designer, how to write my name, full name, first name, format, initial, surname, rejected my name, nombre completo, diseñador, nombre del diseñador, formato, inicial, apellido
 
 ## Date
 <a id="date"></a>

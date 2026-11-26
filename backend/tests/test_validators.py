@@ -311,6 +311,14 @@ def test_tabs_and_newlines_collapse_to_one_space():
         "M. van Dijk",
         "A. de los Santos",
         "L. García y Pérez",
+        # full given names (decision 0034)
+        "Carlos Velazquez",
+        "Juan Carlos Pérez",
+        "Carlos A. Velazquez",
+        "Ana de la Torre",
+        "María José Navarro-Ruiz",
+        "Seán O'Brien",
+        "Elena van Dijk",
     ],
 )
 def test_valid_designers(raw):
@@ -320,7 +328,12 @@ def test_valid_designers(raw):
 @pytest.mark.parametrize(
     "raw",
     [
-        "Carlos Velazquez",
+        "Carlos",
+        "carlos velazquez",
+        "Carlos velazquez",
+        "Carlos Velazquez A.",
+        "C. de A. Torre",
+        "Carlos 2 Velazquez",
         "c. velazquez",
         "C Velazquez",
         "C. V",

@@ -205,9 +205,9 @@ permite `${`.
 Ref: 03-title-block#description
 
 ### ¿Cómo escribo el diseñador?
-Una o dos iniciales con punto, un espacio y el apellido, como en el directorio de la
-empresa: `C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Se permiten acentos; máximo 40
-caracteres.
+Tu nombre o tus iniciales, un espacio y el apellido, como en el directorio de la empresa:
+`Carlos Velazquez`, `C. Velazquez`, `J. C. Pérez`, `C. de la Torre`. Se permiten acentos;
+máximo 40 caracteres.
 Ref: 03-title-block#designer, 07-faq#designer-format
 
 ### ¿Por qué el número de material tiene tantos ceros?

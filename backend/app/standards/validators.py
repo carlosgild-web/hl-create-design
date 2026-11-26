@@ -601,32 +601,46 @@ def validate_description(raw: str) -> FieldCheck:
 # --- designer: 03-title-block#designer ------------------------------------------------
 
 DESIGNER_MAX = 40
-# One or two initials ("C.", "J. C."), then a surname of one or more words. Letters with
-# accents, apostrophes and hyphens are allowed; digits are not. Particles may be lowercase
-# ("C. de la Torre", "M. van Dijk"); the surname's last word starts with a capital.
+MAX_INITIALS = 2
+# Given names, then a surname (decision 0034). A given name is a full name ("Carlos") or an
+# initial with a period ("C."), mixed freely ("Carlos A. Velazquez", "J. C. Pérez"), at most
+# two initials. Letters with accents, apostrophes and hyphens are allowed; digits are not.
+# Name words start with a capital and have at least two letters. Surname particles may be
+# lowercase ("C. de la Torre", "Ana van Dijk"); the last word is a capitalized surname.
 _INITIAL_RE = re.compile(r"^[^\W\d_]\.$")
-_SURNAME_WORD_RE = re.compile(r"^[^\W\d_]+(?:['\-][^\W\d_]+)*$")
+_NAME_WORD_RE = re.compile(r"^[^\W\d_]+(?:['\-][^\W\d_]+)*$")
 SURNAME_PARTICLES = frozenset(
     {"de", "del", "la", "las", "los", "y", "van", "von", "der", "den", "da", "do", "dos"}
 )
 
 
+def _is_initial(word: str) -> bool:
+    return bool(_INITIAL_RE.match(word)) and word[0].isupper()
+
+
+def _is_name(word: str) -> bool:
+    return bool(_NAME_WORD_RE.match(word)) and len(word) >= 2 and word[0].isupper()
+
+
 def _designer_ok(designer: str) -> bool:
-    parts = designer.split(" ")
-    initials = 0
-    while initials < len(parts) and _INITIAL_RE.match(parts[initials]):
-        if not parts[initials][0].isupper():
+    words = designer.split(" ")
+    if len(words) < 2:
+        return False
+    first, *middle, last = words
+    if not (_is_initial(first) or _is_name(first)) or not _is_name(last):
+        return False
+    initials = int(_is_initial(first))
+    after_particle = False
+    for word in middle:
+        if _is_initial(word):
+            if after_particle:  # "C. de A. Torre": initials belong to the given names
+                return False
+            initials += 1
+        elif word in SURNAME_PARTICLES:
+            after_particle = True
+        elif not _is_name(word):
             return False
-        initials += 1
-    surname = parts[initials:]
-    if not 1 <= initials <= 2 or not surname:
-        return False
-    if not all(_SURNAME_WORD_RE.match(w) for w in surname):
-        return False
-    *particles_or_names, last = surname
-    if len(last) < 2 or not last[0].isupper():
-        return False
-    return all(w[0].isupper() or w in SURNAME_PARTICLES for w in particles_or_names)
+    return initials <= MAX_INITIALS
 
 
 def validate_designer(raw: str) -> FieldCheck:
@@ -649,9 +663,9 @@ def validate_designer(raw: str) -> FieldCheck:
             Issue(
                 "designer",
                 "designer_format",
-                "Write the designer as one or two initials with a period, a space and the "
-                "surname, as in the company directory: C. Velazquez, J. C. Pérez, "
-                "C. de la Torre.",
+                "Write the designer as a first name or initials, then the surname, names "
+                "starting with a capital: Carlos Velazquez, C. Velazquez, "
+                "J. C. Pérez, C. de la Torre.",
                 ref,
             ),
         )

@@ -153,7 +153,7 @@ test('a new design named Test: Create says why it waits, and a bad designer is c
   await expect(create).toHaveAccessibleDescription('To create: fill in Designer · get a SAP number')
 
   await page.getByLabel('Designer').fill('carlos')
-  await expect(page.getByText(/Write the designer as one or two initials/)).toBeVisible()
+  await expect(page.getByText(/Write the designer as a first name or initials/)).toBeVisible()
   await expect(create).toHaveAccessibleDescription(/fix the errors above/)
 
   await page.getByLabel('Designer').fill('C. Velazquez')
@@ -210,7 +210,7 @@ test('switches to Spanish, rule messages included', async ({ page }) => {
 
   // the validators answer in English with a code; the form shows the Spanish template
   await page.getByLabel('Diseñador').fill('carlos')
-  await expect(page.getByText(/Escribe el diseñador con una o dos iniciales/)).toBeVisible()
+  await expect(page.getByText(/Escribe el diseñador con el nombre o las iniciales/)).toBeVisible()
   await page.getByLabel('Nombre del diseño').fill('Prueba')
   await expect(page.getByText(/El nombre parece estar en español/)).toBeVisible()
   await expect(page.getByText(/Write the designer|The name looks Spanish/)).toHaveCount(0)
