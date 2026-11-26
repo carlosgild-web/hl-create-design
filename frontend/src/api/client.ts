@@ -116,15 +116,28 @@ export const cancelAction = (id: string) => decide(id, 'cancel')
 
 const designBase = (t: PreviewTarget) => `/api/designs/${t.department}/${t.design_number}/${t.revision}`
 
-export const previewUrl = (t: PreviewTarget, format: 'pdf' | 'svg') => `${designBase(t)}/preview.${format}`
+/** Which drawing a preview or an Open shows: the schematic, or the board (decision 0033). */
+export type DrawingView = 'schematic' | 'pcb'
+
+export const previewUrl = (t: PreviewTarget, format: 'pdf' | 'svg', view: DrawingView = 'schematic') =>
+  `${designBase(t)}/${view === 'pcb' ? 'pcb' : 'preview'}.${format}`
 
 /** The revision folder as a zip (works everywhere, also in Docker). */
 export const projectZipUrl = (t: PreviewTarget) => `${designBase(t)}/project.zip`
 
-export type DesignFiles = { folder: string; project_file: string; can_open: boolean }
+export type DesignFiles = {
+  folder: string
+  project_file: string
+  can_open: boolean
+  /** Designs made before decision 0033 have no board: no Open PCB and no PCB view. */
+  can_open_pcb?: boolean
+  has_pcb_preview?: boolean
+}
 
 export const getDesignFiles = (t: PreviewTarget) => fetch(`${designBase(t)}/files`).then((r) => json<DesignFiles>(r))
 
-/** Start KiCad with the project on the backend's machine (local mode; decision 0019). */
-export const openInKicad = (t: PreviewTarget) =>
-  fetch(`${designBase(t)}/open`, { method: 'POST' }).then((r) => json<{ ok: boolean }>(r))
+/** Start KiCad's schematic or PCB editor on the backend's machine (local mode; 0019, 0033). */
+export const openInKicad = (t: PreviewTarget, view: DrawingView = 'schematic') =>
+  fetch(`${designBase(t)}/open${view === 'pcb' ? '?target=pcb' : ''}`, { method: 'POST' }).then((r) =>
+    json<{ ok: boolean }>(r),
+  )

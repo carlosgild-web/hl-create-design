@@ -11,11 +11,13 @@ Fictional company; demo content.*
   HW/
     HL-HW-26-0042/
       A/
+        HL-HW-26-0042_A.kicad_pcb
         HL-HW-26-0042_A.kicad_pro
         HL-HW-26-0042_A.kicad_sch
         hl_title_block.kicad_wks
         output/
           HL-HW-26-0042_A.pdf
+          HL-HW-26-0042_A_pcb.pdf
       B/
         ...
   PWR/

@@ -2,9 +2,10 @@
 
 `POST /api/actions` lets the form open a confirmation card without the model. It only
 *proposes*: the files and the SAP number still wait for `POST /api/actions/{id}/confirm`
-(invariant 2). `GET /api/designs/.../preview.{pdf,svg}` serves files from inside
-`DESIGNS_ROOT` only (invariant 3), and so do `.../files`, `.../project.zip` and
-`.../open` (Open in KiCad, local mode only; decision 0019).
+(invariant 2). `GET /api/designs/.../preview.{pdf,svg}` (the schematic) and
+`.../pcb.{pdf,svg}` (the board, decision 0033) serve files from inside `DESIGNS_ROOT` only
+(invariant 3), and so do `.../files`, `.../project.zip` and `.../open` (Open in KiCad and
+Open PCB, local mode only; decisions 0019 and 0033).
 """
 
 from __future__ import annotations
@@ -25,7 +26,8 @@ from app.db import store
 from app.db.models import AuditLog
 from app.db.session import write_audit
 from app.designs import check_fields, normalize_payload
-from app.kicad.launcher import can_open, open_command, zip_folder
+from app.kicad.exporter import BOARD_SUFFIX
+from app.kicad.launcher import OpenTarget, can_open, open_command, zip_folder
 from app.standards import validators as v
 
 router = APIRouter(prefix="/api", tags=["designs"])
@@ -129,13 +131,20 @@ def _existing_folder(settings: Settings, department: str, design_number: str, re
 def design_files(
     department: str, design_number: str, revision: str, settings: SettingsDep
 ) -> dict[str, Any]:
-    """Where the project is on disk, and whether Open in KiCad can work here."""
+    """Where the project is on disk, whether Open in KiCad / Open PCB can work here, and
+    whether the board has a preview (designs made before decision 0033 have no board)."""
     folder = _existing_folder(settings, department, design_number, revision)
-    project = folder / f"{v.design_file_stem(design_number, revision)}.kicad_pro"
+    stem = v.design_file_stem(design_number, revision)
+    project = folder / f"{stem}.kicad_pro"
+    has_board = (folder / f"{stem}.kicad_pcb").is_file()
     return {
         "folder": str(folder),
         "project_file": str(project),
         "can_open": settings.kicad_open_enabled and can_open(settings.kicad_cli),
+        "can_open_pcb": has_board
+        and settings.kicad_open_enabled
+        and can_open(settings.kicad_cli, "pcb"),
+        "has_pcb_preview": (folder / "output" / f"{stem}{BOARD_SUFFIX}.svg").is_file(),
     }
 
 
@@ -147,17 +156,19 @@ def open_in_kicad(
     settings: SettingsDep,
     engine: EngineDep,
     launch: LauncherDep,
+    target: OpenTarget = "schematic",
 ) -> dict[str, Any]:
-    """Start KiCad's schematic editor with the design (decision 0030; the Project Manager
-    when there is no schematic editor), on the user's click. Writes no file and calls no
-    SAP (decision 0019); audited like every other action on a design."""
+    """Start KiCad's schematic editor (decision 0030) or, with `target=pcb`, its PCB editor
+    (decision 0033) with the design; the Project Manager when that editor is missing. On
+    the user's click only. Writes no file and calls no SAP (decision 0019); audited like
+    every other action on a design."""
     folder = _existing_folder(settings, department, design_number, revision)
-    if not (settings.kicad_open_enabled and can_open(settings.kicad_cli)):
+    if not (settings.kicad_open_enabled and can_open(settings.kicad_cli, target)):
         raise HTTPException(409, "Open in KiCad is not available on this server")
     stem = v.design_file_stem(design_number, revision)
-    command = open_command(settings.kicad_cli, folder, stem)
+    command = open_command(settings.kicad_cli, folder, stem, target)
     if command is None:
-        raise HTTPException(404, "The schematic and the project file are missing")
+        raise HTTPException(404, f"The {target} and the project file are missing")
     gui = Path(command[0])
     project = folder / f"{stem}.kicad_pro"
     try:
@@ -170,7 +181,7 @@ def open_in_kicad(
         actor="",
         design_number=design_number,
         revision=revision,
-        details={"department": department, "program": gui.name},
+        details={"department": department, "program": gui.name, "target": target},
     )
     return {"ok": True, "project_file": str(project)}
 
@@ -205,9 +216,30 @@ def preview(
         raise HTTPException(404, "Design not found") from exc
     output = folder / "output"
     stem = v.design_file_stem(design_number, revision)
-    # The SVG export names its file after the sheet; take the first one.
-    candidates = [output / f"{stem}.pdf"] if fmt == "pdf" else sorted(output.glob("*.svg"))
+    # The SVG export names its file after the sheet; take the first one (not the board's).
+    sheets = [p for p in sorted(output.glob("*.svg")) if not p.stem.endswith(BOARD_SUFFIX)]
+    candidates = [output / f"{stem}.pdf"] if fmt == "pdf" else sheets
     path = next((p for p in candidates if p.is_file()), None)
     if path is None:
         raise HTTPException(404, "No preview for this design")
+    return FileResponse(path, media_type=MEDIA[fmt], headers={"Cache-Control": "no-cache"})
+
+
+@router.get("/designs/{department}/{design_number}/{revision}/pcb.{fmt}")
+def pcb_preview(
+    department: str,
+    design_number: str,
+    revision: str,
+    fmt: Literal["pdf", "svg"],
+    settings: SettingsDep,
+) -> FileResponse:
+    """The board with its title block (decision 0033), exported next to the schematic."""
+    try:
+        folder = v.design_folder(settings.designs_root, department, design_number, revision)
+    except v.UnsafePathError as exc:
+        raise HTTPException(404, "Design not found") from exc
+    stem = v.design_file_stem(design_number, revision)
+    path = folder / "output" / f"{stem}{BOARD_SUFFIX}.{fmt}"
+    if not path.is_file():
+        raise HTTPException(404, "No PCB preview for this design")
     return FileResponse(path, media_type=MEDIA[fmt], headers={"Cache-Control": "no-cache"})

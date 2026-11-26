@@ -18,10 +18,14 @@ class FakeKicadCli:
         assert kwargs["timeout"] > 0 and kwargs["capture_output"] and not kwargs["check"]
         if self.raises:
             raise self.raises
-        output, schematic = Path(command[command.index("--output") + 1]), Path(command[-1])
+        output, source = Path(command[command.index("--output") + 1]), Path(command[-1])
         if self.write_files and self.returncode == 0:
-            if command[3] == "pdf":
+            if command[1] == "pcb":  # --mode-single: --output is the file itself
+                output.write_bytes(
+                    b"%PDF-1.5 fake pcb" if command[3] == "pdf" else b'<svg id="pcb"/>'
+                )
+            elif command[3] == "pdf":
                 output.write_bytes(b"%PDF-1.5 fake")
             else:
-                (output / f"{schematic.stem}.svg").write_text("<svg/>", encoding="utf-8")
+                (output / f"{source.stem}.svg").write_text("<svg/>", encoding="utf-8")
         return subprocess.CompletedProcess(command, self.returncode, "Plotted.", "")

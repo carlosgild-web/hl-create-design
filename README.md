@@ -46,8 +46,8 @@ Create Design takes this to one form and one click:
   section it comes from.
 - **The assistant** turns "revision C of the bead sorter vision board" into a filled form, and
   answers "why can't I use revision I?" from the manual. It explains; it never decides.
-- **The result** is a KiCad project with the H&L drawing sheet filled in, a PDF, a zip, and an
-  Open in KiCad button.
+- **The result** is a KiCad project with the H&L drawing sheet filled in on both the
+  schematic and the PCB, a PDF of each, a zip, and Open in KiCad and Open PCB buttons.
 
 ## Before and after
 
@@ -111,8 +111,8 @@ flowchart LR
     api --> actions
     actions --> sapc
     actions --> renderer
-    renderer --> kicad[["kicad-cli<br/>PDF + SVG"]]
-    renderer --> files[("DESIGNS_ROOT<br/>.kicad_pro · .kicad_sch · PDF")]
+    renderer --> kicad[["kicad-cli<br/>schematic + PCB: PDF, SVG"]]
+    renderer --> files[("DESIGNS_ROOT<br/>.kicad_pro · .kicad_sch · .kicad_pcb · PDF")]
     sapc -- "OData v2<br/>Basic auth + CSRF" --> sap[("Mock SAP<br/>FastAPI · SQLite")]
 ```
 
@@ -125,8 +125,8 @@ flowchart LR
 - **The manual** (`docs/manual/`, English and Spanish) is searched with SQLite FTS5, so no
   embedding model is needed.
 - **The renderer** writes KiCad text variables into the project and a custom drawing sheet
-  (`kicad/template/hl_title_block.kicad_wks`). Then `kicad-cli` exports the PDF and the
-  preview.
+  (`kicad/template/hl_title_block.kicad_wks`), used by both the schematic and the PCB editor.
+  Then `kicad-cli` exports a PDF and a preview of each.
 
 Each choice has a short decision record in [docs/decisions/](docs/decisions/).
 

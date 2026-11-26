@@ -241,3 +241,30 @@ def test_a_sap_refusal_gives_the_ui_its_code_and_text(api, fake_sap):
         "sap_code": "ZHL_GW/003",
         "detail": "SAP system is in maintenance; try again later",
     }
+
+
+def test_pcb_preview_serves_the_board(api):
+    """Decision 0033: the board's PDF and SVG, apart from the schematic's."""
+    action = api.post("/api/actions", json={"kind": "create_design", "payload": CREATE}).json()
+    api.post(f"/api/actions/{action['id']}/confirm")
+
+    pdf = api.get("/api/designs/HW/HL-HW-26-0042/C/pcb.pdf")
+    svg = api.get("/api/designs/HW/HL-HW-26-0042/C/pcb.svg")
+    schematic = api.get("/api/designs/HW/HL-HW-26-0042/C/preview.svg")
+
+    assert pdf.status_code == 200 and pdf.content.endswith(b"pcb")
+    assert svg.status_code == 200 and svg.headers["content-type"] == "image/svg+xml"
+    assert b'id="pcb"' in svg.content
+    assert b'id="pcb"' not in schematic.content
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/designs/HW/HL-HW-26-0042/Z/pcb.pdf",
+        "/api/designs/HW/HL-HW-26-0042/C/pcb.png",
+        "/api/designs/..%2F..%2Fx/HL-HW-26-0042/C/pcb.svg",
+    ],
+)
+def test_pcb_preview_refuses_unknown_and_unsafe_paths(api, path):
+    assert api.get(path).status_code in {404, 422}

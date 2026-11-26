@@ -3,6 +3,9 @@
     "filename": "HL-HW-26-0042_A.kicad_pro",
     "version": 3
   },
+  "pcbnew": {
+    "page_layout_descr_file": "hl_title_block.kicad_wks"
+  },
   "schematic": {
     "legacy_lib_dir": "",
     "legacy_lib_list": [],

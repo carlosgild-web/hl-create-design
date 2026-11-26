@@ -293,8 +293,11 @@ def run_create_design(args: argparse.Namespace, settings: Settings) -> int:
     print(f"  folder:    {created.project.folder}")
     print(f"  project:   {created.project.project_file.name}")
     print(f"  schematic: {created.project.schematic_file.name}")
+    print(f"  board:     {created.project.board_file.name}")
     if created.export:
         print(f"  pdf:       {created.export.pdf}")
+    if created.board_export:
+        print(f"  pcb pdf:   {created.board_export.pdf}")
     for warning in created.warnings:
         print(_issue_line("warning", warning))
     print(f"  audit id:  {created.audit_id}")

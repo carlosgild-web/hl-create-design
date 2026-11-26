@@ -74,6 +74,12 @@ const en = {
   'preview.open_kicad': 'Open in KiCad',
   'preview.opening': 'Starting KiCad…',
   'preview.opened': "KiCad's schematic editor is opening with the design. It may take a few seconds.",
+  'preview.opened_pcb': "KiCad's PCB editor is opening with the board. It may take a few seconds.",
+  'preview.open_pcb': 'Open PCB',
+  'preview.drawing': 'Drawing',
+  'preview.schematic': 'Schematic',
+  'preview.pcb': 'PCB',
+  'preview.alt_pcb': 'PCB title block of {number} rev {rev}',
   'preview.open_failed': 'KiCad did not start ({message}). Open the project file below in KiCad 9.',
   'preview.download_zip': 'Download project (.zip)',
   'preview.project_file': 'Project file',
@@ -267,6 +273,7 @@ const en = {
   'issue.pdf_not_exported': 'The project was created without a PDF or preview.',
   'issue.pdf_not_exported.not_installed': 'The project was created without a PDF or preview: kicad-cli (KiCad 9) is not installed or KICAD_CLI is wrong. Open the project in KiCad, or ask your administrator to install KiCad 9.',
   'issue.pdf_not_exported.failed': 'The project was created, but the PDF export failed: {detail}',
+  'issue.pcb_pdf_not_exported': 'The project and the schematic PDF were created, but the PCB PDF export failed: {detail}',
 } as const
 
 export type MessageKey = keyof typeof en
@@ -345,6 +352,12 @@ const es: Record<MessageKey, string> = {
   'preview.open_kicad': 'Abrir en KiCad',
   'preview.opening': 'Iniciando KiCad…',
   'preview.opened': 'El editor de esquemáticos de KiCad se está abriendo con el diseño. Puede tardar unos segundos.',
+  'preview.opened_pcb': 'El editor de PCB de KiCad se está abriendo con la placa. Puede tardar unos segundos.',
+  'preview.open_pcb': 'Abrir PCB',
+  'preview.drawing': 'Plano',
+  'preview.schematic': 'Esquemático',
+  'preview.pcb': 'PCB',
+  'preview.alt_pcb': 'Cajetín de la PCB de {number} rev {rev}',
   'preview.open_failed': 'KiCad no se inició ({message}). Abre en KiCad 9 el archivo de proyecto de abajo.',
   'preview.download_zip': 'Descargar proyecto (.zip)',
   'preview.project_file': 'Archivo de proyecto',
@@ -537,6 +550,7 @@ const es: Record<MessageKey, string> = {
   'issue.pdf_not_exported': 'El proyecto se creó sin PDF ni vista previa.',
   'issue.pdf_not_exported.not_installed': 'El proyecto se creó sin PDF ni vista previa: kicad-cli (KiCad 9) no está instalado o KICAD_CLI está mal. Abre el proyecto en KiCad o pide al administrador que instale KiCad 9.',
   'issue.pdf_not_exported.failed': 'El proyecto se creó, pero falló la exportación del PDF: {detail}',
+  'issue.pcb_pdf_not_exported': 'Se crearon el proyecto y el PDF del esquemático, pero falló la exportación del PDF de la PCB: {detail}',
 }
 
 export const messages: Record<Lang, Record<MessageKey, string>> = { en, es }

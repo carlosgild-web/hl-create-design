@@ -7,8 +7,10 @@ gate (`POST /api/actions/{id}/confirm`, invariant 2); the developer CLI calls it
 Order (decision 0023): the rules, then "the folder doesn't exist yet", then the revision
 in SAP (through the caller's `record_revision`), then the folder. If SAP refuses, nothing
 is on disk. If the PDF export fails, the project is kept without a PDF and a
-`pdf_not_exported` warning says why (KiCad is optional). Any other failure after the
-folder was written removes it again, so every folder has its audit row (invariant 8).
+`pdf_not_exported` warning says why (KiCad is optional); a failed board export after a
+good schematic export is the `pcb_pdf_not_exported` warning (decision 0033). Any other
+failure after the folder was written removes it again, so every folder has its audit row
+(invariant 8).
 """
 
 from __future__ import annotations
@@ -25,7 +27,13 @@ from sqlalchemy import Engine
 
 from app.core.config import Settings
 from app.db.session import get_engine, write_audit
-from app.kicad.exporter import ExportError, ExportResult, Runner, export_schematic
+from app.kicad.exporter import (
+    ExportError,
+    ExportResult,
+    Runner,
+    export_board,
+    export_schematic,
+)
 from app.kicad.renderer import (
     TEMPLATE_DIR,
     DesignFolderExistsError,
@@ -69,11 +77,23 @@ def pdf_not_exported(exc: ExportError) -> Issue:
     )
 
 
+def pcb_pdf_not_exported(exc: ExportError) -> Issue:
+    """The warning when the schematic PDF was made but the board's PDF was not (0033)."""
+    return Issue(
+        "pdf",
+        "pcb_pdf_not_exported",
+        f"The project and the schematic PDF were created, but the PCB PDF export failed: {exc}",
+        "08-using-create-design#no-pdf",
+        {"detail": str(exc)},
+    )
+
+
 @dataclass(frozen=True)
 class CreatedDesign:
     request: DesignRequest  # normalized
     project: RenderedProject
     export: ExportResult | None
+    board_export: ExportResult | None
     warnings: tuple[Issue, ...]
     audit_id: int
 
@@ -316,6 +336,7 @@ def create_design(
     warnings = report.warnings
     try:
         exported: ExportResult | None = None
+        board_exported: ExportResult | None = None
         if export:
             try:
                 exported = export_schematic(
@@ -326,6 +347,16 @@ def create_design(
                 )
             except ExportError as exc:
                 warnings = (*warnings, pdf_not_exported(exc))
+            if exported is not None:  # no second warning when KiCad is missing or broken
+                try:
+                    board_exported = export_board(
+                        project.board_file,
+                        project.output_dir,
+                        kicad_cli=settings.kicad_cli,
+                        runner=runner,
+                    )
+                except ExportError as exc:
+                    warnings = (*warnings, pcb_pdf_not_exported(exc))
         audit_id = write_audit(
             engine or get_engine(settings.data_dir),
             action="design_created",
@@ -341,6 +372,7 @@ def create_design(
                 "project": req.project,
                 "issue_date": str(req.issue_date),
                 "pdf": exported is not None,
+                "pcb_pdf": board_exported is not None,
                 "warnings": [w.code for w in warnings],
                 "sap_status": sap.status if sap else None,
                 "sap_revision_recorded": recorded,
@@ -355,6 +387,7 @@ def create_design(
         request=req,
         project=project,
         export=exported,
+        board_export=board_exported,
         warnings=warnings,
         audit_id=audit_id,
     )

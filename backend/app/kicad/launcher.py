@@ -15,6 +15,7 @@ import sys
 import zipfile
 from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
 Launcher = Callable[[list[str]], object]
 
@@ -39,15 +40,31 @@ def kicad_schematic_editor(kicad_cli: str) -> Path | None:
     return _next_to_cli(kicad_cli, "eeschema")
 
 
-def open_command(kicad_cli: str, folder: Path, stem: str) -> list[str] | None:
-    """What "Open in KiCad" starts (decision 0030): the schematic editor with the design's
-    schematic, so the drawing and its title block are on screen at once. It loads the
-    `.kicad_pro` next to the schematic, so the text variables are filled. Without eeschema
-    or the schematic: the Project Manager with the project, as before (decision 0019)."""
-    editor = kicad_schematic_editor(kicad_cli)
-    schematic = folder / f"{stem}.kicad_sch"
-    if editor is not None and schematic.is_file():
-        return [str(editor), str(schematic)]
+def kicad_pcb_editor(kicad_cli: str) -> Path | None:
+    """KiCad's PCB editor (pcbnew) next to `kicad-cli`, or None."""
+    return _next_to_cli(kicad_cli, "pcbnew")
+
+
+OpenTarget = Literal["schematic", "pcb"]
+_EDITORS: dict[str, tuple[Callable[[str], Path | None], str]] = {
+    "schematic": (kicad_schematic_editor, ".kicad_sch"),
+    "pcb": (kicad_pcb_editor, ".kicad_pcb"),
+}
+
+
+def open_command(
+    kicad_cli: str, folder: Path, stem: str, target: OpenTarget = "schematic"
+) -> list[str] | None:
+    """What "Open in KiCad" (decision 0030) and "Open PCB" (decision 0033) start: the
+    schematic or PCB editor with the design's file, so the drawing and its title block are
+    on screen at once. Both load the `.kicad_pro` next to the file, so the text variables
+    are filled. Without the editor or the file: the Project Manager with the project, as
+    before (decision 0019)."""
+    find_editor, suffix = _EDITORS[target]
+    editor = find_editor(kicad_cli)
+    document = folder / f"{stem}{suffix}"
+    if editor is not None and document.is_file():
+        return [str(editor), str(document)]
     gui = kicad_gui(kicad_cli)
     project = folder / f"{stem}.kicad_pro"
     if gui is not None and project.is_file():
@@ -55,8 +72,9 @@ def open_command(kicad_cli: str, folder: Path, stem: str) -> list[str] | None:
     return None
 
 
-def can_open(kicad_cli: str) -> bool:
-    return kicad_schematic_editor(kicad_cli) is not None or kicad_gui(kicad_cli) is not None
+def can_open(kicad_cli: str, target: OpenTarget = "schematic") -> bool:
+    find_editor, _ = _EDITORS[target]
+    return find_editor(kicad_cli) is not None or kicad_gui(kicad_cli) is not None
 
 
 def popen_detached(command: list[str]) -> subprocess.Popen[bytes]:

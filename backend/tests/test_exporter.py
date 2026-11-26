@@ -8,7 +8,7 @@ import pytest
 
 from app.core.config import get_settings
 from app.evals.fake_kicad import FakeKicadCli  # noqa: F401 (other tests import it from here)
-from app.kicad.exporter import ExportError, export_schematic
+from app.kicad.exporter import ExportError, export_board, export_schematic
 
 
 def test_exports_pdf_and_svg(tmp_path):
@@ -71,3 +71,59 @@ def test_real_kicad_cli_exports_the_template(tmp_path):
 
     assert result.pdf.read_bytes().startswith(b"%PDF")
     assert result.svgs
+
+
+def test_exports_the_board_pdf_and_svg(tmp_path):
+    """Decision 0033: the board with its frame and title block, next to the schematic."""
+    board = tmp_path / "HL-HW-26-0042_A.kicad_pcb"
+    fake = FakeKicadCli()
+
+    result = export_board(board, tmp_path / "output", kicad_cli="kicad-cli", runner=fake)
+
+    assert result.pdf.name == "HL-HW-26-0042_A_pcb.pdf"
+    assert [p.name for p in result.svgs] == ["HL-HW-26-0042_A_pcb.svg"]
+    pdf_cmd, svg_cmd = fake.commands
+    assert pdf_cmd[:4] == ["kicad-cli", "pcb", "export", "pdf"]
+    assert "--include-border-title" in pdf_cmd and "--mode-single" in pdf_cmd
+    assert svg_cmd[:4] == ["kicad-cli", "pcb", "export", "svg"]
+    assert "--exclude-drawing-sheet" not in svg_cmd
+
+
+def test_the_schematic_svgs_leave_out_the_board(tmp_path):
+    output = tmp_path / "output"
+    output.mkdir()
+    (output / "x_pcb.svg").write_text("<svg/>", encoding="utf-8")
+
+    result = export_schematic(
+        tmp_path / "x.kicad_sch", output, kicad_cli="k", runner=FakeKicadCli()
+    )
+
+    assert [p.name for p in result.svgs] == ["x.svg"]
+
+
+def test_board_export_without_files_is_a_failure(tmp_path):
+    with pytest.raises(ExportError, match="no PDF"):
+        export_board(
+            tmp_path / "x.kicad_pcb",
+            tmp_path,
+            kicad_cli="k",
+            runner=FakeKicadCli(write_files=False),
+        )
+
+
+@pytest.mark.kicad
+def test_real_kicad_cli_exports_the_template_board(tmp_path):
+    """Runs only where kicad-cli is installed (the KiCad container CI job)."""
+    from app.core.config import REPO_ROOT
+
+    cli = get_settings().kicad_cli
+    if not shutil.which(cli) and not Path(cli).is_file():
+        pytest.skip(f"kicad-cli not available at {cli}")
+    template = REPO_ROOT / "kicad" / "template"
+    for name in ("hl_template.kicad_pro", "hl_template.kicad_pcb", "hl_title_block.kicad_wks"):
+        shutil.copyfile(template / name, tmp_path / name)
+
+    result = export_board(tmp_path / "hl_template.kicad_pcb", tmp_path / "output", kicad_cli=cli)
+
+    assert result.pdf.read_bytes().startswith(b"%PDF")
+    assert b"Hilda &amp; Luna Beadworks" in result.svgs[0].read_bytes()

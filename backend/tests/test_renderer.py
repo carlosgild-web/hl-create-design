@@ -1,4 +1,5 @@
-"""Template rendering: golden `.kicad_pro`, title block in the `.kicad_sch`, no overwrites."""
+"""Template rendering: golden `.kicad_pro`, title block in the `.kicad_sch` and the
+`.kicad_pcb`, no overwrites."""
 
 import json
 import os
@@ -40,6 +41,7 @@ def test_project_file_has_the_text_variables_and_the_drawing_sheet():
     project = json.loads(renderer.render_project_file(template_text(".kicad_pro"), STEM, BLOCK))
     assert project["meta"]["filename"] == f"{STEM}.kicad_pro"
     assert project["schematic"]["page_layout_descr_file"] == "hl_title_block.kicad_wks"
+    assert project["pcbnew"]["page_layout_descr_file"] == "hl_title_block.kicad_wks"
     assert project["text_variables"] == {
         "HL_DESIGN_NUMBER": "HL-HW-26-0042",
         "HL_SAP_MATERIAL": "40001234",
@@ -61,6 +63,24 @@ def test_schematic_gets_the_title_block_and_the_project_name():
     assert text.count("(") == text.count(")")
 
 
+def test_board_gets_the_same_title_block():
+    block = TitleBlock(**{**BLOCK.__dict__, "description": "Main board"})
+    board = renderer.render_board_file(template_text(".kicad_pcb"), block)
+    schematic = renderer.render_schematic_file(template_text(".kicad_sch"), STEM, block)
+    assert board.startswith("(kicad_pcb")
+    assert board.count("(title_block") == 1
+    expected = renderer.title_block_sexpr(block)
+    assert expected in board
+    assert expected in schematic
+    assert '(paper "A4")' in board
+    assert board.count("(") == board.count(")")
+
+
+def test_template_board_without_a_title_block_is_an_error():
+    with pytest.raises(ValueError, match="board has no"):
+        renderer.render_board_file("(kicad_pcb\n)", BLOCK)
+
+
 def test_title_block_strings_are_escaped():
     block = TitleBlock(**{**BLOCK.__dict__, "title": 'Say "hi" \\ (bye)\nnow'})
     text = renderer.render_schematic_file(template_text(".kicad_sch"), STEM, block)
@@ -79,6 +99,7 @@ def test_render_project_creates_the_revision_folder(tmp_path):
     project = render_project(folder, STEM, BLOCK)
 
     assert sorted(p.name for p in folder.iterdir()) == [
+        f"{STEM}.kicad_pcb",
         f"{STEM}.kicad_pro",
         f"{STEM}.kicad_sch",
         "hl_title_block.kicad_wks",
@@ -86,6 +107,8 @@ def test_render_project_creates_the_revision_folder(tmp_path):
     ]
     assert project.output_dir.is_dir()
     assert b"\r\n" not in project.schematic_file.read_bytes()
+    assert b"\r\n" not in project.board_file.read_bytes()
+    assert '(title "Bead Drill Controller")' in project.board_file.read_text(encoding="utf-8")
 
 
 def test_render_project_never_overwrites(tmp_path):
