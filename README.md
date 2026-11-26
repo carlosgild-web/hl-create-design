@@ -12,12 +12,13 @@ the company Design Manual. **The AI guides; the code decides.**
 
 <sub>Recorded with the scripted demo model. KiCad output is real.</sub>
 
-### The 2-minute video: a real model, under the hood
+### The 2½-minute video: a real model, under the hood
 
-https://github.com/user-attachments/assets/f27fd03c-f28d-4b5e-94cc-408ffe2cfbe9
+https://github.com/user-attachments/assets/8b9fae08-10d2-4be1-b6d1-a1bc62ac2e7a
 
 A real model (Groq, `gpt-oss-120b`), with the code and the data behind each step on the
-right. What it shows and how it was recorded: [docs/video.md](docs/video.md).
+right. It ends in KiCad's schematic and PCB editors. What it shows and how it was recorded:
+[docs/video.md](docs/video.md).
 
 ```bash
 git clone https://github.com/carlosgild-web/hl-create-design.git
