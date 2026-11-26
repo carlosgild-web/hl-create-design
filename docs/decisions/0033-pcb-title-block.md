@@ -32,7 +32,8 @@ Checked on 2026-11-26 with KiCad 9.0.8:
    two never disagree. Both go through one function, `replace_title_block`.
 4. After the schematic export, `kicad-cli pcb export pdf` and `pcb export svg` write
    `<stem>_pcb.pdf` and `<stem>_pcb.svg` into `output/`. They plot Edge.Cuts and the
-   drawing sheet (the frame and the title block).
+   drawing sheet (the frame and the title block) in black and white. Edge.Cuts' own colour,
+   a pale pink, was hard to read on screen and on paper. The logo is grey there.
    - If the board export fails after a good schematic export, the design is kept with a
      `pcb_pdf_not_exported` warning.
    - When KiCad is missing, only the existing `pdf_not_exported` warning is shown.

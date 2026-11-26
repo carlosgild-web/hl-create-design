@@ -82,7 +82,8 @@ def export_board(
     output_dir.mkdir(parents=True, exist_ok=True)
     pdf = output_dir / f"{board.stem}{BOARD_SUFFIX}.pdf"
     svg = output_dir / f"{board.stem}{BOARD_SUFFIX}.svg"
-    common = ["--layers", BOARD_LAYERS, "--mode-single"]
+    # Black and white: the Edge.Cuts colour (pale pink) is hard to read on screen and on paper.
+    common = ["--layers", BOARD_LAYERS, "--mode-single", "--black-and-white"]
     logs = [
         _run(
             [

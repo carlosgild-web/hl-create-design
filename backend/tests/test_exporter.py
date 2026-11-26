@@ -85,6 +85,7 @@ def test_exports_the_board_pdf_and_svg(tmp_path):
     pdf_cmd, svg_cmd = fake.commands
     assert pdf_cmd[:4] == ["kicad-cli", "pcb", "export", "pdf"]
     assert "--include-border-title" in pdf_cmd and "--mode-single" in pdf_cmd
+    assert "--black-and-white" in pdf_cmd and "--black-and-white" in svg_cmd
     assert svg_cmd[:4] == ["kicad-cli", "pcb", "export", "svg"]
     assert "--exclude-drawing-sheet" not in svg_cmd
 

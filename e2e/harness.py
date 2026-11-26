@@ -89,7 +89,12 @@ class Scripted(LLMClient):
 
 def stub_kicad_cli(command, **kwargs):
     output, schematic = Path(command[command.index("--output") + 1]), Path(command[-1])
-    if command[3] == "pdf":
+    if command[1] == "pcb":  # decision 0033: --mode-single, --output is the file itself
+        if command[3] == "pdf":
+            output.write_bytes(b"%PDF-1.5 stub")
+        else:
+            output.write_text(SVG, encoding="utf-8")
+    elif command[3] == "pdf":
         output.write_bytes(b"%PDF-1.5 stub")
     else:
         (output / f"{schematic.stem}.svg").write_text(SVG, encoding="utf-8")

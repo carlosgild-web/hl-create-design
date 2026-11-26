@@ -8,7 +8,7 @@ the title block already filled in, gets the design number from SAP, and exports 
 `kicad-cli`. An assistant guides the engineer through the fields and explains each rule from
 the company Design Manual. **The AI guides; the code decides.**
 
-![Demo: the assistant fills the form from one sentence, the engineer confirms, KiCad renders the title block](docs/showcase/demo.gif)
+![Demo: the assistant fills the form from one sentence, the engineer confirms, KiCad renders the title block on the schematic and on the PCB](docs/showcase/demo.gif)
 
 <sub>Recorded with the scripted demo model. KiCad output is real.</sub>
 
