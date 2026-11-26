@@ -82,6 +82,10 @@ const en = {
   'preview.alt_pcb': 'PCB title block of {number} rev {rev}',
   'preview.open_failed': 'KiCad did not start ({message}). Open the project file below in KiCad 9.',
   'preview.download_zip': 'Download project (.zip)',
+  'kicad.missing_title': 'KiCad 9 is not installed on this computer',
+  'kicad.missing_body':
+    'The KiCad project files were created. The PDF and preview (schematic and PCB), Open in KiCad and Open PCB need KiCad 9. Install it and start the app again; if it is installed in another folder, set KICAD_CLI in .env.',
+  'kicad.download': 'Download KiCad 9',
   'preview.project_file': 'Project file',
   'preview.how_to_open': 'In KiCad 9: File › Open Project…, then this file.',
   'preview.copy': 'Copy path',
@@ -360,6 +364,10 @@ const es: Record<MessageKey, string> = {
   'preview.alt_pcb': 'Cajetín de la PCB de {number} rev {rev}',
   'preview.open_failed': 'KiCad no se inició ({message}). Abre en KiCad 9 el archivo de proyecto de abajo.',
   'preview.download_zip': 'Descargar proyecto (.zip)',
+  'kicad.missing_title': 'KiCad 9 no está instalado en este equipo',
+  'kicad.missing_body':
+    'Se crearon los archivos del proyecto de KiCad. El PDF y la vista previa (esquemático y PCB), Abrir en KiCad y Abrir PCB necesitan KiCad 9. Instálalo y vuelve a iniciar la aplicación; si está instalado en otra carpeta, pon KICAD_CLI en .env.',
+  'kicad.download': 'Descargar KiCad 9',
   'preview.project_file': 'Archivo de proyecto',
   'preview.how_to_open': 'En KiCad 9: Archivo › Abrir proyecto…, y elige este archivo.',
   'preview.copy': 'Copiar ruta',

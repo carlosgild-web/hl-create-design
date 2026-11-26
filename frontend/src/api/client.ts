@@ -134,6 +134,19 @@ export type DesignFiles = {
   has_pcb_preview?: boolean
 }
 
+/** Is KiCad 9 on the backend's machine, and what does it enable (decision 0035)? */
+export type KicadStatus = {
+  found: boolean
+  path: string
+  version: string
+  can_export: boolean
+  can_open: boolean
+  can_open_pcb: boolean
+  download_url: string
+}
+
+export const getKicadStatus = () => fetch('/api/kicad').then((r) => json<KicadStatus>(r))
+
 export const getDesignFiles = (t: PreviewTarget) => fetch(`${designBase(t)}/files`).then((r) => json<DesignFiles>(r))
 
 /** Start KiCad's schematic or PCB editor on the backend's machine (local mode; 0019, 0033). */

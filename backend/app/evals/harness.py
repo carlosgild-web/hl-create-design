@@ -442,6 +442,7 @@ def run_scenario(
             designs_root=root / "designs",
             data_dir=root / "data",
             kicad_cli="kicad-cli",
+            kicad_autodetect=False,
             llm_provider="fake",
             agent_max_iterations=MAX_ITERATIONS,
             agent_preretrieval=preretrieval,

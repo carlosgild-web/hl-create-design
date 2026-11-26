@@ -46,7 +46,11 @@ if not exist frontend\dist\index.html (
 )
 rem Without a .env, pin the mock SAP's date so the demo numbers stay in 2026 (decision 0007).
 if not exist .env if not defined SAP_TODAY set "SAP_TODAY=2026-11-17"
-where kicad-cli >nul 2>&1 || findstr /b /c:"KICAD_CLI=" .env >nul 2>&1 || echo Note: PDF export needs KiCad 9. Install it, or set KICAD_CLI in .env.
+rem Is KiCad 9 here (also in its install folders, decision 0035), and what needs it?
+echo.
+pushd backend
+.venv\Scripts\python -m app.cli kicad-check
+popd
 rem Both ports must be free, or uvicorn fails with "[Errno 10048] ... only one usage of each
 rem socket address". Usually an earlier run is still open; offer to stop it (Enter = yes).
 call :freeport 8000 "the app" || exit /b 1

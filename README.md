@@ -175,9 +175,8 @@ cd backend && python -m app.cli agent-eval --fake      # the CI suite
 
 ## Try it
 
-**Requirements:** Python 3.11+ and Node 20+ (local mode), or Docker. KiCad 9 is optional:
-without it everything works except the PDF and the preview. Set `KICAD_CLI` in `.env` if
-`kicad-cli` is not on the `PATH`.
+**Requirements:** Python 3.11+ and Node 20+ (local mode), or Docker. KiCad 9 is optional,
+but you need it to try every feature (see [What each feature needs](#what-each-feature-needs)).
 
 ```bash
 start.cmd                       # local mode (default): Python + Node, no Docker
@@ -196,6 +195,24 @@ one:
 Press Enter to take the suggestion. The browser opens at <http://localhost:8000>.
 
 Configuration is all environment variables. See [.env.example](.env.example).
+
+### What each feature needs
+
+To test everything, install [KiCad 9](https://www.kicad.org/download/) before you start.
+The app finds it in its standard install folder, so you don't have to add it to the `PATH`.
+At start-up the script says whether it found KiCad. If it didn't, the preview dialog says so
+too, with the download link.
+
+| Feature | Needs | Without it |
+|---|---|---|
+| Assistant, rule checks, SAP numbers, the KiCad project files | Python 3.11+ and Node 20+ (or Docker) | — |
+| Answers from a real model | a Dahl or Groq API key in `.env`, or Ollama running | the demo assistant answers (rules, no AI) |
+| PDF and preview of the schematic and the PCB | KiCad 9 (`kicad-cli`) | the project is created without them, with a warning |
+| Open in KiCad, Open PCB | KiCad 9 on the same computer as the app (local mode) | the buttons are hidden; open the project file by hand |
+
+The Docker image includes `kicad-cli`, so PDFs work there. Open in KiCad and Open PCB are
+off in Docker: the app runs in a container, not on your desktop. If KiCad is installed in another folder,
+set `KICAD_CLI` in `.env` to the full path of `kicad-cli`.
 
 ## Development
 

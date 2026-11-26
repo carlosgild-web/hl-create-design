@@ -28,6 +28,7 @@ from app.db.session import write_audit
 from app.designs import check_fields, normalize_payload
 from app.kicad.exporter import BOARD_SUFFIX
 from app.kicad.launcher import OpenTarget, can_open, open_command, zip_folder
+from app.kicad.locate import kicad_status
 from app.standards import validators as v
 
 router = APIRouter(prefix="/api", tags=["designs"])
@@ -125,6 +126,13 @@ def _existing_folder(settings: Settings, department: str, design_number: str, re
     if not folder.is_dir():
         raise HTTPException(404, "Design not found")
     return folder
+
+
+@router.get("/kicad")
+def kicad(settings: SettingsDep) -> dict[str, object]:
+    """Is KiCad 9 here, and what does it enable (decision 0035)? The UI says what is
+    missing and where to get KiCad instead of hiding the PDF and the Open buttons."""
+    return kicad_status(settings.kicad_cli, settings.kicad_open_enabled).as_dict()
 
 
 @router.get("/designs/{department}/{design_number}/{revision}/files")

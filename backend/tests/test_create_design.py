@@ -23,6 +23,7 @@ def settings(tmp_path) -> Settings:
         designs_root=tmp_path / "designs",
         data_dir=tmp_path / "data",
         kicad_cli="kicad-cli",
+        kicad_autodetect=False,  # tests never depend on a KiCad installed here
     )
 
 

@@ -8,6 +8,7 @@ import {
   ExternalLink,
   FileText,
   FolderArchive,
+  Info,
   Loader2,
   RotateCw,
   ScanSearch,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { type DrawingView, getDesignFiles, openInKicad, previewUrl, projectZipUrl } from '@/api/client'
+import { type DrawingView, getDesignFiles, getKicadStatus, openInKicad, previewUrl, projectZipUrl } from '@/api/client'
 import type { PreviewTarget } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -85,6 +86,7 @@ function PreviewBody({ target }: { target: PreviewTarget }) {
   const pdfName = `${target.design_number}_${target.revision}${view === 'pcb' ? '_pcb' : ''}.pdf`
   const folder = target.folder ?? `${target.department}/${target.design_number}/${target.revision}`
   const files = useQuery({ queryKey: ['design-files', target], queryFn: () => getDesignFiles(target), retry: false })
+  const kicad = useQuery({ queryKey: ['kicad'], queryFn: getKicadStatus, retry: false, staleTime: 60_000 })
   const [opening, setOpening] = useState<Opening>(null)
   const busy = opening?.status === 'busy'
 
@@ -139,6 +141,8 @@ function PreviewBody({ target }: { target: PreviewTarget }) {
           {target.department} · <span className="tabular-nums">{folder}</span>
         </DialogDescription>
       </DialogHeader>
+
+      {kicad.data && !kicad.data.found && <KicadMissing url={kicad.data.download_url} />}
 
       {files.data?.has_pcb_preview && (
         <div role="group" aria-label={t('preview.drawing')} className="flex flex-wrap gap-2">
@@ -269,6 +273,24 @@ function PreviewBody({ target }: { target: PreviewTarget }) {
         </p>
       )}
     </>
+  )
+}
+
+/** KiCad 9 is not on this computer (decision 0035): say what that leaves out and where to
+ * get it, instead of hiding the preview and the Open buttons without a word. */
+function KicadMissing({ url }: { url: string }) {
+  const { t } = useI18n()
+  return (
+    <div role="note" aria-label={t('kicad.missing_title')} className="flex gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-xs">
+      <Info aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="space-y-1">
+        <p className="font-medium">{t('kicad.missing_title')}</p>
+        <p className="text-muted-foreground">{t('kicad.missing_body')}</p>
+        <a href={url} target="_blank" rel="noreferrer" className="font-medium text-primary underline-offset-2 hover:underline">
+          {t('kicad.download')}
+        </a>
+      </div>
+    </div>
   )
 }
 

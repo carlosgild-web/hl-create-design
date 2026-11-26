@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> repo root is three levels above `app/`.
@@ -51,8 +51,10 @@ class Settings(BaseSettings):
     sap_user: str = "demo"
     sap_password: SecretStr = SecretStr("demo")
 
-    # KiCad
+    # KiCad. Left at the bare default, kicad-cli is also looked for in the standard KiCad 9
+    # install folders, which the installers don't add to PATH (decision 0035).
     kicad_cli: str = "kicad-cli"
+    kicad_autodetect: bool = True
     # "Open in KiCad" starts the GUI next to kicad-cli on the backend's machine: only useful
     # when that is the user's own computer (local mode). The Docker image turns it off.
     kicad_open_enabled: bool = True
@@ -85,6 +87,14 @@ class Settings(BaseSettings):
     def _relative_to_repo(cls, path: Path) -> Path:
         """`./data` means the repo's data folder, whatever the working directory is."""
         return path if path.is_absolute() else REPO_ROOT / path
+
+    @model_validator(mode="after")
+    def _find_kicad(self) -> "Settings":
+        if self.kicad_autodetect:
+            from app.kicad.locate import resolve_kicad_cli
+
+            self.kicad_cli = resolve_kicad_cli(self.kicad_cli)
+        return self
 
 
 @lru_cache
