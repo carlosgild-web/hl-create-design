@@ -4,7 +4,7 @@
 
 ## Context
 
-Phase 9 block 9b (`PLAN-phase-9-review-and-faq.md`, findings 2, 3, 5, 6, 10, 15). The
+Phase 9 block 9b (`docs/plans/PLAN-phase-9-review-and-faq.md`, findings 2, 3, 5, 6, 10, 15). The
 Spanish UI showed every validator message in English. The designer check rejected real
 names (`C. de la Torre`, `J. C. Pérez`). Title case mangled `LEDs` and `iPhone`. The words
 `rev` and `revision` were forbidden anywhere, although the manual didn't list them, so

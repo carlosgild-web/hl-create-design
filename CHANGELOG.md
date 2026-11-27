@@ -5,6 +5,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+The portfolio README standard: docs and tooling only, no product change.
+
+### Added
+
+- README: stack badges, author line, "What this demonstrates", "How it was built", the
+  Hilda & Luna series block, and the KiCad preview dialog under the screenshots.
+- `npm run showcase` (screenshots) and `npm run showcase:gif` (the GIF, converted by the test
+  with the standard ffmpeg filter), as in hl-bead-studio (decision 0037).
+- `docs/showcase/social-preview.png`, cropped from the video poster.
+
+### Changed
+
+- The README GIF and the preview dialog screenshot were re-recorded with the project file's
+  local path blurred (decision 0037).
+- The Evaluation intro says 49 scenarios (52 in CI); the test counts in Development are from a
+  new run (720 + 259 + 78 + 13).
+- Phase plans moved to `docs/plans/`; decisions 0021–0026, 0028 and `video/storyboard.json`
+  no longer point to an untracked folder.
+
 ## [1.1.0] - 2026-11-26
 
 The PCB gets the company title block, the designer may be written with full names, and a

@@ -1,13 +1,20 @@
 /**
- * Screenshots for the README (docs/showcase/), on the scripted model, so they always show
- * the same flow. Skipped in normal runs. Run on demand:
+ * Screenshots and the GIF for the README (docs/showcase/), on the scripted model, so they
+ * always show the same flow. Skipped in normal runs (`npx playwright test`). Run on demand:
  *
- *   cd e2e && SHOWCASE=1 E2E_BROWSER_CHANNEL=msedge npx playwright test tests/showcase.spec.ts
+ *   cd e2e && npm run showcase        # the screenshots
+ *   cd e2e && npm run showcase:gif    # the GIF, alone, on fresh servers
+ *
+ * Set E2E_REAL_KICAD=1 and KICAD_CLI so the preview is the real KiCad output, and
+ * E2E_BROWSER_CHANNEL=msedge to use the installed Edge. The GIF needs ffmpeg on PATH.
+ * The project file's local path is blurred in every image (decision 0037).
  */
+import { spawnSync } from 'node:child_process'
+import { rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(HERE, '..', '..', 'docs', 'showcase')
@@ -15,8 +22,22 @@ const TMP = resolve(HERE, '..', '.tmp')
 const DESKTOP = { width: 1440, height: 900 }
 const PHONE = { width: 375, height: 812 }
 
-test.skip(!process.env.SHOWCASE, 'set SHOWCASE=1 to write the screenshots')
+const ON_DEMAND = process.env.SHOWCASE || process.env.npm_lifecycle_event?.startsWith('showcase')
+test.skip(!ON_DEMAND, 'run with npm run showcase or showcase:gif (or SHOWCASE=1)')
 test.describe.configure({ mode: 'serial' })
+
+// The preview dialog shows the project file's absolute path on this machine: blur it, as the
+// video does (video/record.spec.ts), so no local path reaches an image.
+async function blurLocalPaths(context: BrowserContext) {
+  await context.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style')
+      style.textContent = 'code[title] { filter: blur(7px); }'
+      document.head.append(style)
+    })
+  })
+}
+test.beforeEach(({ context }) => blurLocalPaths(context))
 
 async function shot(page: Page, name: string) {
   await page.waitForTimeout(500) // let the debounced inline check and animations settle
@@ -88,25 +109,38 @@ test('desktop: a question about the rules, answered with a manual reference', as
   await shot(page, 'desktop-manual-passage')
 })
 
+/** The portfolio GIF spec (standard section 2): 10 fps, 960 px wide, 96 colours. */
+function toGif(webm: string, gif: string, startS: number, endS: number) {
+  const filters =
+    'fps=10,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];' +
+    '[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle'
+  const run = spawnSync(
+    'ffmpeg',
+    ['-y', '-loglevel', 'error', '-ss', startS.toFixed(2), '-to', endS.toFixed(2), '-i', webm, '-vf', filters, '-loop', '0', gif],
+    { timeout: 120_000, encoding: 'utf8' },
+  )
+  if (run.error || run.status !== 0) {
+    console.warn(`showcase: no GIF (${run.error?.message ?? run.stderr.trim()}); the WebM stays at ${webm}`)
+    return false
+  }
+  return true
+}
+
 /**
- * The README GIF: the same flow as the first test, recorded at a reading pace. Run it on its
- * own (the first test already creates revision C):
- *
- *   SHOWCASE=1 npx playwright test tests/showcase.spec.ts -g "recorded demo"
- *
- * The video lands in e2e/.tmp/demo.webm; turn it into docs/showcase/demo.gif with ffmpeg:
- *
- *   ffmpeg -y -i .tmp/demo.webm -vf "fps=10,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=4" ../docs/showcase/demo.gif
- *
- * With E2E_REAL_KICAD=1 and KICAD_CLI set, the preview is the real KiCad output.
+ * The README GIF: the same flow as the first desktop test, recorded at a reading pace and
+ * turned into docs/showcase/demo.gif. It creates revision C, as that test does, so it runs
+ * alone on fresh servers: `npm run showcase:gif` (`npm run showcase` leaves it out).
  */
-test('desktop: recorded demo for the README GIF', async ({ browser }) => {
-  test.setTimeout(120_000) // the real KiCad export takes a while
+test('desktop: recorded demo for the README GIF @gif', async ({ browser }) => {
+  test.setTimeout(180_000) // the real KiCad export takes a while
   const size = { width: 1280, height: 800 }
   const context = await browser.newContext({ viewport: size, recordVideo: { dir: join(TMP, 'video'), size } })
+  await blurLocalPaths(context)
   const page = await context.newPage()
+  const t0 = Date.now()
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Create Design' })).toBeVisible()
+  const startS = (Date.now() - t0) / 1000
   await page.waitForTimeout(1500)
 
   const input = page.getByLabel(/describe your design/i)
@@ -137,8 +171,11 @@ test('desktop: recorded demo for the README GIF', async ({ browser }) => {
   await page.waitForTimeout(2000)
   await dialog.getByRole('button', { name: 'Title block' }).click()
   await page.waitForTimeout(3500)
+  const endS = (Date.now() - t0) / 1000
 
   const video = page.video()
   await context.close()
-  await video?.saveAs(join(TMP, 'demo.webm'))
+  const webm = join(TMP, 'demo.webm')
+  await video?.saveAs(webm)
+  if (toGif(webm, join(OUT, 'demo.gif'), startS, endS)) rmSync(webm)
 })

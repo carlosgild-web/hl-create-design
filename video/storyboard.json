@@ -3,7 +3,7 @@
   "provider": "demo",
   "banner": "Scripted model (rules) — DemoClient",
   "notes": [
-    "The storyboard rows as data (Claude outputs/create-design-video-storyboard.md, decision 0028).",
+    "The storyboard rows as data (docs/plans/create-design-video-storyboard.md, decision 0028).",
     "turn: the sentence whose chat events a row matches; by default the one of the last typed:<key> step before it. on.step: shown when record.spec.ts reaches that step. on.event: shown when that captured event arrives; phase 'before' shows it while the event is held, 'after' once the app has it. on.follow: right after the previous row.",
     "payload.from: event | request | confirm | action | trace | introspect:fts | introspect:intent; payload.pick is a dotted path into it. Payloads are only ever taken from the take's own capture."
   ],

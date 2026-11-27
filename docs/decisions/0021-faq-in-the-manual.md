@@ -4,7 +4,7 @@
 
 ## Context
 
-Phase 9 block 9a (`PLAN-phase-9-review-and-faq.md`). The review produced 54 user questions in
+Phase 9 block 9a (`docs/plans/PLAN-phase-9-review-and-faq.md`). The review produced 54 user questions in
 English and Spanish (`docs/qa/`). 12 of them were about the app itself (Start panel, cards,
 Undo, expiry, demo mode, Open in KiCad, the template circuit…), and the manual had no section
 for those, so the assistant could not cite an answer. The rest are rule questions worded the

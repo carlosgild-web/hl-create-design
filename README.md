@@ -1,6 +1,12 @@
 # Create Design
 
 [![CI](https://github.com/carlosgild-web/hl-create-design/actions/workflows/ci.yml/badge.svg)](https://github.com/carlosgild-web/hl-create-design/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-TypeScript-61DAFB?logo=react&logoColor=black)
+![KiCad](https://img.shields.io/badge/KiCad-9-314CB0?logo=kicad&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
 An AI-assisted internal tool for the Electronics Engineering department of **Hilda & Luna**,
 a fictional bead-making company. It starts a KiCad 9 project from the company template with
@@ -30,6 +36,17 @@ No API key and no Docker needed: without a model, a rule-based demo assistant an
 not AI, but it answers questions from the Design Manual with a citation, fills the form from a
 sentence, and opens the confirmation card when the values are valid.
 [More options below](#try-it).
+
+Built by **Carlos Velazquez** · [LinkedIn](https://www.linkedin.com/in/carlos-v-90b99149) · open to AI engineering roles (remote)
+
+## What this demonstrates
+
+- **Agent design without a framework**: a bounded, traced tool loop (`backend/app/agent/loop.py`) whose tools only read or propose; side effects wait for a click.
+- **Guardrails you can test**: eight invariants, each enforced in code and covered by tests, including prompt injection through free text.
+- **Evaluation, not a demo**: 49 scenarios scored on tool calls, side effects and citations, run on Ollama and Dahl (Groq on the earlier 27); the failures are published in [`docs/eval/`](docs/eval/README.md).
+- **One interface, five model backends**: Ollama, Dahl, Groq, a rule-based demo assistant and a scripted test model behind `LLMClient`.
+- **Enterprise integration**: a mock SAP Gateway OData v2 service (CSRF handshake, `$filter`, `$expand`, chaos switches) behind `SapClient`.
+- **Full stack and delivery**: FastAPI, React + TypeScript, KiCad 9 `kicad-cli`, Docker, 1,000+ tests and Playwright e2e in GitHub Actions.
 
 ## The problem
 
@@ -133,14 +150,14 @@ Each choice has a short decision record in [docs/decisions/](docs/decisions/).
 
 ## Evaluation
 
-The agent is tested with 34 scenarios: valid creates, wrong formats, a reused or skipped
-revision, blocked and obsolete designs, SAP down or slow, an existing folder, path traversal,
-prompt injection, Spanish and English, and a form filled from one sentence. Each run checks
-the tool calls, that nothing happens without a click, and that the answer cites the manual.
+The agent is tested with 49 scenarios: valid creates, wrong formats, a reused or skipped revision,
+blocked and obsolete designs, SAP down or slow, an existing folder, path traversal, prompt injection,
+Spanish and English, a one-sentence form fill and 16 FAQ questions. CI adds 3 that script a
+*misbehaving* model. Each run checks the tool calls, that nothing happens without a click, and the citations.
 
 | Model | Passed | Notes |
 |---|---|---|
-| Scripted (CI) | **52/52** | Required in CI. Includes 16 FAQ questions (EN/ES) and 3 scenarios that script a *misbehaving* model to probe the guards. |
+| Scripted (CI) | **52/52** | Required in CI: the 49 scenarios and the 3 misbehaving-model ones. [Report](docs/eval/fake-phase9.md) |
 | Demo assistant (rules, no AI) | **47/49** | Deterministic. Fails the multi-turn wizard and the folder-check route by design. [Report](docs/eval/demo-phase9.md) |
 | Ollama `qwen3:4b-instruct` on CPU | 11/27 → **21/27** | After prompt tuning (v1 → v3). [Report](docs/eval/ollama-qwen3-4b-full.md) |
 | Ollama, Phase 9 suite (49) | 24/49 → **34/49** | Backend manual search before the model (pre-retrieval) off → on; FAQ answers 2/16 → 10/16. [A/B](docs/eval/README.md#reading-the-phase-9-ollama-ab-2026-11-21-cpu-29-36-min-per-pass) |
@@ -148,11 +165,9 @@ the tool calls, that nothing happens without a click, and that the answer cites 
 | Groq `openai/gpt-oss-120b` | **20/27** | One is a false negative (non-breaking hyphens in a citation). [Report](docs/eval/groq-gpt-oss-120b.md) |
 
 **The invariants held in every run.** The failures that remain are about following the workflow,
-and they stay visible on purpose. A 4B model sometimes answers a rule question from memory
-instead of searching the manual, or asks for a field it could have filled. Nothing is ever
-created by mistake. The Groq run and the first Ollama runs used the 27 scenarios that existed
-at the time. More
-in [docs/eval/](docs/eval/README.md).
+and they stay visible on purpose: a 4B model sometimes answers a rule question from memory or
+asks for a field it could have filled. Nothing is ever created by mistake. The Groq run and the
+first Ollama runs used the 27 scenarios of the time. More in [docs/eval/](docs/eval/README.md).
 
 ```bash
 cd backend && python -m app.cli agent-eval --fake      # the CI suite
@@ -169,10 +184,11 @@ cd backend && python -m app.cli agent-eval --fake      # the CI suite
 | ![A question about the rules answered with a manual reference](docs/showcase/desktop-manual-answer.png) | ![The cited manual passage opened from the answer](docs/showcase/desktop-manual-passage.png) |
 | A rule question, answered with a manual reference | Click the reference: the passage from the Design Manual |
 
-<p>
-  <img src="docs/showcase/phone-design.png" alt="Phone: the design tab" width="260">
-  <img src="docs/showcase/phone-assistant.png" alt="Phone: the assistant tab" width="260">
-</p>
+![The preview dialog after Create: KiCad's schematic export with the H&L title block filled in](docs/showcase/desktop-preview-dialog.png)
+
+After Create: the real `kicad-cli` export, with the H&L title block, a switch to the PCB and the downloads.
+
+<p><img src="docs/showcase/phone-design.png" alt="Phone: the design tab" width="260"> <img src="docs/showcase/phone-assistant.png" alt="Phone: the assistant tab" width="260"></p>
 
 ## Try it
 
@@ -187,22 +203,16 @@ start.cmd docker --profile ollama   # ... plus an Ollama container
 
 On Linux and macOS, use `./start.sh` with the same arguments. The first run sets up the virtual
 environments and builds the web app. Then the script checks which models answer and suggests
-one:
-- Dahl, if `DAHL_API_KEY` is set in `.env` (decision 0029)
-- Groq, if `GROQ_API_KEY` is set in `.env`
-- Ollama, if it's running on `http://127.0.0.1:11434`
-- otherwise the demo assistant (rules, no AI)
-
-Press Enter to take the suggestion. The browser opens at <http://localhost:8000>.
-
-Configuration is all environment variables. See [.env.example](.env.example).
+one, in this order: Dahl (`DAHL_API_KEY` in `.env`, decision 0029), Groq (`GROQ_API_KEY`),
+Ollama (running on `http://127.0.0.1:11434`), otherwise the demo assistant (rules, no AI).
+Press Enter to take it; the browser opens at <http://localhost:8000>. Configuration is all
+environment variables: see [.env.example](.env.example).
 
 ### What each feature needs
 
-To test everything, install [KiCad 9](https://www.kicad.org/download/) before you start.
-The app finds it in its standard install folder, so you don't have to add it to the `PATH`.
-At start-up the script says whether it found KiCad. If it didn't, the preview dialog says so
-too, with the download link.
+To test everything, install [KiCad 9](https://www.kicad.org/download/) before you start. The app
+finds it in its standard install folder (no `PATH` change) and says at start-up whether it did;
+if not, the preview dialog says so too, with the download link.
 
 | Feature | Needs | Without it |
 |---|---|---|
@@ -211,9 +221,9 @@ too, with the download link.
 | PDF and preview of the schematic and the PCB | KiCad 9 (`kicad-cli`) | the project is created without them, with a warning |
 | Open in KiCad, Open PCB | KiCad 9 on the same computer as the app (local mode) | the buttons are hidden; open the project file by hand |
 
-The Docker image includes `kicad-cli`, so PDFs work there. Open in KiCad and Open PCB are
-off in Docker: the app runs in a container, not on your desktop. If KiCad is installed in another folder,
-set `KICAD_CLI` in `.env` to the full path of `kicad-cli`.
+The Docker image includes `kicad-cli`, so PDFs work there; Open in KiCad and Open PCB are off
+(the app runs in a container, not on your desktop). If KiCad is installed in another folder, set
+`KICAD_CLI` in `.env` to the full path of `kicad-cli`.
 
 ## Development
 
@@ -241,14 +251,15 @@ cd backend && python -m app.cli create-design --dept HW --number HL-HW-26-0042 -
 **Checks** (all run in CI; none needs a model, an API key or KiCad):
 
 ```bash
-cd backend  && pytest -q && ruff check . && ruff format --check .   # 437 tests
-cd sap-mock && pytest -q && ruff check . && ruff format --check .   # 230 tests
-cd frontend && npm run lint && npm test && npm run build            # 52 tests
+cd backend  && pytest -q && ruff check . && ruff format --check .   # 720 tests (2-3 skip: symlinks, KiCad)
+cd sap-mock && pytest -q && ruff check . && ruff format --check .   # 259 tests
+cd frontend && npm run lint && npm test && npm run build            # 78 tests
 cd e2e && npx playwright test                                       # 13 browser tests
 ```
 
 A separate CI job builds the Docker image, generates a design with the real `kicad-cli`, and
-uploads the PDF. To regenerate the README images, see the header of
+uploads the PDF. To regenerate the README images: `cd e2e && npm run showcase` (screenshots)
+and `npm run showcase:gif` (the GIF); details in the header of
 [e2e/tests/showcase.spec.ts](e2e/tests/showcase.spec.ts).
 
 | Folder | What it is |
@@ -260,12 +271,28 @@ uploads the PDF. To regenerate the README images, see the header of
 | `e2e/` | Playwright tests and the showcase recorder |
 | `docs/` | Design Manual (ES/EN), decision records, eval reports, showcase material |
 
+## How it was built
+
+I built this project with [Claude Code](https://claude.com/claude-code) as an AI coding assistant, phase by phase from [PLAN.md](PLAN.md).
+
+**My part:** the requirements and the product decisions (the confirmation gate, the Design Manual's rules as code, the backend searching the manual before a small model answers), the plan for each phase, the evaluations on real models, and the review of every change.
+
+**Claude Code's part:** most of the code, under that direction, and the technical options it proposed and measured.
+
+Every deviation from the plan is a decision record in [`docs/decisions/`](docs/decisions/).
+
 ## About
 
-Portfolio project #3, after [local-rag-ollama](https://github.com/carlosgild-web/local-rag-ollama)
-and [luna-hybrid-agent](https://github.com/carlosgild-web/luna-hybrid-agent). Hilda & Luna,
-its SAP data and its Design Manual are fictional. The roadmap is in [PLAN.md](PLAN.md) and the
-changes are in [CHANGELOG.md](CHANGELOG.md).
+Portfolio project #3 of the Hilda & Luna series, AI tools for a fictional bead-making company:
+
+1. [local-rag-ollama](https://github.com/carlosgild-web/local-rag-ollama): fully local RAG with cited answers over versioned documents
+2. [luna-hybrid-agent](https://github.com/carlosgild-web/luna-hybrid-agent): an agent that picks between document search, read-only SQL and an FX API
+3. **hl-create-design**: KiCad projects with the company title block; the AI guides, the code decides
+4. [hl-bead-studio](https://github.com/carlosgild-web/hl-bead-studio): glass beads and charms from a sentence to CAD, drawing and render
+
+Also: [windows-system-monitor](https://github.com/carlosgild-web/windows-system-monitor), config-driven monitoring and auto-remediation for Windows.
+
+Hilda & Luna, its SAP data and its manuals are fictional. Roadmap: [PLAN.md](PLAN.md) · changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

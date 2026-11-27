@@ -44,3 +44,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local drafts, never committed (decision 0037)
+Claude outputs/
