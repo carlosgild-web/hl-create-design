@@ -1,6 +1,6 @@
 [project]
 name = "hl-sap-mock"
-version = "1.1.0"
+version = "1.1.1"
 description = "Mock SAP PLM service shaped like an SAP Gateway OData v2 API (demo only)"
 requires-python = ">=3.11"
 
