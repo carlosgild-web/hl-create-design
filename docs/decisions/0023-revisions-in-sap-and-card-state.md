@@ -4,7 +4,7 @@
 
 ## Context
 
-Phase 9 block 9c (`PLAN-phase-9-review-and-faq.md`, findings 4, 7–9, 12–14 and 18; open
+Phase 9 block 9c (`docs/plans/PLAN-phase-9-review-and-faq.md`, findings 4, 7–9, 12–14 and 18; open
 questions Q3, Q4 and Q8).
 - Revisions created in Create Design never reached SAP. The list showed "latest B → rev E",
   and a cleanup that deleted folders could free letters again (`02-revisions#never-reuse`).

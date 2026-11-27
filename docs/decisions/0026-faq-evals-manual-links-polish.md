@@ -4,7 +4,7 @@
 
 ## Context
 
-Phase 9 block 9f (`PLAN-phase-9-review-and-faq.md`, findings 16–17 and the eval plan).
+Phase 9 block 9f (`docs/plans/PLAN-phase-9-review-and-faq.md`, findings 16–17 and the eval plan).
 
 ## Decision
 

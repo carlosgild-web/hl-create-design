@@ -4,7 +4,7 @@
 
 ## Context
 
-Phase 9 block 9d (`PLAN-phase-9-review-and-faq.md`, section 1 layer 3). `qwen3:4b`'s known
+Phase 9 block 9d (`docs/plans/PLAN-phase-9-review-and-faq.md`, section 1 layer 3). `qwen3:4b`'s known
 failure is skipping the manual search, or writing the call as text (docs/eval). Since 9a,
 the FAQ lives in the manual (decision 0021), so a search before the first model call
 grounds every provider in the same passages. Q6: pre-retrieval runs for Groq too, not only

@@ -4,7 +4,7 @@
 
 ## Context
 
-Phase 9 block 9e (`PLAN-phase-9-review-and-faq.md`, finding 1).
+Phase 9 block 9e (`docs/plans/PLAN-phase-9-review-and-faq.md`, finding 1).
 - Without a model the assistant only answered a fixed English notice, even to the app's own
   **Try an example** button.
 - The README promised a "scripted demo mode", and the GIF shows the assistant filling the

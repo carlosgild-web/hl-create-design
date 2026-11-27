@@ -9,7 +9,7 @@ Phase 10 adds two explainer videos, "From a question to an answer": a Demo video
 panel: the code behind each step and the data that passed through it. The video is only
 worth something if what it shows is what happened. That rules out typed-in payloads,
 hand-written line numbers and a mock-up of the UI. The plan
-(`Claude outputs/PLAN-video-how-it-works.md`) wanted to change no product code. It also
+(`docs/plans/PLAN-video-how-it-works.md`) wanted to change no product code. It also
 wanted no new files outside `video/` and this record.
 
 ## Decision
