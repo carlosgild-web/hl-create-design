@@ -46,7 +46,7 @@ Built by **Carlos Velazquez** · [LinkedIn](https://www.linkedin.com/in/carlos-v
 - **Evaluation, not a demo**: 49 scenarios scored on tool calls, side effects and citations, run on Ollama and Dahl (Groq on the earlier 27); the failures are published in [`docs/eval/`](docs/eval/README.md).
 - **One interface, five model backends**: Ollama, Dahl, Groq, a rule-based demo assistant and a scripted test model behind `LLMClient`.
 - **Enterprise integration**: a mock SAP Gateway OData v2 service (CSRF handshake, `$filter`, `$expand`, chaos switches) behind `SapClient`.
-- **Full stack and delivery**: FastAPI, React + TypeScript, KiCad 9 `kicad-cli`, Docker, 730+ tests and Playwright e2e in GitHub Actions.
+- **Full stack and delivery**: FastAPI, React + TypeScript, KiCad 9 `kicad-cli`, Docker, 1,000+ tests and Playwright e2e in GitHub Actions.
 
 ## The problem
 
@@ -251,9 +251,9 @@ cd backend && python -m app.cli create-design --dept HW --number HL-HW-26-0042 -
 **Checks** (all run in CI; none needs a model, an API key or KiCad):
 
 ```bash
-cd backend  && pytest -q && ruff check . && ruff format --check .   # 437 tests
-cd sap-mock && pytest -q && ruff check . && ruff format --check .   # 230 tests
-cd frontend && npm run lint && npm test && npm run build            # 52 tests
+cd backend  && pytest -q && ruff check . && ruff format --check .   # 720 tests (2-3 skip: symlinks, KiCad)
+cd sap-mock && pytest -q && ruff check . && ruff format --check .   # 259 tests
+cd frontend && npm run lint && npm test && npm run build            # 78 tests
 cd e2e && npx playwright test                                       # 13 browser tests
 ```
 
