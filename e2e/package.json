@@ -4,7 +4,9 @@
   "version": "1.1.0",
   "type": "module",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "showcase": "playwright test showcase --grep-invert @gif",
+    "showcase:gif": "playwright test showcase --grep @gif"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",
